@@ -21,6 +21,8 @@ A line which is colour 0 at the edges and colour 7 in the might be of the form:
 * at x = 63: {.end = 192, .colour = 0x77};
 * at x = 192: {.end = 255, .colour = 0x00}.
 
+**Code note**: all pseudocode below is written extemporaneously, and needs to be verified. Read this as me sketching out thoughts.
+
 ### Inserting
 
 Assuming back-to-front drawing, rational alignment and the two-byte fields are split into two adjacent 256-byte arrays, to insert a single span from `x1` to `x2` in colour `c`:
@@ -69,7 +71,82 @@ Assuming back-to-front drawing, rational alignment and the two-byte fields are s
 
 			l = next
 
-(Written extemporaneously, to be verified).
+### Front-to-back Drawing
+
+Taking 0 as the transparency colour:
+
+    func insert:
+		hl = start of line
+
+		; Skip spans that end before x1.
+		while [hl] < x1:
+			l = [hl]
+
+		; Easy case: span also ends at or after x2.
+		if [hl] >= x2:
+			; Span is not transparent: the new one doesn't appear at all.
+			if [h+1:l] != 0:
+				return
+
+			if [hl] == x2:
+				if l != x1:
+					; This transparent span ends exactly at x2, but starts
+					; before it. So leave a transparent region on the left
+					; and fill on the right.
+					[h:x1] = x2
+					[h+1:x1] = c
+
+					[hl] = x1
+				else:
+					; This transparent span is exactly the size of the one to
+					; be inserted! Just change the colour.
+					[h+1:l] = c
+			else:
+				; This is a transparent span that ends after x2.
+				; So first divide on the right to leave a transparent
+				; region after the current.
+				[h:x2] = [hl]
+				[h+1:x2] = 0
+
+				if l != x1:
+					; This span also starts after x1. So leave a transparent
+					; region on the left and fill on the right.
+					[h:x1] = [h:x2]
+					[h+1:x] = c
+
+					[hl] = x1
+				else:
+					; This span exactly starts at x1. Since it's already
+					; divided on the right, just fill on the left.
+					[hl] = x2
+					[h+1:l] = c
+
+			return
+
+		; Subdivide current span and fill right-hand size if it doesn't exactly start on x1
+		; and is transparent.
+		if l != x1 && [h+1:l] == 0:
+			[h:x1] = [hl]
+			[h+1:x1] = c
+			[hl] = x1
+			l = x1
+
+		; Check all spans that end before x2 for colour, recolouring if appropriate.
+		while [hl] <= x2:
+			if [h+1:l] == 0:
+				[h+1:l] = c
+			l = [hl]
+
+		; If the final span already exactly ends on x2, work is done.
+		if [hl] == x2:
+			return
+
+		; Subdivide final span if colour allows.
+		if [h+1:l] != 0:
+			[h:x2] = [hl]
+			[h+1:x2] = 0
+			[hl] = x2
+			[h+1:l] = c
 
 ### Differencing
 
@@ -93,9 +170,7 @@ Assuming `hl = buffer representing next display`, `de = buffer representing curr
 				e = [de]
 		}
 
-(Also written extemporaneously, to be verified).
-
-## Net Cost
+## Net Memory Footprint
 
 192 lines * 512 bytes * 2 = 192kb for the buffers.
 
