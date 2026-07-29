@@ -12,7 +12,7 @@ Algorithm pursued:
 
 There are two span buffers; each reserves 512 bytes to each line of the display — two bytes per output pixel — but is properly construed as a sparsely-packed linked list.
 
-Each entry in the linked list describes an RLE run as: (i) the pixel it ends immediately after; and (ii) the colour of the run.
+Each entry in the linked list describes an RLE run as: (i) the pixel it ends on; and (ii) the colour of the run.
 
 So e.g. a completely blank line will consist of a single entry at x = 0 of {.end = 255, .colour = 0}.
 
@@ -22,6 +22,10 @@ A line which is colour 0 at the edges and colour 7 in the might be of the form:
 * at x = 192: {.end = 255, .colour = 0x00}.
 
 **Code note**: all pseudocode below is written extemporaneously, and needs to be verified. Read this as me sketching out thoughts.
+
+### The 256th Column
+
+If the semantics of "pixel it ends on" are "final included pixel" then e.g. a one-pixel entry at location 0 should indicate that it ends at pixel 0. So finding the next node is always a case of advancing to (next x)+1 and that continues until 
 
 ### Inserting
 

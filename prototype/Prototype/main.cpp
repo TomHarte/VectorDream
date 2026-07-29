@@ -175,7 +175,7 @@ private:
 			l = spans[hl()];
 		}
 
-		// Split end necessary.
+		// Split end if necessary.
 		if(spans[hl()] != end) {
 			const uint8_t next = spans[hl()];
 			++h;
