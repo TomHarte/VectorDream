@@ -145,9 +145,7 @@ Assuming `hl = buffer representing next display`, `de = buffer representing curr
 				if [h+1:l] != [d+1:e]:
 					draw_span(x, [hl], [h+1:l])
 				x = e = l = [hl]
-				continue
-
-			if [hl] < [de]:
+			elif [hl] < [de]:
 				if [h+1:l] != [d+1:e]:
 					draw_span(x, [hl], [h+1:l])
 				x = l = [hl]
