@@ -53,6 +53,7 @@ public:
 private:
 	void draw() {
 		// TODO: something that produces output here.
+		overprint(10, 20, 0, 0xff);
 
 		// Do partial updates.
 		for(int y = 0; y < 192; y++) {
@@ -113,6 +114,53 @@ private:
 		if(end & 1) {
 			line[end >> 1] = (line[end >> 1] & 0x0f) | (colour & 0xf0);
 		}
+	}
+
+	void overprint(uint8_t start, const uint8_t end, const uint8_t y, const uint8_t colour) {
+		uint8_t h = y << 1;
+		uint8_t l = 0;
+		uint8_t d = h;
+		uint8_t e = start;
+		const auto hl = [&] {
+			return (h << 8) | l;
+		};
+		const auto de = [&] {
+			return (d << 8) | e;
+		};
+
+		// Find first stored span that overlaps start of new span.
+		while(spans[hl()] < start) {
+			l = spans[hl()];
+		}
+		const uint8_t prior = l;
+
+		// Continue search for first span that ends after current.
+		while(spans[hl()] < end) {
+			l = spans[hl()];
+		}
+
+		// Split end necessary.
+		if(spans[hl()] > end) {
+			const uint8_t next = spans[hl()];
+			++h;
+			const uint8_t colour = spans[hl()];
+
+			l = end;
+			spans[hl()] = colour;
+			--h;
+			spans[hl()] = next;
+		}
+
+		// Split original if necessary.
+		if(prior != e) {
+			l = prior;
+			spans[hl()] = start;
+		}
+
+		// Insert new span.
+		spans[de()] = end;
+		++d;
+		spans[de()] = colour;
 	}
 
 	// The two span buffers.
