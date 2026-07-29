@@ -153,21 +153,22 @@ Taking 0 as the transparency colour:
 Assuming `hl = buffer representing next display`, `de = buffer representing current display`:
 
 	func output:
+		x = 0
 		while(l != 255) {
 			if [hl] == [de]:
 				if [h+1:l] != [d+1:e]:
-					draw_span(l, [hl], [h+1:l])
-				e = l = [hl]
+					draw_span(x, [hl], [h+1:l])
+				x = e = l = [hl]
 				continue
 
 			if [hl] < [de]:
 				if [h+1:l] != [d+1:e]:
-					draw_span(l, [hl], [h+1:l])
-				l = [hl]
+					draw_span(x, [hl], [h+1:l])
+				x = l = [hl]
 			else:
 				if [h+1:l] != [d+1:e]:
-					draw_span(l, [de], [h+1:l])
-				e = [de]
+					draw_span(x, [de], [h+1:l])
+				x = e = [de]
 		}
 
 ## Net Memory Footprint
