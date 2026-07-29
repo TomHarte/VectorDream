@@ -31,45 +31,31 @@ Assuming back-to-front drawing, rational alignment and the two-byte fields are s
 	func insert:
 		hl = start of line
 
-		while true:
-			; The start of the new span is already a node; insert one after to complete the span,
-			; then update it.
-			if l == x1:
-				call fix_tail
-				[hl] = x2
-				[h+1:l] = c
-				return
+		; Skip anything to left of new span, keep reference to first thing potentially to split.
+		while [hl] < x1:
+			l = [hl]
+		prior = l
 
+		; Find first thing that extends to or beyond right of new span.
+		while [hl] < x2:
+			l = [hl]
+
+		; Split end span if necessary.
+		if [hl] != x2:
 			next = [hl]
+			colour = [h+1:l]
 
-			; The start of the new span should be within this span; search from here to complete
-			; the span then insert a start node.
-			if next > x1:
-				prior = hl
-				call fix_tail
-				hl = prior
-				[hl] = x1
-				l = x1
-				[hl] = x2
-				[h+1:l] = c
-				return;
+			l = x2
+			[hl] = next
+			[h+1:l] = colour
 
-			l = next
+		; Now consider splitting preceding span.
+		if prior != x1:
+			[h:prior] = x1
 
-	; Ensure a node exists at the end of this RLE span.
-	func fix_tail:
-		while true:
-			next = [hl]
-
-			if next == x2:
-				return
-
-			if next > x2:
-				[h:x2] = next
-				[h:x2] = [h+1:l]
-				return
-
-			l = next
+		; Insert new span.
+		[h:x1] = x2
+		[h+1:x1] = colour
 
 ### Front-to-back Drawing
 

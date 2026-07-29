@@ -176,7 +176,7 @@ private:
 		}
 
 		// Split end necessary.
-		if(spans[hl()] > end) {
+		if(spans[hl()] != end) {
 			const uint8_t next = spans[hl()];
 			++h;
 			const uint8_t colour = spans[hl()];
