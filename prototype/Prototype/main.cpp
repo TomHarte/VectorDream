@@ -74,7 +74,9 @@ private:
 	void populate_spans() {
 		for(int c = 0; c < 2; c++) {
 			for(int yc = 0; yc < 10; yc++) {
-				overprint(blocks_[c].x, blocks_[c].x + 10, blocks_[c].y + yc, 0xff - c);
+				const uint8_t colour = c ? ((yc & 1) ? 0xec : 0xce) : 0xff;
+
+				overprint(blocks_[c].x, blocks_[c].x + 10, blocks_[c].y + yc, colour);
 			}
 		}
 	}
