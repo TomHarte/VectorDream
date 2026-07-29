@@ -15,9 +15,6 @@ public:
 	static constexpr int ImageHeight = 192;
 	static constexpr int WindowScale = 3;
 
-	void update(const KeyStates &key_states) {
-	}
-
 	void draw(uint8_t *const base, const size_t pitch) {
 		draw();
 
@@ -50,16 +47,50 @@ public:
 		}
 	}
 
+	void update(const KeyStates &key_states) {
+		for(int c = 0; c < 2; c++) {
+			blocks_[c].update();
+		}
+	}
+
 private:
+	struct Block {
+		int x, y;
+		int x_dir, y_dir;
+
+		void update() {
+			x += x_dir;
+			if(x == 0 || x == 255 - 10) x_dir = -x_dir;
+
+			y += y_dir;
+			if(y == 0 || y == 191 - 10) y_dir = -y_dir;
+		}
+	};
+	Block blocks_[2] = {
+		{.x = 0, .y = 0, .x_dir = 1, .y_dir = 1},
+		{.x = 5, .y = 2, .x_dir = 1, .y_dir = 1},
+	};
+
+	void populate_spans() {
+		for(int c = 0; c < 2; c++) {
+			for(int yc = 0; yc < 10; yc++) {
+				overprint(blocks_[c].x, blocks_[c].x + 10, blocks_[c].y + yc, 0xff - c);
+			}
+		}
+	}
+
+
+	int total_pixels;
 	void draw() {
-		// TODO: something that produces output here.
-		overprint(10, 20, 0, 0xff);
+		populate_spans();
+
+		total_pixels = 0;
 
 		// Do partial updates.
 		for(int y = 0; y < 192; y++) {
-			uint8_t h = y << 1;
+			uint16_t h = y << 1;
 			uint8_t l = 0;
-			uint8_t d = h;
+			uint16_t d = h;
 			uint8_t e = l;
 			const auto hl = [&] {
 				return (h << 8) | l;
@@ -70,22 +101,22 @@ private:
 
 			while(l != 255) {
 				const uint8_t next_l = spans[hl()];
-				const uint8_t next_e = spans[de()];
+				const uint8_t next_e = previous_spans[de()];
 				++h;
 				++d;
 
 				if(next_l == next_e) {
-					if(spans[hl()] != spans[de()]) {
+					if(spans[hl()] != previous_spans[de()]) {
 						draw_span(l, next_l, y, spans[hl()]);
 					}
 					l = e = next_l;
 				} else if(next_l < next_e) {
-					if(spans[hl()] != spans[de()]) {
+					if(spans[hl()] != previous_spans[de()]) {
 						draw_span(l, next_l, y, spans[hl()]);
 					}
 					l = next_l;
 				} else {
-					if(spans[hl()] != spans[de()]) {
+					if(spans[hl()] != previous_spans[de()]) {
 						draw_span(l, next_e, y, spans[hl()]);
 					}
 					e = next_e;
@@ -95,12 +126,20 @@ private:
 				--d;
 			}
 		}
+		printf("Total painted: %d\n", total_pixels);
 
+		// Swap buffers, clear the new front.
 		std::swap(previous_spans, spans);
+		for(int y = 0; y < 192; y++) {
+			spans[y * 512] = 255;
+			spans[y * 512 + 256] = 0;
+		}
 	}
 
 	void draw_span(uint8_t start, const uint8_t end, const uint8_t y, const uint8_t colour) {
 		uint8_t *line = &screen[y * 128];
+
+		total_pixels += end - start;
 
 		if(start & 1) {
 			line[start >> 1] = (line[start >> 1] & 0xf0) | (colour & 0x0f);
@@ -116,10 +155,10 @@ private:
 		}
 	}
 
-	void overprint(uint8_t start, const uint8_t end, const uint8_t y, const uint8_t colour) {
-		uint8_t h = y << 1;
+	void overprint(const uint8_t start, const uint8_t end, const uint8_t y, const uint8_t colour) {
+		uint16_t h = y << 1;
 		uint8_t l = 0;
-		uint8_t d = h;
+		uint16_t d = h;
 		uint8_t e = start;
 		const auto hl = [&] {
 			return (h << 8) | l;
