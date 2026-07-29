@@ -31,7 +31,7 @@ public:
 
 		for(int y = 0; y < SDLApp::ImageHeight; y++) {
 			uint32_t *const destination = reinterpret_cast<uint32_t *>(base + y * pitch);
-			uint8_t *const source = &buffer[y * 128];
+			uint8_t *const source = &screen[y * 128];
 			int shift = 4;
 			for(int x = 0; x < SDLApp::ImageWidth; x++) {
 				destination[x] = colours[ (source[x >> 1] >> shift) & 0xf ];
@@ -40,12 +40,87 @@ public:
 		}
 	}
 
-private:
-	void draw() {
-
+	SDLApp() {
+		// Seed span buffers to mutually empty.
+		for(int c = 0; c < 192; c++) {
+			for(int i = 0; i < 2; i++) {
+				buffers[i][(c * 512) + 0] = 255;
+				buffers[i][(c * 512) + 256] = 0;
+			}
+		}
 	}
 
-	uint8_t buffer[ImageWidth * ImageHeight / 2]{};
+private:
+	void draw() {
+		// TODO: something that produces output here.
+
+		// Do partial updates.
+		for(int y = 0; y < 192; y++) {
+			uint8_t h = y << 1;
+			uint8_t l = 0;
+			uint8_t d = h;
+			uint8_t e = l;
+			const auto hl = [&] {
+				return (h << 8) | l;
+			};
+			const auto de = [&] {
+				return (d << 8) | e;
+			};
+
+			while(l != 255) {
+				const uint8_t next_l = spans[hl()];
+				const uint8_t next_e = spans[de()];
+				++h;
+				++d;
+
+				if(next_l == next_e) {
+					if(spans[hl()] != spans[de()]) {
+						draw_span(l, next_l, y, spans[hl()]);
+					}
+					l = e = next_l;
+				} else if(next_l < next_e) {
+					if(spans[hl()] != spans[de()]) {
+						draw_span(l, next_l, y, spans[hl()]);
+					}
+					l = next_l;
+				} else {
+					if(spans[hl()] != spans[de()]) {
+						draw_span(l, next_e, y, spans[hl()]);
+					}
+					e = next_e;
+				}
+
+				--h;
+				--d;
+			}
+		}
+
+		std::swap(previous_spans, spans);
+	}
+
+	void draw_span(uint8_t start, const uint8_t end, const uint8_t y, const uint8_t colour) {
+		uint8_t *line = &screen[y * 128];
+
+		if(start & 1) {
+			line[start >> 1] = (line[start >> 1] & 0xf0) | (colour & 0x0f);
+			++start;
+		}
+
+		for(int c = start >> 1; c < end >> 1; c++) {
+			line[c] = colour;
+		}
+
+		if(end & 1) {
+			line[end >> 1] = (line[end >> 1] & 0x0f) | (colour & 0xf0);
+		}
+	}
+
+	// The two span buffers.
+	uint8_t buffers[2][512*192];
+	uint8_t *previous_spans = buffers[0], *spans = buffers[1];
+
+	// SAM-style framebuffer.
+	uint8_t screen[ImageWidth * ImageHeight / 2]{};
 };
 
 
