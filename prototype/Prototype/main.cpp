@@ -79,12 +79,11 @@ private:
 		}
 	}
 
-
-	int total_pixels;
 	void draw() {
 		populate_spans();
 
-		total_pixels = 0;
+		// Enable here to draw diffs only.
+//		std::fill(std::begin(screen), std::end(screen), 0);
 
 		// Do partial updates.
 		for(int y = 0; y < 192; y++) {
@@ -99,6 +98,7 @@ private:
 				return (d << 8) | e;
 			};
 
+			uint8_t x = 0;
 			while(l != 255) {
 				const uint8_t next_l = spans[hl()];
 				const uint8_t next_e = previous_spans[de()];
@@ -107,26 +107,25 @@ private:
 
 				if(next_l == next_e) {
 					if(spans[hl()] != previous_spans[de()]) {
-						draw_span(l, next_l, y, spans[hl()]);
+						draw_span(x, next_l, y, spans[hl()]);
 					}
-					l = e = next_l;
+					x = l = e = next_l;
 				} else if(next_l < next_e) {
 					if(spans[hl()] != previous_spans[de()]) {
-						draw_span(l, next_l, y, spans[hl()]);
+						draw_span(x, next_l, y, spans[hl()]);
 					}
-					l = next_l;
+					x = l = next_l;
 				} else {
 					if(spans[hl()] != previous_spans[de()]) {
-						draw_span(l, next_e, y, spans[hl()]);
+						draw_span(x, next_e, y, spans[hl()]);
 					}
-					e = next_e;
+					x = e = next_e;
 				}
 
 				--h;
 				--d;
 			}
 		}
-		printf("Total painted: %d\n", total_pixels);
 
 		// Swap buffers, clear the new front.
 		std::swap(previous_spans, spans);
@@ -138,8 +137,6 @@ private:
 
 	void draw_span(uint8_t start, const uint8_t end, const uint8_t y, const uint8_t colour) {
 		uint8_t *line = &screen[y * 128];
-
-		total_pixels += end - start;
 
 		if(start & 1) {
 			line[start >> 1] = (line[start >> 1] & 0xf0) | (colour & 0x0f);
