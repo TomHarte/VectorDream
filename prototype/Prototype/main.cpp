@@ -1,0 +1,122 @@
+#include <SDL3/SDL.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+
+// Indexed by SDL_SCANCODE, e.g. SDL_SCANCODE_LEFT.
+using KeyStates = std::array<bool, SDL_SCANCODE_COUNT>;
+
+struct SDLApp {
+public:
+	static constexpr int ImageWidth = 256;
+	static constexpr int ImageHeight = 192;
+	static constexpr int WindowScale = 3;
+
+	void update(const KeyStates &key_states) {
+	}
+
+	void draw(uint8_t *const base, const size_t pitch) {
+		draw();
+
+		// Map SAM-style buffer to output.
+		static constexpr uint32_t colours[16] = {
+			0xff'00'00'00,	0xff'00'00'80,	0xff'00'80'00,	0xff'00'80'80,
+			0xff'80'00'00,	0xff'80'00'80,	0xff'80'80'00,	0xff'80'80'80,
+			0xff'00'00'00,	0xff'00'00'ff,	0xff'00'ff'00,	0xff'00'ff'ff,
+			0xff'ff'00'00,	0xff'ff'00'ff,	0xff'ff'ff'00,	0xff'ff'ff'ff,
+		};
+
+		for(int y = 0; y < SDLApp::ImageHeight; y++) {
+			uint32_t *const destination = reinterpret_cast<uint32_t *>(base + y * pitch);
+			uint8_t *const source = &buffer[y * 128];
+			int shift = 4;
+			for(int x = 0; x < SDLApp::ImageWidth; x++) {
+				destination[x] = colours[ (source[x >> 1] >> shift) & 0xf ];
+				shift ^= 4;
+			}
+		}
+	}
+
+private:
+	void draw() {
+
+	}
+
+	uint8_t buffer[ImageWidth * ImageHeight / 2]{};
+};
+
+
+
+int main(int argc, char* argv[]) {
+	if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+		fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+		return EXIT_FAILURE;
+	}
+
+	SDL_Window *const window = SDL_CreateWindow(
+		"Test Patch",
+		SDLApp::ImageWidth * SDLApp::WindowScale,
+		SDLApp::ImageHeight * SDLApp::WindowScale,
+		0
+	);
+	const auto renderer = SDL_CreateRenderer(window, nullptr);
+	SDL_SetRenderVSync(renderer, 1);	// Synchronise output to display refresh rate.
+	const auto texture = SDL_CreateTexture(
+		renderer,
+		SDL_PIXELFORMAT_ABGR8888,
+		SDL_TEXTUREACCESS_STREAMING,
+		SDLApp::ImageWidth,
+		SDLApp::ImageHeight
+	);
+
+	if(!window || !renderer || !texture) {
+		fprintf(stderr, "Window/renderer/texture creation: %s\n", SDL_GetError());
+		return EXIT_FAILURE;
+	}
+
+	SDLApp app;
+	bool quit = false;
+	KeyStates key_states{};
+	while(!quit) {
+		// Check for events.
+		SDL_Event e;
+		while(SDL_PollEvent(&e)) {
+			switch(e.type) {
+				case SDL_EVENT_QUIT:
+					quit = true;
+				break;
+
+				case SDL_EVENT_KEY_DOWN:
+				case SDL_EVENT_KEY_UP:
+					key_states[e.key.scancode] = e.type == SDL_EVENT_KEY_DOWN;
+				break;
+
+				default: break;
+			}
+		}
+
+		// Update.
+		app.update(key_states);
+
+		// Draw.
+		uint8_t *pixels;
+		int pitch;
+		SDL_LockTexture(texture, nullptr, reinterpret_cast<void **>(&pixels), &pitch);
+
+		app.draw(pixels, pitch);
+
+		SDL_UnlockTexture(texture);
+		SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+		SDL_RenderPresent(renderer);
+	}
+
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyTexture(texture);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+
+	return EXIT_SUCCESS;
+}
