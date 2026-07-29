@@ -23,7 +23,7 @@ VIDEOPAGE:	EQU 7 * 2
 ;
 ; Place this code just after where the frame buffer will be, in the upper page.
 ;
-	ORG 0
+	ORG 0xe000
 	DUMP VIDEOPAGE + 1, 8192
 	AUTOEXEC
 
@@ -35,6 +35,37 @@ VIDEOPAGE:	EQU 7 * 2
 	; Disable interrupts.
 	di
 
+	;
+	; Perform a paging dance to get this code into the right place by:
+	;
+	;	(1) paging this same code into the low page, and jumping to it; then
+	;	(2) paging this code into its proper place in the upper quartile of the map, and jumping back to it.
+	;
+	; ... and set the expected video page and mode while at it.
+	;
+	ld a, VIDEOPAGE
+	out (LMPR), a
+	jp .low_target - 0x8000
+
+.low_target:
+	ld a, VIDEOPAGE
+	out (HMPR), a
+	or %01100000
+	out (VMPR), a
+	jp .finish_paging
+
+
+	;
+	; Set the desired video page.
+	;
+.finish_paging:
+
+	; Throw in a couple of pixels to prove that video output is where I expect.
+	ld a, 0xfe
+	ld (0x8000), a
+
+	; TODO: establish palette.
+
 ;
 ; Loop indefinitely, flashing the border as a sign of life.
 ;
@@ -43,4 +74,4 @@ VIDEOPAGE:	EQU 7 * 2
 	out (BORDER), a
 	inc a
 	and 7
-	jr .endless_loop
+	jp .endless_loop		; 'jp' to prove that addressing is as I expect.
