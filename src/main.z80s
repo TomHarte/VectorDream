@@ -17,7 +17,7 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 ; Program defines.
 ;
 
-VIDEOPAGE:	EQU 7 * 2
+VIDEOPAGE:	EQU 6 * 2
 
 
 ;
@@ -59,12 +59,25 @@ VIDEOPAGE:	EQU 7 * 2
 	; Set the desired video page.
 	;
 .finish_paging:
+	; Set stack high.
+	ld sp, 0
+
+	; Disable display to speed setup.
+	ld a, %10000000
+	out (BORDER), a
+
+	; Seed display.
+	call setup_displays
 
 	; Throw in a couple of pixels to prove that video output is where I expect.
 	ld a, 0xfe
 	ld (0x8000), a
 
-	; TODO: establish palette.
+	; Reenable display.
+	ld a, 0
+	out (BORDER), a
+
+	; TODO: establish palette. Reenable display (though it happens for free in the loop below at present)
 
 ;
 ; Loop indefinitely, flashing the border as a sign of life.
@@ -75,3 +88,46 @@ VIDEOPAGE:	EQU 7 * 2
 	inc a
 	and 7
 	jp .endless_loop		; 'jp' to prove that addressing is as I expect.
+
+
+;
+; Differencing handler.
+;
+setup_displays:
+	;
+	; Make the visible screen black.
+	;
+	ld e, 0x00
+	ld hl, 0x8000
+	ld bc, 128 * 192
+.pixel_loop:
+	ld (hl), e
+	inc hl
+	dec bc
+	ld a, b
+	or c
+	jr nz, .pixel_loop
+
+
+	;
+	; Fill both span buffers with blackness.
+	;
+	ld c, 2
+
+.page_loop:
+	ld a, %00100000
+	add a, c
+	out (LMPR), a
+
+	ld hl, 0
+	ld b, 64
+	.write_loop:
+		ld (hl), 255
+		inc h
+		ld (hl), 0
+		inc h
+		djnz .write_loop
+
+	dec c
+	ret m
+	jr .page_loop
