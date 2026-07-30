@@ -83,7 +83,20 @@ VIDEOPAGE:	EQU 6 * 2
 	push af
 	call swap_span_buffer
 	call clear_spans
+
+
+	; Keep repainting complete line 3. To test the 'ends equal' path.
+	ld a, %00100000
+	out (LMPR), a
+
+	ld l, 0
+	ld a, (current_spans)
+	add 7
+	ld h, a
+
 	pop af
+	ld (hl), a
+
 	out (BORDER), a
 	inc a
 	and 7
@@ -118,6 +131,9 @@ swap_span_buffer:
 	;
 @page_loop: EQU for 6
 page{@page_loop}:
+	ld a, %00100000 + (@page_loop * 2)
+	out (LMPR), a
+
 	xor a
 	ld l, a
 	ld e, a
@@ -158,7 +174,8 @@ ENDIF
 		cp (hl)
 		jr z, @+nopaint
 
-		; here: paint from (bc) to (b:l) in colour as per A.
+		; Here: paint from (bc) to (b:l) in colour as per A.
+		nop
 
 		@nopaint:
 		dec h
