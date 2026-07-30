@@ -215,15 +215,74 @@ ENDIF
 		; If here: (bc) was greater.
 		; Paint to the end of (hl) if painting at all, and advance that pointer.
 
+		; Compare colours.
+		inc h
+		inc b
+		ld a, (bc)
+		cp (hl)
+		jr z, @+no_paint
+
+		; IXh = colour.
+		ld ixh, a
+
+		; IYl = length.
+		dec h
+		ld a, (hl)
+		inc h
+		sub e
+		ld iyl, a
+
+		; Draw.
+		call @fill_span
+
+		@no_paint:
+		dec h
+		dec b
+
+		; Update pixel location and advance HL. Leave BC alone.
+		ld a, (hl)
+		ld l, a
+		ld e, a
 		jr @-compare_spans
 
 	@hl_greater:
 		; If here: (hl) was greater.
 		; Otherwise as above.
 
+		; Compare colours.
+		inc h
+		inc b
+		ld a, (bc)
+		cp (hl)
+		jr z, @+no_paint
+
+		; IXh = colour.
+		ld ixh, a
+
+		; IYl = length.
+		dec b
+		ld a, (bc)
+		inc b
+		sub e
+		ld iyl, a
+
+		; Draw.
+		call @fill_span
+
+		@no_paint:
+		dec h
+		dec b
+
+		; Update pixel location and advance BC. Leave HL alone.
+		ld a, (bc)
+		ld c, a
+		ld e, a
 		jr @-compare_spans
 
 	@same_ending:
+		; If here: (bc) == (hl), so both spans end in the same place.
+		; Which opens up the possibility that line end will be reached.
+
 		; Compare colours.
 		inc h
 		inc b
