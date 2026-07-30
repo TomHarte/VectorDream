@@ -115,13 +115,14 @@ swap_span_buffer:
 	;
 	; Overarching register assignment:
 	;
-	;	BC = pointer to [hypothetical 256x192 byte] display.
-	;	DE = pointer to new spans.
-	;	HL = pointer to old spans.
+	;	D = line.
+	;	E = offset within line.			[so that an `ex de, hl` can temporarily swap main pointers]
+	;	BC = pointer to new spans.
+	;	HL = pointer to old spans.		[for benefit of cp (hl)]
 	;
-	ld bc, 0x0000
-	ld l, c
-	ld e, c
+	ld de, 0
+	ld l, e
+	ld c, e
 
 	; Output.
 
@@ -136,10 +137,10 @@ page{@page_loop}:
 
 	xor a
 	ld l, a
-	ld e, a
+	ld c, a
 
 	ld a, (current_spans)
-	ld d, a
+	ld b, a
 	xor 0x40
 	ld h, a
 
@@ -148,40 +149,101 @@ IF @page_loop == 5
 ENDIF
 
 @compare_spans:
-	ld a, (de)
+	ld a, (bc)
 	cp (hl)
 
 	jr z, @+same_ending
 	jr c, @+hl_greater
 
-	@de_greater:
-		; If here: (de) was greater.
+	@bc_greater:
+		; If here: (bc) was greater.
 		; Paint to the end of (hl) if painting at all, and advance that pointer.
 
 		jr @-compare_spans
 
 	@hl_greater:
-		; If here: (de) was greater.
-		; As above.
+		; If here: (hl) was greater.
+		; Otherwise as above.
 
 		jr @-compare_spans
 
 	@same_ending:
 		; Compare colours.
 		inc h
-		inc d
-		ld a, (de)
+		inc b
+		ld a, (bc)
 		cp (hl)
-		jr z, @+nopaint
+		jr z, @+no_paint
 
-		; Here: paint from (bc) to (b:l) in colour as per A.
-		nop
+		; Here: paint from (de) to (d:(bc/hl)) in colour as per A.
+		; Swap registers and store colour in IXh.
+		ex de, hl
+		ld ixh, a
 
-		@nopaint:
+		; Compute pixel count. It's guarantted to be at least 1 per data structure.
+		dec b
+		ld a, (bc)
+		inc b
+		ld iyl, a
+
+		; Compute frame buffer address.
+		scf
+		rr h
+		rr l
+
+		jr nc, @+no_initial_right
+
+		; Store low pixel of new colour.
+		ld a, ixh
+		and 0x0f
+		ld ixl, a
+
+		; Mutate current target of (HL) to include new pixel colour.
+		ld a, (hl)
+		and 0xf0
+		or ixl
+		ld (hl), a
+		inc l
+
+		; Decrement remaining pixel count, possibly exit.
+		dec iyl
+		jr z, @+finish_painting
+
+		; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
+		@no_initial_right:
+
+			ld a, iyl
+			srl a
+			ld iyl, a
+			jr nc, @+no_final_left
+
+			call fill_bytes
+			jr @+finish_painting
+
+		@no_final_left:
+			call fill_bytes
+
+			ld a, ixh
+			and 0xf0
+			ld ixl, a
+
+			ld a, (hl)
+			and 0x0f
+			or ixl
+
+			ld (hl), a
+
+		@finish_painting:
+		and a
+		rl l
+		rl h
+		ex de, hl
+
+		@no_paint:
 		dec h
-		dec d
+		dec b
 
-		ld a, (de)
+		ld a, (bc)		; arbitrarily, could just as easily be (hl)
 		ld c, a
 		ld l, a
 		ld e, a
@@ -193,16 +255,16 @@ ENDIF
 	@next_line:
 		inc h
 		inc h
-		inc d
-		inc d
+		inc b
+		inc b
 
 		xor a
 		ld l, a
 		ld e, a
 		ld c, a
 
-		inc b
-		ld a, b
+		inc d
+		ld a, d
 		and %11111
 
 IF @page_loop == 5
@@ -246,6 +308,7 @@ clear_spans:
 	jr @-per_page
 
 
+
 ;
 ; Seeds the display and both span buffers to a clear state.
 ;
@@ -272,3 +335,26 @@ setup_span_buffers:
 	ld a, 0x40
 	ld (current_spans), a
 	jp clear_spans
+
+;
+;	Byte-aligned span filler.
+;
+fill_bytes:
+	; (HL) = aligned target address, IYl = number of bytes to paint; IXh = colour to paint.
+	ld a, iyl
+	add a
+	neg
+	ld (@destination + 1), a
+
+	ld a, ixh
+
+	@destination:
+		jp @+span_fill
+
+ALIGN 256
+@span_fill:
+	@column: EQU FOR 128
+	ld (hl), a
+	inc l
+	NEXT @column
+	ret
