@@ -69,10 +69,6 @@ VIDEOPAGE:	EQU 6 * 2
 	; Seed display.
 	call setup_span_buffers
 
-	; Throw in a couple of pixels to prove that video output is where I expect.
-	ld a, 0xfe
-	ld (0x8000), a
-
 	; Reenable display.
 	ld a, 0
 	out (BORDER), a
@@ -91,7 +87,7 @@ VIDEOPAGE:	EQU 6 * 2
 	out (BORDER), a
 	inc a
 	and 7
-	jp @-endless_loop		; 'jp' to prove that addressing is as I expect.
+	jr @-endless_loop
 
 
 ;
@@ -106,23 +102,102 @@ swap_span_buffer:
 	;
 	; Overarching register assignment:
 	;
-	;	BC = pointer to display.
-	;	DE = pointer to old spans.
-	;	HL = pointer to new spans.
+	;	BC = pointer to [hypothetical 256x192 byte] display.
+	;	DE = pointer to new spans.
+	;	HL = pointer to old spans.
 	;
-	ld bc, 0x8000
+	ld bc, 0x0000
 	ld l, c
 	ld e, c
 
-	ld a, (current_spans)
-	ld h, a
-	xor 0x40
-	ld d, a
-	ld (current_spans), a		; Switch buffer pointer here because the value has been calculated.
-
 	; Output.
 
-	ret
+	;
+	; Lazy: I've unrolled per page here to avoid having to bother writing an outer loop.
+	; Reevaluate this decision at some point.
+	;
+@page_loop: EQU for 6
+page{@page_loop}:
+	xor a
+	ld l, a
+	ld e, a
+
+	ld a, (current_spans)
+	ld d, a
+	xor 0x40
+	ld h, a
+
+IF @page_loop == 5
+	ld (current_spans), a
+ENDIF
+
+@compare_spans:
+	ld a, (de)
+	cp (hl)
+
+	jr z, @+same_ending
+	jr c, @+hl_greater
+
+	@de_greater:
+		; If here: (de) was greater.
+		; Paint to the end of (hl) if painting at all, and advance that pointer.
+
+		jr @-compare_spans
+
+	@hl_greater:
+		; If here: (de) was greater.
+		; As above.
+
+		jr @-compare_spans
+
+	@same_ending:
+		; Compare colours.
+		inc h
+		inc d
+		ld a, (de)
+		cp (hl)
+		jr z, @+nopaint
+
+		; here: paint from (bc) to (b:l) in colour as per A.
+
+		@nopaint:
+		dec h
+		dec d
+
+		ld a, (de)
+		ld c, a
+		ld l, a
+		ld e, a
+
+		; Check whether that ended the line.
+		inc a
+		jr nz, @-compare_spans
+
+	@next_line:
+		inc h
+		inc h
+		inc d
+		inc d
+
+		xor a
+		ld l, a
+		ld e, a
+		ld c, a
+
+		inc b
+		ld a, b
+		and %11111
+
+IF @page_loop == 5
+		ret z
+ELSE
+		jr z, @+next_page
+ENDIF
+
+		jr @-compare_spans
+
+	@next_page:
+NEXT @page_loop
 
 ;
 ; Clears the current back buffer.
@@ -152,6 +227,7 @@ clear_spans:
 	dec c
 	ret m
 	jr @-per_page
+
 
 ;
 ; Seeds the display and both span buffers to a clear state.
