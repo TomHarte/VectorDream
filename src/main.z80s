@@ -109,6 +109,62 @@ VIDEOPAGE:	EQU 6 * 2
 current_spans:	db 0
 
 ;
+; Seeds the display and both span buffers to a clear state.
+;
+setup_span_buffers:
+	;
+	; Make the visible screen black.
+	;
+	ld e, 0x00
+	ld hl, 0x8000
+	ld bc, 128 * 192
+@pixel_loop:
+	ld (hl), e
+	inc hl
+	dec bc
+	ld a, b
+	or c
+	jr nz, @-pixel_loop
+
+	;
+	; Fill both span buffers with blackness.
+	;
+	call clear_spans
+
+	ld a, 0x40
+	ld (current_spans), a
+	jp clear_spans
+
+;
+; Clears the current back buffer.
+;
+clear_spans:
+	; Reset the
+	ld l, 0
+	ld c, 10
+
+@per_page:
+	ld a, (current_spans)
+	ld h, a
+
+	ld a, %00100000
+	add a, c
+	out (LMPR), a
+
+	ld b, 32
+	@write_loop:
+		ld (hl), 255
+		inc h
+		ld (hl), 0
+		inc h
+		djnz @-write_loop
+
+	dec c
+	dec c
+	ret m
+	jr @-per_page
+
+;
 ; Promotes the current back buffer to the front and swaps the two over.
 ;
 swap_span_buffer:
@@ -175,69 +231,15 @@ ENDIF
 		cp (hl)
 		jr z, @+no_paint
 
-		; Here: paint from (de) to (d:(bc/hl)) in colour as per A.
-		; Swap registers and store colour in IXh.
-		ex de, hl
+		; Set IXh = colour; IYl = width.
 		ld ixh, a
-
-		; Compute pixel count. It's guarantted to be at least 1 per data structure.
 		dec b
 		ld a, (bc)
 		inc b
+		sub e
 		ld iyl, a
 
-		; Compute frame buffer address.
-		scf
-		rr h
-		rr l
-
-		jr nc, @+no_initial_right
-
-		; Store low pixel of new colour.
-		ld a, ixh
-		and 0x0f
-		ld ixl, a
-
-		; Mutate current target of (HL) to include new pixel colour.
-		ld a, (hl)
-		and 0xf0
-		or ixl
-		ld (hl), a
-		inc l
-
-		; Decrement remaining pixel count, possibly exit.
-		dec iyl
-		jr z, @+finish_painting
-
-		; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
-		@no_initial_right:
-
-			ld a, iyl
-			srl a
-			ld iyl, a
-			jr nc, @+no_final_left
-
-			call fill_bytes
-			jr @+finish_painting
-
-		@no_final_left:
-			call fill_bytes
-
-			ld a, ixh
-			and 0xf0
-			ld ixl, a
-
-			ld a, (hl)
-			and 0x0f
-			or ixl
-
-			ld (hl), a
-
-		@finish_painting:
-		and a
-		rl l
-		rl h
-		ex de, hl
+		call @fill_span
 
 		@no_paint:
 		dec h
@@ -278,70 +280,68 @@ ENDIF
 	@next_page:
 NEXT @page_loop
 
-;
-; Clears the current back buffer.
-;
-clear_spans:
-	; Reset the
-	ld l, 0
-	ld c, 10
-
-@per_page:
-	ld a, (current_spans)
-	ld h, a
-
-	ld a, %00100000
-	add a, c
-	out (LMPR), a
-
-	ld b, 32
-	@write_loop:
-		ld (hl), 255
-		inc h
-		ld (hl), 0
-		inc h
-		djnz @-write_loop
-
-	dec c
-	dec c
-	ret m
-	jr @-per_page
-
-
-
-;
-; Seeds the display and both span buffers to a clear state.
-;
-setup_span_buffers:
-	;
-	; Make the visible screen black.
-	;
-	ld e, 0x00
-	ld hl, 0x8000
-	ld bc, 128 * 192
-@pixel_loop:
-	ld (hl), e
-	inc hl
-	dec bc
-	ld a, b
-	or c
-	jr nz, @-pixel_loop
 
 	;
-	; Fill both span buffers with blackness.
+	; Paint from d = y, e = x to x = IYl in colour IXh.
 	;
-	call clear_spans
+	; Preserves HL, BC and D. Requires IYl >= 1.
+	;
+@fill_span:
+	ex de, hl
 
-	ld a, 0x40
-	ld (current_spans), a
-	jp clear_spans
+	; Compute frame buffer address.
+	scf
+	rr h
+	rr l
 
-;
-;	Byte-aligned span filler.
-;
-fill_bytes:
-	; (HL) = aligned target address, IYl = number of bytes to paint; IXh = colour to paint.
-	ld a, iyl
+	jr nc, @+no_initial_right
+
+	; Store low pixel of new colour.
+	ld a, ixh
+	and 0x0f
+	ld ixl, a
+
+	; Mutate current target of (HL) to include new pixel colour.
+	ld a, (hl)
+	and 0xf0
+	or ixl
+	ld (hl), a
+	inc l
+
+	; Decrement remaining pixel count, possibly exit.
+	dec iyl
+	jr z, @+finish_painting
+
+	; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
+	@no_initial_right:
+
+		ld a, iyl
+		srl a
+		jr c, @+with_final_left
+
+		call @+fill_bytes
+		jr @+finish_painting
+
+	@with_final_left:
+		call @+fill_bytes
+
+		ld a, ixh
+		and 0xf0
+		ld ixl, a
+
+		ld a, (hl)
+		and 0x0f
+		or ixl
+
+		ld (hl), a
+
+	@finish_painting:
+	rl l	; just to get the top bit into carry; low 7 don't really matter.
+	rl h
+	ex de, hl
+
+@fill_bytes:
+	; (HL) = aligned target address, A = number of bytes to paint; IXh = colour to paint.
 	add a
 	neg
 	ld (@destination + 1), a
