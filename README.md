@@ -25,7 +25,9 @@ A line which is colour 0 at the edges and colour 7 in the might be of the form:
 
 ### The 256th Column
 
-If the semantics of "pixel it ends on" are "final included pixel" then e.g. a one-pixel entry at location 0 should indicate that it ends at pixel 0. So finding the next node is always a case of advancing to (next x)+1 and that continues until 
+In current versions of this code I've treated reaching column 255 as terminal, thereby not being able to paint anything in that one slither of pixels. This is due to the difficulty in consistently starting with whatever node is in column 0 and having no storage beyond whatever is in column 255 while not using more than eight bits for addressing.
+
+I might end up accepting this as a permanent deficiency; otherwise I'll need to evaluate the costs of the various special cases that would avoid it.
 
 ### Inserting
 
