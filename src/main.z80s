@@ -81,8 +81,6 @@ VIDEOPAGE:	EQU 6 * 2
 	ld a, 0
 
 @endless_loop:
-	call swap_span_buffer
-	call clear_spans
 
 	; Bounce a line back and forth as a test.
 	ld a, %00100000
@@ -139,6 +137,8 @@ VIDEOPAGE:	EQU 6 * 2
 	inc h
 	ld (hl), 0x00
 
+	call swap_span_buffer
+	call clear_spans
 	jr @-endless_loop
 
 
@@ -426,8 +426,10 @@ NEXT @page_loop
 		jr @+finish_painting
 
 	@with_final_left:
+		jr z, @+no_fill_bytes
 		call @+fill_bytes
 
+	@no_fill_bytes:
 		; A still contains colour from setup for call to fill_bytes.
 		and 0xf0
 		ld ixl, a
