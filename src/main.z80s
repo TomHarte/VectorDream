@@ -79,8 +79,8 @@ VIDEOPAGE:	EQU 6 * 2
 ; Loop indefinitely, flashing the border as a sign of life.
 ;
 	ld a, 0
+
 @endless_loop:
-	push af
 	call swap_span_buffer
 	call clear_spans
 
@@ -88,10 +88,10 @@ VIDEOPAGE:	EQU 6 * 2
 	ld a, %00100000
 	out (LMPR), a
 
-	; Set HL = start of line 3.
+	; Set HL = start of line 0.
 	ld l, 0
 	ld a, (current_spans)
-	add 6
+	add 0		; Add line*2 here.
 	ld h, a
 
 	ld a, (x_pos)
@@ -104,14 +104,16 @@ VIDEOPAGE:	EQU 6 * 2
 	cp 240
 	jr nz, @+not_240
 
+	ld a, (x_delta)
 	neg
 	ld (x_delta), a
 	jr @+not_10
 
 	@not_240:
-	cp 10
+	cp 1
 	jr nz, @+not_10
 
+	ld a, (x_delta)
 	neg
 	ld (x_delta), a
 	@not_10:
@@ -124,28 +126,23 @@ VIDEOPAGE:	EQU 6 * 2
 	ld l, a
 
 	; Segment 2: x_pos to x_pos+10 (colour ff).
-	ld (hl), 10
+	add a, 10
+	ld (hl), a
 	inc h
 	ld (hl), 0xff
 	dec h
-
-	add a, 10
 	ld l, a
 
 	; Segment 3: to position 255.
-	cpl
+	ld a, 0xff
 	ld (hl), a
 	inc h
 	ld (hl), 0x00
 
-	pop af
-	out (BORDER), a
-	inc a
-	and 7
 	jr @-endless_loop
 
 
-x_pos: db 0
+x_pos: db 1
 y_pos: db 0
 x_delta: db 1
 y_delta: db 1
@@ -431,7 +428,7 @@ NEXT @page_loop
 	@with_final_left:
 		call @+fill_bytes
 
-		ld a, ixh
+		; A still contains colour from setup for call to fill_bytes.
 		and 0xf0
 		ld ixl, a
 
@@ -445,6 +442,7 @@ NEXT @page_loop
 	rl l	; just to get the top bit into carry; low 7 don't really matter.
 	rl h
 	ex de, hl
+	ret
 
 @fill_bytes:
 	; (HL) = aligned target address, A = number of bytes to paint; IXh = colour to paint.
