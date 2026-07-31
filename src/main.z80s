@@ -86,12 +86,7 @@ VIDEOPAGE:	EQU 6 * 2
 	ld a, %00100000
 	out (LMPR), a
 
-	; Set HL = start of line 0.
-	ld l, 0
-	ld a, (current_spans)
-	add 0		; Add line*2 here.
-	ld h, a
-
+	; Get and update current x position.
 	ld a, (x_pos)
 	ld b, a
 
@@ -107,14 +102,25 @@ VIDEOPAGE:	EQU 6 * 2
 	ld (x_delta), a
 	jr @+not_10
 
-	@not_240:
+@not_240:
 	cp 1
 	jr nz, @+not_10
 
 	ld a, (x_delta)
 	neg
 	ld (x_delta), a
-	@not_10:
+@not_10:
+
+	ld c, 0
+
+@write_blob:
+	; Set HL = start of line.
+	ld l, 0
+	ld a, (current_spans)
+	add c
+	ld h, a
+
+	ld a, (x_pos)
 
 	; Segment 1: 0 to x_pos (colour 0).
 	ld (hl), a
@@ -136,6 +142,13 @@ VIDEOPAGE:	EQU 6 * 2
 	ld (hl), a
 	inc h
 	ld (hl), 0x00
+
+	; Loop if required.
+	ld a, c
+	add 2
+	ld c, a
+	cp 10
+	jr nz, @-write_blob
 
 	call swap_span_buffer
 	call clear_spans
@@ -430,7 +443,7 @@ NEXT @page_loop
 		call @+fill_bytes
 
 	@no_fill_bytes:
-		; A still contains colour from setup for call to fill_bytes.
+		ld a, ixh
 		and 0xf0
 		ld ixl, a
 
