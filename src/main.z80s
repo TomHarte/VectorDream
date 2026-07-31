@@ -27,13 +27,10 @@ VIDEOPAGE:	EQU 6 * 2
 	DUMP VIDEOPAGE + 1, 8192
 	AUTOEXEC
 
-	; Disable display until setup is complete.
-;	ld a, %10000000
-;	out (BORDER), a
-
-
-	; Disable interrupts.
+	; Disable interrupts and display.
 	di
+	ld a, %10000000
+	out (BORDER), a
 
 	;
 	; Perform a paging dance to get this code into the right place by:
@@ -54,39 +51,54 @@ VIDEOPAGE:	EQU 6 * 2
 	out (VMPR), a
 	jp @finish_paging
 
-
-	;
-	; Set the desired video page.
-	;
 @finish_paging:
 	; Set stack high.
 	ld sp, 0
 
-	; Disable display to speed setup.
-	ld a, %10000000
-	out (BORDER), a
-
 	; Seed display.
-	call setup_span_buffers
+	call spans.setup
 
 	; Reenable display.
 	ld a, 0
 	out (BORDER), a
 
-	; TODO: establish palette. Reenable display (though it happens for free in the loop below at present)
+	; TODO: establish palette.
 
 ;
-; Loop indefinitely, flashing the border as a sign of life.
+; Current test: a bouncing square. It's very "DVD screensaver".
 ;
-	ld a, 0
 
 @endless_loop:
+	call spans.clear
 
 	; Bounce a line back and forth as a test.
 	ld a, %00100000
 	out (LMPR), a
 
+	; Update y position.
+	ld a, (y_pos)
+	ld b, a
+	ld a, (y_delta)
+	add b
+	ld (y_pos), a
+
+	cp 180
+	jr c, @+not_180
+
+	ld a, (y_delta)
+	neg
+	ld (y_delta), a
+
+	@not_180:
+	cp 0
+	jr nz, @+update_x
+
+	ld a, (y_delta)
+	neg
+	ld (y_delta), a
+
 	; Get and update current x position.
+	@update_x:
 	ld a, (x_pos)
 	ld b, a
 
@@ -115,10 +127,9 @@ VIDEOPAGE:	EQU 6 * 2
 
 @write_blob:
 	; Set HL = start of line.
-	ld l, 0
-	ld a, (current_spans)
+	ld a, (y_pos)
 	add c
-	ld h, a
+	call spans.getaddress
 
 	ld a, (x_pos)
 
@@ -145,335 +156,18 @@ VIDEOPAGE:	EQU 6 * 2
 
 	; Loop if required.
 	ld a, c
-	add 2
+	inc a
 	ld c, a
 	cp 10
 	jr nz, @-write_blob
 
-	call swap_span_buffer
-	call clear_spans
+	call spans.swap
 	jr @-endless_loop
 
 
 x_pos: db 1
 y_pos: db 0
 x_delta: db 1
-y_delta: db 1
+y_delta: db 2
 
-;
-; Differencing handler.
-;
-current_spans:	db 0
-
-;
-; Seeds the display and both span buffers to a clear state.
-;
-setup_span_buffers:
-	;
-	; Make the visible screen black.
-	;
-	ld e, 0x00
-	ld hl, 0x8000
-	ld bc, 128 * 192
-@pixel_loop:
-	ld (hl), e
-	inc hl
-	dec bc
-	ld a, b
-	or c
-	jr nz, @-pixel_loop
-
-	;
-	; Fill both span buffers with blackness.
-	;
-	call clear_spans
-
-	ld a, 0x40
-	ld (current_spans), a
-	jp clear_spans
-
-;
-; Clears the current back buffer.
-;
-clear_spans:
-	; Reset the
-	ld l, 0
-	ld c, 10
-
-@per_page:
-	ld a, (current_spans)
-	ld h, a
-
-	ld a, %00100000
-	add a, c
-	out (LMPR), a
-
-	ld b, 32
-	@write_loop:
-		ld (hl), 255
-		inc h
-		ld (hl), 0
-		inc h
-		djnz @-write_loop
-
-	dec c
-	dec c
-	ret m
-	jr @-per_page
-
-;
-; Promotes the current back buffer to the front and swaps the two over.
-;
-swap_span_buffer:
-	;
-	; Overarching register assignment:
-	;
-	;	D = line.
-	;	E = offset within line.			[so that an `ex de, hl` can temporarily swap main pointers]
-	;	BC = pointer to new spans.
-	;	HL = pointer to old spans.		[for benefit of cp (hl)]
-	;
-	ld de, 0
-	ld l, e
-	ld c, e
-
-	; Output.
-
-	;
-	; Lazy: I've unrolled per page here to avoid having to bother writing an outer loop.
-	; Reevaluate this decision at some point.
-	;
-@page_loop: EQU for 6
-page{@page_loop}:
-	ld a, %00100000 + (@page_loop * 2)
-	out (LMPR), a
-
-	xor a
-	ld l, a
-	ld c, a
-
-	ld a, (current_spans)
-	ld b, a
-	xor 0x40
-	ld h, a
-
-IF @page_loop == 5
-	ld (current_spans), a
-ENDIF
-
-@compare_spans:
-	ld a, (bc)
-	cp (hl)
-
-	jr z, @+same_ending
-	jr c, @+hl_greater
-
-	@bc_greater:
-		; If here: (bc) was greater.
-		; Paint to the end of (hl) if painting at all, and advance that pointer.
-
-		; Compare colours.
-		inc h
-		inc b
-		ld a, (bc)
-		cp (hl)
-		jr z, @+no_paint
-
-		; IXh = colour.
-		ld ixh, a
-
-		; IYl = length.
-		dec h
-		ld a, (hl)
-		inc h
-		sub e
-		ld iyl, a
-
-		; Draw.
-		call @fill_span
-
-		@no_paint:
-		dec h
-		dec b
-
-		; Update pixel location and advance HL. Leave BC alone.
-		ld a, (hl)
-		ld l, a
-		ld e, a
-		jr @-compare_spans
-
-	@hl_greater:
-		; If here: (hl) was greater.
-		; Otherwise as above.
-
-		; Compare colours.
-		inc h
-		inc b
-		ld a, (bc)
-		cp (hl)
-		jr z, @+no_paint
-
-		; IXh = colour.
-		ld ixh, a
-
-		; IYl = length.
-		dec b
-		ld a, (bc)
-		inc b
-		sub e
-		ld iyl, a
-
-		; Draw.
-		call @fill_span
-
-		@no_paint:
-		dec h
-		dec b
-
-		; Update pixel location and advance BC. Leave HL alone.
-		ld a, (bc)
-		ld c, a
-		ld e, a
-		jr @-compare_spans
-
-	@same_ending:
-		; If here: (bc) == (hl), so both spans end in the same place.
-		; Which opens up the possibility that line end will be reached.
-
-		; Compare colours.
-		inc h
-		inc b
-		ld a, (bc)
-		cp (hl)
-		jr z, @+no_paint
-
-		; Set IXh = colour; IYl = width.
-		ld ixh, a
-		dec b
-		ld a, (bc)
-		inc b
-		sub e
-		ld iyl, a
-
-		call @fill_span
-
-		@no_paint:
-		dec h
-		dec b
-
-		ld a, (bc)		; arbitrarily, could just as easily be (hl)
-		ld c, a
-		ld l, a
-		ld e, a
-
-		; Check whether that ended the line.
-		inc a
-		jr nz, @-compare_spans
-
-	@next_line:
-		inc h
-		inc h
-		inc b
-		inc b
-
-		xor a
-		ld l, a
-		ld e, a
-		ld c, a
-
-		inc d
-		ld a, d
-		and %11111
-
-IF @page_loop == 5
-		ret z
-ELSE
-		jr z, @+next_page
-ENDIF
-
-		jr @-compare_spans
-
-	@next_page:
-NEXT @page_loop
-
-
-	;
-	; Paint from d = y, e = x to x = IYl in colour IXh.
-	;
-	; Preserves HL, BC and D. Requires IYl >= 1.
-	;
-@fill_span:
-	ex de, hl
-
-	; Compute frame buffer address.
-	scf
-	rr h
-	rr l
-
-	jr nc, @+no_initial_right
-
-	; Store low pixel of new colour.
-	ld a, ixh
-	and 0x0f
-	ld ixl, a
-
-	; Mutate current target of (HL) to include new pixel colour.
-	ld a, (hl)
-	and 0xf0
-	or ixl
-	ld (hl), a
-	inc l
-
-	; Decrement remaining pixel count, possibly exit.
-	dec iyl
-	jr z, @+finish_painting
-
-	; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
-	@no_initial_right:
-
-		ld a, iyl
-		srl a
-		jr c, @+with_final_left
-
-		call @+fill_bytes
-		jr @+finish_painting
-
-	@with_final_left:
-		jr z, @+no_fill_bytes
-		call @+fill_bytes
-
-	@no_fill_bytes:
-		ld a, ixh
-		and 0xf0
-		ld ixl, a
-
-		ld a, (hl)
-		and 0x0f
-		or ixl
-
-		ld (hl), a
-
-	@finish_painting:
-	rl l	; just to get the top bit into carry; low 7 don't really matter.
-	rl h
-	ex de, hl
-	ret
-
-@fill_bytes:
-	; (HL) = aligned target address, A = number of bytes to paint; IXh = colour to paint.
-	add a
-	neg
-	ld (@destination + 1), a
-
-	ld a, ixh
-
-	@destination:
-		jp @+span_fill
-
-ALIGN 256
-@span_fill:
-	@column: EQU FOR 128
-	ld (hl), a
-	inc l
-	NEXT @column
-	ret
+include "span_buffers.z80s"

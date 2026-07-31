@@ -1,0 +1,420 @@
+;
+; This code managed a double-buffered 'span buffer', i.e. a buffer that stores continuous solid horiontal spans of colour.
+;
+; It can do differential drawing — comparing a new buffer to an old one and outputting only the differences.
+;
+; It therefore seeks to ameliorate for the SAM's speed vs framebuffer deficit for scenes that:
+;	(i) can be described well as horizontal strips of colour; and
+;	(ii) that do not change 'too much' from one frame to the next.
+;
+; It uses memory pages 0–5 inclusive for these span buffers and assumes itself to have been assembled onto the same
+; page as a video buffer that it can use for pixel plotting, and paged into the top half of the memory map. It will
+; freely adjust what is paged in the low half of the memory map.
+;
+; Exported symbols:
+;
+;	* `spans.setup` should be called once at program startup;
+;	* `spans.clear` can be used to populate the current back buffer with a black screen;
+;	* `spans.swap` swaps the front and back span buffers, updating the pixel display; and
+;	* `spans.getaddress` which pages the proper buffer and returns a pointer to the start of a named line.
+;
+
+
+@current_spans:	db 0
+
+;
+; spans.setup
+;
+; Seeds the pixel display and both span buffers to a consistent, clear state.
+; Required at program startup.
+;
+;	Input:
+; 		none.
+;
+;	Output:
+;		none.
+;
+;	Clobbers:
+;		A, BC, E, HL.
+;
+spans.setup:
+	;
+	; Make the visible screen black.
+	;
+	ld e, 0x00
+	ld hl, 0x8000
+	ld bc, 128 * 192
+@pixel_loop:
+	ld (hl), e
+	inc hl
+	dec bc
+	ld a, b
+	or c
+	jr nz, @-pixel_loop
+
+	;
+	; Fill both span buffers with blackness.
+	;
+	call spans.clear
+
+	ld a, 0x40
+	ld (@current_spans), a
+
+	; Fallthrough to spans.clear. Eliminating:
+	;
+	;	jp spans.clear
+
+;
+; spans.clear
+;
+; Clears the current buffer. This is completely optional; if you have a routine that will completely overwrite
+; it anyway, there's no need to call this.
+;
+;	Input:
+; 		none.
+;
+;	Output:
+;		none.
+;
+;	Clobbers:
+;		A, BC, HL.
+;
+spans.clear:
+	ld l, 0
+	ld c, 10
+
+@per_page:
+	ld a, (@current_spans)
+	ld h, a
+
+	ld a, %00100000
+	add a, c
+	out (LMPR), a
+
+	ld b, 32
+	@write_loop:
+		ld (hl), 255
+		inc h
+		ld (hl), 0
+		inc h
+		djnz @-write_loop
+
+	dec c
+	dec c
+	ret m
+	jr @-per_page
+
+;
+; spans.swap
+;
+; Swaps the front and back buffers, updating current pixel output.
+;
+; Implementation choice: optimise for buffers with very few differences; hence prioritise navigation of the lists
+; in terms of register allocation, and don't try to be clever with the stack pointer in span drawing on the assumption
+; that they'll generally be short.
+;
+;	Input:
+; 		none.
+;
+;	Output:
+;		none.
+;
+;	Clobbers:
+;		A, BC, DE, HL, IX, IYl.
+;
+spans.swap:
+	;
+	; Overarching register assignment:
+	;
+	;	D = line.
+	;	E = offset within line.			[so that an `ex de, hl` can temporarily swap main pointers]
+	;	BC = pointer to new spans.
+	;	HL = pointer to old spans.		[for benefit of cp (hl)]
+	;
+	ld de, 0
+	ld l, e
+	ld c, e
+
+	; Output.
+
+	;
+	; Lazy: I've unrolled per page here to avoid having to bother writing an outer loop.
+	; Reevaluate this decision at some point.
+	;
+@page_loop: EQU for 6
+page{@page_loop}:
+	ld a, %00100000 + (@page_loop * 2)
+	out (LMPR), a
+
+	xor a
+	ld l, a
+	ld c, a
+
+	ld a, (@current_spans)
+	ld b, a
+	xor 0x40
+	ld h, a
+
+IF @page_loop == 5
+	ld (@current_spans), a
+ENDIF
+
+@compare_spans:
+	ld a, (bc)
+	cp (hl)
+
+	jr z, @+same_ending
+	jr c, @+hl_greater
+
+	@bc_greater:
+		; If here: (bc) was greater.
+		; Paint to the end of (hl) if painting at all, and advance that pointer.
+
+		; Compare colours.
+		inc h
+		inc b
+		ld a, (bc)
+		cp (hl)
+		jr z, @+no_paint
+
+		; IXh = colour.
+		ld ixh, a
+
+		; IYl = length.
+		dec h
+		ld a, (hl)
+		inc h
+		sub e
+		ld iyl, a
+
+		; Draw.
+		call @fill_span
+
+		@no_paint:
+		dec h
+		dec b
+
+		; Update pixel location and advance HL. Leave BC alone.
+		ld a, (hl)
+		ld l, a
+		ld e, a
+		jr @-compare_spans
+
+	@hl_greater:
+		; If here: (hl) was greater.
+		; Otherwise as above.
+
+		; Compare colours.
+		inc h
+		inc b
+		ld a, (bc)
+		cp (hl)
+		jr z, @+no_paint
+
+		; IXh = colour.
+		ld ixh, a
+
+		; IYl = length.
+		dec b
+		ld a, (bc)
+		inc b
+		sub e
+		ld iyl, a
+
+		; Draw.
+		call @fill_span
+
+		@no_paint:
+		dec h
+		dec b
+
+		; Update pixel location and advance BC. Leave HL alone.
+		ld a, (bc)
+		ld c, a
+		ld e, a
+		jr @-compare_spans
+
+	@same_ending:
+		; If here: (bc) == (hl), so both spans end in the same place.
+		; Which opens up the possibility that line end will be reached.
+
+		; Compare colours.
+		inc h
+		inc b
+		ld a, (bc)
+		cp (hl)
+		jr z, @+no_paint
+
+		; Set IXh = colour; IYl = width.
+		ld ixh, a
+		dec b
+		ld a, (bc)
+		inc b
+		sub e
+		ld iyl, a
+
+		call @fill_span
+
+		@no_paint:
+		dec h
+		dec b
+
+		ld a, (bc)		; arbitrarily, could just as easily be (hl)
+		ld c, a
+		ld l, a
+		ld e, a
+
+		; Check whether that ended the line.
+		inc a
+		jr nz, @-compare_spans
+
+	@next_line:
+		inc h
+		inc h
+		inc b
+		inc b
+
+		xor a
+		ld l, a
+		ld e, a
+		ld c, a
+
+		inc d
+		ld a, d
+		and %11111
+
+IF @page_loop == 5
+		ret z
+ELSE
+		jr z, @+next_page
+ENDIF
+
+		jr @-compare_spans
+
+	@next_page:
+NEXT @page_loop
+
+
+	;
+	; Paint from d = y, e = x to x = IYl in colour IXh.
+	;
+	; Preserves HL, BC and D. Requires IYl >= 1.
+	;
+@fill_span:
+	ex de, hl
+
+	; Compute frame buffer address.
+	scf
+	rr h
+	rr l
+
+	jr nc, @+no_initial_right
+
+	; Store low pixel of new colour.
+	ld a, ixh
+	and 0x0f
+	ld ixl, a
+
+	; Mutate current target of (HL) to include new pixel colour.
+	ld a, (hl)
+	and 0xf0
+	or ixl
+	ld (hl), a
+	inc l
+
+	; Decrement remaining pixel count, possibly exit.
+	dec iyl
+	jr z, @+finish_painting
+
+	; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
+	@no_initial_right:
+
+		ld a, iyl
+		srl a
+		jr c, @+with_final_left
+
+		call @+fill_bytes
+		jr @+finish_painting
+
+	@with_final_left:
+		jr z, @+no_fill_bytes
+		call @+fill_bytes
+
+	@no_fill_bytes:
+		ld a, ixh
+		and 0xf0
+		ld ixl, a
+
+		ld a, (hl)
+		and 0x0f
+		or ixl
+
+		ld (hl), a
+
+	@finish_painting:
+	rl l	; just to get the top bit into carry; low 7 don't really matter.
+	rl h
+	ex de, hl
+	ret
+
+@fill_bytes:
+	; (HL) = aligned target address, A = number of bytes to paint; IXh = colour to paint.
+	add a
+	neg
+	ld (@destination + 1), a
+
+	ld a, ixh
+
+	@destination:
+		jp @+span_fill
+
+ALIGN 256
+@span_fill:
+	@column: EQU FOR 128
+	ld (hl), a
+	inc l
+	NEXT @column
+	ret
+
+;
+;	spans.getaddress
+;
+;	Obtains a pointer to the start of a line in the current span back buffer.
+;
+;	Input:
+; 		A = line to prepare.
+;
+;	Output:
+;		proper block of lines has been paged; HL = pointer to start of line.
+;
+;	Clobbers:
+;		none.
+;
+spans.getaddress:
+	; For line with bit pattern abcdefgh:
+	;
+	;	* the required LMPR value is: 0010abc0;
+	;	* L is 0; and
+	;	* H is current_spans + defgh * 2.
+
+	; Keep all of A in H to mask off the low portion shortly...
+	ld h, a
+
+	rra
+	rra
+	rra
+	rra
+	and %00001110
+	or  %00100000
+	out (LMPR), A
+
+	ld a, h
+	rla
+	and %00111110
+	ld h, a
+	ld a, (@current_spans)
+	add h
+	ld h, a
+	ld l, 0
+
+	ret
