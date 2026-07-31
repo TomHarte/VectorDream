@@ -84,24 +84,71 @@ VIDEOPAGE:	EQU 6 * 2
 	call swap_span_buffer
 	call clear_spans
 
-
-	; Keep repainting complete line 3. To test the 'ends equal' path.
+	; Bounce a line back and forth as a test.
 	ld a, %00100000
 	out (LMPR), a
 
+	; Set HL = start of line 3.
 	ld l, 0
 	ld a, (current_spans)
-	add 7
+	add 6
 	ld h, a
 
-	pop af
-	ld (hl), a
+	ld a, (x_pos)
+	ld b, a
 
+	ld a, (x_delta)
+	add a, b
+	ld (x_pos), a
+
+	cp 240
+	jr nz, @+not_240
+
+	neg
+	ld (x_delta), a
+	jr @+not_10
+
+	@not_240:
+	cp 10
+	jr nz, @+not_10
+
+	neg
+	ld (x_delta), a
+	@not_10:
+
+	; Segment 1: 0 to x_pos (colour 0).
+	ld (hl), a
+	inc h
+	ld (hl), 0x00
+	dec h
+	ld l, a
+
+	; Segment 2: x_pos to x_pos+10 (colour ff).
+	ld (hl), 10
+	inc h
+	ld (hl), 0xff
+	dec h
+
+	add a, 10
+	ld l, a
+
+	; Segment 3: to position 255.
+	cpl
+	ld (hl), a
+	inc h
+	ld (hl), 0x00
+
+	pop af
 	out (BORDER), a
 	inc a
 	and 7
 	jr @-endless_loop
 
+
+x_pos: db 0
+y_pos: db 0
+x_delta: db 1
+y_delta: db 1
 
 ;
 ; Differencing handler.
