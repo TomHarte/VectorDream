@@ -58,8 +58,8 @@ VIDEOPAGE:	EQU 6 * 2
 	; Seed display.
 	call spans.setup
 
-	; Reenable display.
-	ld a, 0
+	; Reenable display, setting a non-white border.
+	ld a, 1
 	out (BORDER), a
 
 	; TODO: establish palette.
@@ -106,7 +106,7 @@ VIDEOPAGE:	EQU 6 * 2
 	add a, b
 	ld (x_pos), a
 
-	cp 240
+	cp 244
 	jr nz, @+not_240
 
 	ld a, (x_delta)
