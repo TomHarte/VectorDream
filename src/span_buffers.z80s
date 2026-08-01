@@ -132,7 +132,7 @@ spans.swap:
 	;	HL = pointer to old spans.		[for benefit of cp (hl)]
 	;
 	ld de, 0
-	ld l, e
+	ld l, e		; H and B will be loaded at the start of the per-page output.
 	ld c, e
 
 	; Output.
@@ -141,15 +141,15 @@ spans.swap:
 	; Lazy: I've unrolled per page here to avoid having to bother writing an outer loop.
 	; Reevaluate this decision at some point.
 	;
+
 @page_loop: EQU for 6
 page{@page_loop}:
+
+	; Page in proper source and destination buffers.
 	ld a, %00100000 + (@page_loop * 2)
 	out (LMPR), a
 
-	xor a
-	ld l, a
-	ld c, a
-
+	; Reset B and H parts of BC and HL to start of page.
 	ld a, (@current_spans)
 	ld b, a
 	xor 0x40
@@ -160,6 +160,7 @@ IF @page_loop == 5
 ENDIF
 
 @compare_spans:
+	; Compare endpoints of the current spans.
 	ld a, (bc)
 	cp (hl)
 
@@ -167,8 +168,8 @@ ENDIF
 	jr c, @+hl_greater
 
 	@bc_greater:
-		; If here: (bc) was greater.
-		; Paint to the end of (hl) if painting at all, and advance that pointer.
+		; If here: (bc) was greater, i.e. (bc) span ends later than (hl).
+		; So advance to the end of (hl), painting if necessary, and advance that pointer.
 
 		; Compare colours.
 		inc h
@@ -269,29 +270,30 @@ ENDIF
 		jr nz, @-compare_spans
 
 	@next_line:
+		; Advance high part of span pointers.
 		inc h
 		inc h
 		inc b
 		inc b
 
+		; Reset low part of span pointers and pixel x position.
 		xor a
 		ld l, a
 		ld e, a
 		ld c, a
 
+		; Increment pixel y position and check whether it's time to roll into the next page.
 		inc d
 		ld a, d
 		and %11111
 
 IF @page_loop == 5
 		ret z
+		jr @-compare_spans
 ELSE
-		jr z, @+next_page
+		jr nz, @-compare_spans
 ENDIF
 
-		jr @-compare_spans
-
-	@next_page:
 NEXT @page_loop
 
 
