@@ -82,7 +82,6 @@ private:
 	//
 
 	// Angle for each screen column.
-	float cast_angles[192];
 	float offsets[192];
 	float one_over_distances[192];
 	float curve_offset[192];
@@ -106,16 +105,16 @@ private:
 			// .. and that needs to be multiplied by cos(screen_angle) to get distance from view plane.
 
 			const float cos_screen_angle = cos(screen_angle);
-			cast_angles[y] = M_PI_2 - screen_angle + x_rotation;
+			const float cast_angle = M_PI_2 - screen_angle + x_rotation;
 
-			if(cast_angles[y] > M_PI_2 - 0.01f) {
+			if(cast_angle > M_PI_2 - 0.01f) {
 				++top_y;
 				continue;
 			}
 
-			offsets[y] = tan(cast_angles[y]) * height;
+			offsets[y] = tan(cast_angle) * height;
 
-			const float distance = height * cos_screen_angle / cos(cast_angles[y]);
+			const float distance = height * cos_screen_angle / cos(cast_angle);
 
 			road_widths[y] = int(0.5f + (160.0f / distance));
 			line_widths[y] = int(0.5f + (10.0f / distance));
