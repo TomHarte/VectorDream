@@ -112,7 +112,7 @@ private:
 		static constexpr float x_rotation = -0.3f;
 
 		static constexpr float field_of_view = 60.0f;	// In degrees.
-		for(int y = 191; y > 0; y--) {
+		for(int y = 0; y < 192; y++) {
 			const float screen_angle = atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
 
 			// tan(angle) = offset / height
@@ -134,8 +134,8 @@ private:
 
 			const float distance = height * cos_screen_angle / cos(cast_angle);
 
-			road_widths[y] = int(0.5f + (140.0f / distance));
-			line_widths[y] = int(0.5f + (7.0f / distance));
+			road_widths[y] = int(0.5f + (100.0f / distance));
+			line_widths[y] = int(0.5f + (4.0f / distance));
 			curve_offset[y] = sin(distance / 20.0f) * 128.0f;
 			one_over_distances[y] = 128.0f / distance;
 		}
