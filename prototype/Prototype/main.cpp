@@ -51,46 +51,46 @@ public:
 	}
 
 	void update(const KeyStates &key_states) {
-		int8_t player_x_change = 0;
+		int16_t player_x_change = 0;
 
 		if(key_states[SDL_SCANCODE_LEFT]) {
-			player_x_change = 1;
+			player_x_change = 1 << 8;
 		}
-		if(key_states[SDL_SCANCODE_RIGHT] && player_x > -127) {
-			player_x_change = -1;
+		if(key_states[SDL_SCANCODE_RIGHT]) {
+			player_x_change = -1 << 8;
 		}
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 10;
-			player_x_change += curve / 70.0f;
+			player_x_change += (curve * 256.0f) / 70.0f;
 		}
 
 		if(player_x_change < 0) {
-			if(player_x > -127 - player_x_change) {
+			if(player_x > (-127 << 8) - player_x_change) {
 				player_x += player_x_change;
 			} else {
-				player_x = -127;
+				player_x = -127 << 8;
 			}
 		} else {
-			if(player_x < 127 - player_x_change) {
+			if(player_x < (127 << 8) - player_x_change) {
 				player_x += player_x_change;
 			} else {
-				player_x = 127;
+				player_x = 127 << 8;
 			}
 		}
 
-		if(key_states[SDL_SCANCODE_Q]) {
+		if(key_states[SDL_SCANCODE_Q] && curve > -123) {
 			curve -= 5.0f;
 		}
 
-		if(key_states[SDL_SCANCODE_W]) {
+		if(key_states[SDL_SCANCODE_W] && curve < 122) {
 			curve += 5.0f;
 		}
 	}
 
 private:
 	uint8_t player_y = 0;
-	int8_t player_x = 0;
+	int16_t player_x = 0;
 	int8_t curve = 0;
 
 	//
@@ -134,11 +134,13 @@ private:
 
 			const float distance = height * cos_screen_angle / cos(cast_angle);
 
-			road_widths[y] = int(0.5f + (100.0f / distance));
+			road_widths[y] = int(0.5f + (140.0f / distance));
 			line_widths[y] = int(0.5f + (4.0f / distance));
 			curve_offset[y] = sin(distance / 20.0f) * 128.0f;
 			one_over_distances[y] = 128.0f / distance;
 		}
+
+		printf("Floor occupies %d lines\n", 192 - top_y);
 	}
 
 	void populate_spans() {
@@ -146,9 +148,15 @@ private:
 			const int16_t centre =
 				127 +
 				(
-					player_x * one_over_distances[y]	// i8 * u8
-					+ curve * curve_offset[y]			// i8 * u8
+					(player_x >> 7) * one_over_distances[y]	// i9 * u8
+					+ curve * curve_offset[y]				// i8 * u8
 				) / 128;
+			// Expectation:
+			//
+			//		player_x >> 7 and curve are converted to u8 and u7 outside the loop, with the
+			// 		centre calculation here dynamically modified with relevant add or sub as per current signs.
+			//
+			// Hence a standard u8 x u8 -> u16 multiply is all that's required.
 
 			const uint8_t offset = offsets[y] + player_y;
 			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
@@ -161,10 +169,15 @@ private:
 			const bool has_line = (offset & 64) && (line_width != 0);
 
 			// Special case: road too thin to appear.
-			if(road_width < 1.0f) {
-				overprint(0, 255, y, grass_colour);
-				continue;
-			}
+			//
+			// This case shouldn't still be able to occur due to way I've terminated the
+			// floor region via top_y; it now ends some non-zero interval before hitting a true horizontal
+			// ray, to avoid issues with road curvature.
+			//
+//			if(road_width < 1.0f) {
+//				overprint(0, 255, y, grass_colour);
+//				continue;
+//			}
 
 			// Grass on left.
 			int x = 0;
