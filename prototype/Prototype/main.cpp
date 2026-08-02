@@ -62,7 +62,7 @@ public:
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 10;
-			player_x_change += curve / 100.0f;
+			player_x_change += curve / 70.0f;
 		}
 
 		if(player_x_change < 0) {
@@ -90,8 +90,8 @@ public:
 
 private:
 	uint8_t player_y = 0;
-	int8_t player_x = 0.0f;
-	float curve = 0.0f;
+	int8_t player_x = 0;
+	int8_t curve = 0;
 
 	//
 	// Road drawing lookup tables.
@@ -106,9 +106,9 @@ private:
 	uint8_t curve_offset[192];
 
 	int top_y = 0;
-	static constexpr float height = 0.475f;
 
 	void setup_tables() {
+		static constexpr float height = 0.475f;
 		static constexpr float x_rotation = -0.3f;
 
 		static constexpr float field_of_view = 60.0f;	// In degrees.
@@ -144,11 +144,11 @@ private:
 	void populate_spans() {
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
-				127.0f +
+				127 +
 				(
-					player_x * one_over_distances[y]
-					+ curve * curve_offset[y]
-				) / 128.0f;
+					player_x * one_over_distances[y]	// i8 * u8
+					+ curve * curve_offset[y]			// i8 * u8
+				) / 128;
 
 			const uint8_t offset = offsets[y] + player_y;
 			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
