@@ -59,7 +59,7 @@ public:
 		}
 
 		if(key_states[SDL_SCANCODE_UP]) {
-			player_y += 0.05f;
+			player_y += 10;
 			player_x += curve / 100.0f;
 		}
 
@@ -73,7 +73,7 @@ public:
 	}
 
 private:
-	float player_y = 0.0f;
+	uint8_t player_y = 0;
 	float player_x = 0.0f;
 	float curve = 0.0f;
 
@@ -82,7 +82,7 @@ private:
 	//
 
 	// Angle for each screen column.
-	float offsets[192];
+	uint8_t offsets[192];
 	float one_over_distances[192];
 	float curve_offset[192];
 	int road_widths[192];
@@ -112,7 +112,7 @@ private:
 				continue;
 			}
 
-			offsets[y] = tan(cast_angle) * height;
+			offsets[y] = uint8_t(tan(cast_angle) * height * 32.0f * 3.0f);
 
 			const float distance = height * cos_screen_angle / cos(cast_angle);
 
@@ -128,15 +128,15 @@ private:
 			float centre = 127.0f + player_x * one_over_distances[y];
 			centre += curve * curve_offset[y];
 
-			const float offset = offsets[y] + player_y;
-			const uint8_t grass_colour = int(offset * 0.5f) & 1 ? 0xff : 0xee;
+			const auto offset = offsets[y] + player_y;
+			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
 			const uint8_t road_colour = 0x33;
 			const uint8_t line_colour = 0x44;
 
 			const int road_width = road_widths[y];
 			const int line_width = line_widths[y];
 
-			const bool has_line = (int(offset * 2.0f) & 1) && (line_width != 0);
+			const bool has_line = (offset & 64) && (line_width != 0);
 
 			// Special case: road too thin to appear.
 			if(road_width < 1.0f) {
