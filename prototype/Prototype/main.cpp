@@ -45,46 +45,132 @@ public:
 				buffers[i][(c * 512) + 256] = 0;
 			}
 		}
+
+		// Seed screen angles.
+		static constexpr float field_of_view = 60.0f;	// In degrees.
+		for(int y = 0; y < 192; y++) {
+			screen_angle[y] = atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
+		}
 	}
 
 	void update(const KeyStates &key_states) {
-		for(int c = 0; c < 2; c++) {
-			blocks_[c].update();
+		if(key_states[SDL_SCANCODE_LEFT]) {
+			player_x += 1.5f;
+		}
+		if(key_states[SDL_SCANCODE_RIGHT]) {
+			player_x -= 1.5f;
+		}
+
+		if(key_states[SDL_SCANCODE_UP]) {
+			player_y += 0.05f;
+		}
+
+		if(key_states[SDL_SCANCODE_Q]) {
+			curve -= 5.0f;
+		}
+
+		if(key_states[SDL_SCANCODE_W]) {
+			curve += 5.0f;
 		}
 	}
 
 private:
-	struct Block {
-		int x, y;
-		int x_dir, y_dir;
-
-		void update() {
-			x += x_dir;
-			if(x == 0 || x == 255 - 10) x_dir = -x_dir;
-
-			y += y_dir;
-			if(y == 0 || y == 191 - 10) y_dir = -y_dir;
-		}
-	};
-	Block blocks_[2] = {
-		{.x = 0, .y = 0, .x_dir = 1, .y_dir = 1},
-		{.x = 5, .y = 2, .x_dir = 1, .y_dir = 1},
-	};
+	float player_y = 0.0f;
+	float player_x = 35.0f;
+	float curve = 0.0f;
 
 	void populate_spans() {
-		for(int c = 0; c < 2; c++) {
-			for(int yc = 0; yc < 10; yc++) {
-				const uint8_t colour = c ? ((yc & 1) ? 0xec : 0xce) : 0xff;
+		static constexpr float height = 0.35f;
+		static constexpr float x_rotation = -0.3f;
 
-				overprint(blocks_[c].x, blocks_[c].x + 10, blocks_[c].y + yc, colour);
+		for(int y = 191; y >= 0; y--) {
+			const float cast_angle = M_PI_2 - screen_angle[y] + x_rotation;
+
+			if(cast_angle > M_PI_2 - 0.01f) {
+				overprint(0, 255, y, 0x00);
+				continue;
 			}
+
+			// tan(angle) = tex_y / height
+			// => height * tan(angle) = tex_y
+			const float offset = tan(cast_angle) * height + player_y;
+
+			// cos(angle) = height / depth
+			// => depth = height / cos(angle)
+			// .. and that needs to be multiplied by cos(screen_angle) to get distance from view plane.
+			const float distance = height * cos(screen_angle[y]) / cos(cast_angle);
+
+			float centre = 127.0f + player_x / distance;	// TODO: adjust to invent corners.
+			centre += curve * sin(distance / 20.0f);
+
+			const uint8_t grass_colour = int(offset * 0.5f) & 1 ? 0xff : 0xee;
+			const uint8_t road_colour = 0x33;
+			const uint8_t line_colour = 0x44;
+
+			const int road_width = int(0.5f + (160.0f / distance));
+			const int line_width = int(0.5f + (10.0f / distance));
+
+			const bool has_line = (int(offset * 2.0f) & 1) && (line_width != 0);
+
+			// Special case: road too thin to appear.
+			if(road_width < 1.0f) {
+				overprint(0, 255, y, grass_colour);
+				continue;
+			}
+
+			// Grass on left.
+			int x = 0;
+			if(centre - road_width >= 1.0f) {
+				if(centre - road_width >= 255) {
+					overprint(0, 255, y, grass_colour);
+					continue;
+				}
+
+				overprint(0, centre - road_width, y, grass_colour);
+				x = centre - road_width;
+			}
+
+			// Road on left and line, if any.
+			if(has_line) {
+				// Road on left.
+				if(centre - line_width >= 1.0f) {
+					if(centre - line_width > 255) {
+						overprint(x, 255, y, road_colour);
+						continue;
+					}
+					overprint(x, centre - line_width, y, road_colour);
+					x = centre - line_width;
+				}
+
+				if(centre + line_width >= 1.0f) {
+					if(centre + line_width > 255) {
+						overprint(x, 255, y, line_colour);
+						continue;
+					}
+					overprint(x, centre + line_width, y, line_colour);
+					x = centre + line_width;
+				}
+			}
+
+			// Right hand side of road.
+			if(centre + road_width >= 1.0f) {
+				if(centre + road_width > 255) {
+					overprint(x, 255, y, road_colour);
+					continue;
+				}
+				overprint(x, centre + road_width, y, road_colour);
+				x = centre + road_width;
+			}
+
+			// Right-hand grass. Must exist if the loop got here.
+			overprint(x, 255, y, grass_colour);
 		}
 	}
 
 	void draw() {
 		populate_spans();
 
-		// Enable here to draw diffs only.
+		// Enable here to show diffs only.
 //		std::fill(std::begin(screen), std::end(screen), 0);
 
 		// Do partial updates.
@@ -207,6 +293,13 @@ private:
 
 	// SAM-style framebuffer.
 	uint8_t screen[ImageWidth * ImageHeight / 2]{};
+
+	//
+	// Road drawing lookup tables.
+	//
+
+	// Angle for each screen column.
+	float screen_angle[192];
 };
 
 
