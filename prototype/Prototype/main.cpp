@@ -51,16 +51,32 @@ public:
 	}
 
 	void update(const KeyStates &key_states) {
+		int8_t player_x_change = 0;
+
 		if(key_states[SDL_SCANCODE_LEFT]) {
-			player_x += 1.5f;
+			player_x_change = 1;
 		}
-		if(key_states[SDL_SCANCODE_RIGHT]) {
-			player_x -= 1.5f;
+		if(key_states[SDL_SCANCODE_RIGHT] && player_x > -127) {
+			player_x_change = -1;
 		}
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 10;
-			player_x += curve / 100.0f;
+			player_x_change += curve / 100.0f;
+		}
+
+		if(player_x_change < 0) {
+			if(player_x > -127 - player_x_change) {
+				player_x += player_x_change;
+			} else {
+				player_x = -127;
+			}
+		} else {
+			if(player_x < 127 - player_x_change) {
+				player_x += player_x_change;
+			} else {
+				player_x = 127;
+			}
 		}
 
 		if(key_states[SDL_SCANCODE_Q]) {
@@ -74,7 +90,7 @@ public:
 
 private:
 	uint8_t player_y = 0;
-	float player_x = 0.0f;
+	int8_t player_x = 0.0f;
 	float curve = 0.0f;
 
 	//
@@ -86,17 +102,17 @@ private:
 	uint16_t road_widths[192];
 	uint8_t line_widths[192];
 
-	float one_over_distances[192];
-	float curve_offset[192];
+	uint8_t one_over_distances[192];
+	uint8_t curve_offset[192];
 
 	int top_y = 0;
-	static constexpr float height = 0.35f;
+	static constexpr float height = 0.475f;
 
 	void setup_tables() {
 		static constexpr float x_rotation = -0.3f;
 
 		static constexpr float field_of_view = 60.0f;	// In degrees.
-		for(int y = 0; y < 192; y++) {
+		for(int y = 191; y > 0; y--) {
 			const float screen_angle = atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
 
 			// tan(angle) = offset / height
@@ -118,25 +134,29 @@ private:
 
 			const float distance = height * cos_screen_angle / cos(cast_angle);
 
-			road_widths[y] = int(0.5f + (160.0f / distance));
+			road_widths[y] = int(0.5f + (140.0f / distance));
 			line_widths[y] = int(0.5f + (7.0f / distance));
-			curve_offset[y] = sin(distance / 20.0f);
-			one_over_distances[y] = 1.0f / distance;
+			curve_offset[y] = sin(distance / 20.0f) * 128.0f;
+			one_over_distances[y] = 128.0f / distance;
 		}
 	}
 
 	void populate_spans() {
 		for(int y = top_y; y < 192; y++) {
-			float centre = 127.0f + player_x * one_over_distances[y];
-			centre += curve * curve_offset[y];
+			const int16_t centre =
+				127.0f +
+				(
+					player_x * one_over_distances[y]
+					+ curve * curve_offset[y]
+				) / 128.0f;
 
-			const auto offset = offsets[y] + player_y;
+			const uint8_t offset = offsets[y] + player_y;
 			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
 			const uint8_t road_colour = 0x33;
 			const uint8_t line_colour = 0x44;
 
-			const int road_width = road_widths[y];
-			const int line_width = line_widths[y];
+			const uint16_t road_width = road_widths[y];
+			const uint8_t line_width = line_widths[y];
 
 			const bool has_line = (offset & 64) && (line_width != 0);
 
