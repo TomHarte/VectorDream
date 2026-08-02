@@ -47,10 +47,7 @@ public:
 		}
 
 		// Seed screen angles.
-		static constexpr float field_of_view = 60.0f;	// In degrees.
-		for(int y = 0; y < 192; y++) {
-			screen_angle[y] = atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
-		}
+		setup_tables();
 	}
 
 	void update(const KeyStates &key_states) {
@@ -63,6 +60,7 @@ public:
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 0.05f;
+			player_x += curve / 100.0f;
 		}
 
 		if(key_states[SDL_SCANCODE_Q]) {
@@ -76,39 +74,68 @@ public:
 
 private:
 	float player_y = 0.0f;
-	float player_x = 35.0f;
+	float player_x = 0.0f;
 	float curve = 0.0f;
 
-	void populate_spans() {
-		static constexpr float height = 0.35f;
+	//
+	// Road drawing lookup tables.
+	//
+
+	// Angle for each screen column.
+	float cast_angles[192];
+	float offsets[192];
+	float one_over_distances[192];
+	float curve_offset[192];
+	int road_widths[192];
+	int line_widths[192];
+	int top_y = 0;
+	static constexpr float height = 0.35f;
+
+	void setup_tables() {
 		static constexpr float x_rotation = -0.3f;
 
-		for(int y = 191; y >= 0; y--) {
-			const float cast_angle = M_PI_2 - screen_angle[y] + x_rotation;
+		static constexpr float field_of_view = 60.0f;	// In degrees.
+		for(int y = 0; y < 192; y++) {
+			const float screen_angle = atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
 
-			if(cast_angle > M_PI_2 - 0.01f) {
-				overprint(0, 255, y, 0x00);
-				continue;
-			}
-
-			// tan(angle) = tex_y / height
-			// => height * tan(angle) = tex_y
-			const float offset = tan(cast_angle) * height + player_y;
+			// tan(angle) = offset / height
+			// => offset = height * tan(angle)
 
 			// cos(angle) = height / depth
 			// => depth = height / cos(angle)
 			// .. and that needs to be multiplied by cos(screen_angle) to get distance from view plane.
-			const float distance = height * cos(screen_angle[y]) / cos(cast_angle);
 
-			float centre = 127.0f + player_x / distance;	// TODO: adjust to invent corners.
-			centre += curve * sin(distance / 20.0f);
+			const float cos_screen_angle = cos(screen_angle);
+			cast_angles[y] = M_PI_2 - screen_angle + x_rotation;
 
+			if(cast_angles[y] > M_PI_2 - 0.01f) {
+				++top_y;
+				continue;
+			}
+
+			offsets[y] = tan(cast_angles[y]) * height;
+
+			const float distance = height * cos_screen_angle / cos(cast_angles[y]);
+
+			road_widths[y] = int(0.5f + (160.0f / distance));
+			line_widths[y] = int(0.5f + (10.0f / distance));
+			curve_offset[y] = sin(distance / 20.0f);
+			one_over_distances[y] = 1.0f / distance;
+		}
+	}
+
+	void populate_spans() {
+		for(int y = top_y; y < 192; y++) {
+			float centre = 127.0f + player_x * one_over_distances[y];
+			centre += curve * curve_offset[y];
+
+			const float offset = offsets[y] + player_y;
 			const uint8_t grass_colour = int(offset * 0.5f) & 1 ? 0xff : 0xee;
 			const uint8_t road_colour = 0x33;
 			const uint8_t line_colour = 0x44;
 
-			const int road_width = int(0.5f + (160.0f / distance));
-			const int line_width = int(0.5f + (10.0f / distance));
+			const int road_width = road_widths[y];
+			const int line_width = line_widths[y];
 
 			const bool has_line = (int(offset * 2.0f) & 1) && (line_width != 0);
 
@@ -293,13 +320,6 @@ private:
 
 	// SAM-style framebuffer.
 	uint8_t screen[ImageWidth * ImageHeight / 2]{};
-
-	//
-	// Road drawing lookup tables.
-	//
-
-	// Angle for each screen column.
-	float screen_angle[192];
 };
 
 
