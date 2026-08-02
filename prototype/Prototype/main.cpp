@@ -83,10 +83,12 @@ private:
 
 	// Angle for each screen column.
 	uint8_t offsets[192];
+	uint16_t road_widths[192];
+	uint8_t line_widths[192];
+
 	float one_over_distances[192];
 	float curve_offset[192];
-	int road_widths[192];
-	int line_widths[192];
+
 	int top_y = 0;
 	static constexpr float height = 0.35f;
 
@@ -117,7 +119,7 @@ private:
 			const float distance = height * cos_screen_angle / cos(cast_angle);
 
 			road_widths[y] = int(0.5f + (160.0f / distance));
-			line_widths[y] = int(0.5f + (10.0f / distance));
+			line_widths[y] = int(0.5f + (7.0f / distance));
 			curve_offset[y] = sin(distance / 20.0f);
 			one_over_distances[y] = 1.0f / distance;
 		}
