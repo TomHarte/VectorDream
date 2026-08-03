@@ -172,6 +172,7 @@ private:
 		dump_table("road_widths", road_widths);
 		dump_table("line_widths", line_widths);
 		dump_table("offsets", offsets);
+		dump_table("one_over_z", one_over_distances);
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) {
