@@ -126,18 +126,23 @@ road.draw:
 	add hl, de
 	ld c, (hl)
 
-	; H = offset.
+	; A = 1/z, temporarily.
+	ld hl, one_over_zs
+	add hl, de
+	ld a, (hl)
+
+	; H = offset from table.
 	ld hl, offsets
 	add hl, de
 	ld h, (hl)
 
+	; Shuffle A into L.
+	ld l, a
+
+	; Add current player position to offset.
 	ld a, (player_y)
 	add h
 	ld h, a
-
-	; L = centre.
-	; TODO: needs to be signed 16 bit.
-	ld l, 127
 
 	; A = y.
 	ld a, e
@@ -152,9 +157,52 @@ road.draw:
 
 	ret
 
+; Adds the 8-bit unsigned value in the register in the operand to DE. Clobbers A.
+addde: MACRO
+	ld a, e
+	add \0
+	ld e, a
+
+	adc d
+	sub e
+	ld d, a
+	ENDM
+
+; Subtracts the 8-bit unsigned value in the register in the operand from DE. Clobbers A.
+subde: MACRO
+	ld a, e
+	sub \0
+	ld e, a
+
+	ld a, d
+	sbc 0
+	ld d, a
+	ENDM
+
+exit_segment: MACRO
+	pop de
+	ret
+	ENDM
+
+fill_to_e: MACRO
+	ld (hl), e
+	inc h
+	ld (hl), \0
+	dec h
+	ld l, e
+	ENDM
+
+get_centre: MACRO
+	; TODO: calculate real centre of line into DE, multiplying a player position by 1/z
+	; and possibly applying some curvature.
+	;
+	; Hard-coded to centre for now because I don't even have a multiply implemented yet.
+	ld de, 127
+	ENDM
+
 @road.segment:
 	push de			; Preserve E.
-	ex de, hl		; Switch to: B = road width, C = line width, D = offset, E = centre.
+	ex de, hl		; Switch to: B = road width, C = line width, D = offset, E = 1/z.
 
 	; Get HL = start of line.
 	call spans.getaddress
@@ -171,93 +219,126 @@ road.draw:
 	ld a, grass_colour2
 
 	@done_grass_colour:
-	ld (@+grass_colour1 + 1), a
-	ld (@+grass_colour2 + 1), a
-
-	; Grass on left, from -inf to `E - B` if that's not already to the left of the screen.
-	; And if `E - B` is to the right of the screen, stop already.
-	ld a, e
-	sub b
-	jr c, @+no_left_grass
-
-	ld (hl), a
-	inc h
-	@grass_colour1:
-	ld (hl), grass_colour1
-	dec h
-	ld l, a
-
-	@no_left_grass:
+	ld (@+grass_fill0 + 3), a
+	ld (@+grass_fill1 + 3), a
+	ld (@+grass_fill2 + 1), a
 
 	; Consider whether to draw a centre line.
 	ld a, c
 	or a
-	jr z, @+no_line
+	jr z, @+draw_without_line		; No line; it is too small to register.
 
 	ld a, d
 	and 64
-	jr z, @+no_line
+	jr z, @+draw_without_line		; No line; this is a gap between them.
 
-	; Road on left of centre line.
-	ld a, e
-	sub c
-	jr c, @+no_left_road
 
-	ld (hl), a
+@draw_with_line:
+	get_centre
+
+	; Calculate left extreme: DE - B.
+	subde b
+
+	jp m, @+no_left_grass			; DE < 0; test for the centre line.
+	jr nz, @+complete_with_grass	; D != 0; only the left area of grass is visible.
+
+	;
+	; Left grass is visible but does not fill entire width of display.
+	;
+	@grass_fill0:
+	fill_to_e 0
+
+@no_left_grass:
+
+	; Calculate left edge of line: DE - C.
+	addde b
+	subde c
+
+	jp m, @+no_left_road			; DE < 0: test the centre line of the road.
+	jr nz, @+complete_with_road		; D != 0; road fills the entire display.
+
+	;
+	; Road is visible but does not fill entire width of display.
+	;
+	fill_to_e road_colour
+
+@no_left_road:
+
+	; Calculate right edge of line: DE + C.
+	addde c
+	addde c
+
+	jp m, @+no_centre_line			; DE < 0: test the right-hand side of the road.
+	jr nz, @+complete_with_line		; D != 0; line completes the display.
+
+	fill_to_e line_colour
+
+@no_centre_line:
+
+	; Calculate right edge of road: DE + B.
+	subde c
+	addde b
+
+	jp m, @+complete_with_grass			; DE < 0: test the right-hand side of the road.
+	jr nz, @+complete_with_road			; D != 0; line completes the display.
+
+	fill_to_e road_colour
+	jr @+complete_with_grass
+
+@draw_without_line:
+	get_centre
+
+	; Calculate left extreme: DE - B.
+	subde b
+
+	jp m, @+no_left_grass			; DE < 0; left area of grass is off screen to left.
+	jr nz, @+complete_with_grass	; D != 0; only the left area of grass is visible.
+
+	;
+	; Left grass is visible but does not fill entire width of display.
+	;
+	@grass_fill1:
+	fill_to_e 0
+
+@no_left_grass:
+	; Calculate right extreme: DE + B.
+	addde b
+	addde b
+
+	jp m, @+complete_with_grass		; DE < 0: only the right area of grass is visible.
+	jr nz, @+complete_with_road		; D != 0; road fills the entire display.
+
+	;
+	; Road is visible but does not fill entire width of display.
+	;
+	fill_to_e road_colour
+
+
+;
+; 'Complete'rs; draw a solid colour to the end of the display and stop.
+;
+
+@complete_with_grass:
+	ld (hl), 0xff
 	inc h
-	ld (hl), road_colour
-	dec h
-	ld l, a
+	@grass_fill2:
+	ld (hl), 0
 
-	@no_left_road:
+	exit_segment
 
-	; Centre line.
-	ld a, e
-	add c
-	jr nc, @+non_terminal_centre
-
+@complete_with_line:
 	ld (hl), 0xff
 	inc h
 	ld (hl), line_colour
-	jr @+exit
 
-	@non_terminal_centre:
+	exit_segment
 
-	ld (hl), a
-	inc h
-	ld (hl), line_colour
-	dec h
-	ld l, a
-
-	@no_line:
-
-	; Road on right of centre line
-	ld a, e
-	add b
-	jr nc, @+non_terminal_right_road
-
+@complete_with_road:
 	ld (hl), 0xff
 	inc h
 	ld (hl), road_colour
-	jr @+exit
 
-	@non_terminal_right_road:
-
-	ld (hl), a
-	inc h
-	ld (hl), road_colour
-	dec h
-	ld l, a
-
-	; Grass on right, from wherever x currently is to end of screen.
-	ld (hl), 0xff
-	inc h
-	@grass_colour2:
-	ld (hl), grass_colour1
-
-@exit:
-	pop de
-	ret
+	exit_segment
 
 player_y: db 0
 
