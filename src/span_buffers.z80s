@@ -390,7 +390,7 @@ ALIGN 256
 ;		proper block of lines has been paged; HL = pointer to start of line.
 ;
 ;	Clobbers:
-;		none.
+;		A.
 ;
 spans.getaddress:
 	; For line with bit pattern abcdefgh:
@@ -420,5 +420,3 @@ spans.getaddress:
 	ld l, 0
 
 	ret
-
-include "road_tables.z80s"

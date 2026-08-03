@@ -147,7 +147,7 @@ private:
 			squares[c] = (c * c) / 4;
 		}
 
-		printf("top_y: db %d\n", top_y);
+		printf("top_y: EQU %d\n", top_y);
 
 		const auto dump_table = [&](const char *name, const auto *table) {
 			printf("%s:", name);

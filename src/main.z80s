@@ -2,6 +2,7 @@
 ; Hardware register locations.
 ;
 
+CLUT:		EQU 248		; high byte of port address selects CLUT entry
 LINE:		EQU 249		; output: line to enable a CPU interrupt on, in range 0–191, or any other value to disable.
 STATUS:		EQU 249		; input: b0: active low line interrupt pending; b1: mouse interrupt; b2: MIDI IN; b3: frame; b4: MIDI OUT; b5-b7: keyboard matrix lines 6-8.
 
@@ -18,7 +19,6 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 ;
 
 VIDEOPAGE:	EQU 6 * 2
-
 
 ;
 ; Place this code just after where the frame buffer will be, in the upper page.
@@ -58,110 +58,25 @@ VIDEOPAGE:	EQU 6 * 2
 	; Seed display.
 	call spans.setup
 
-	; Reenable display, setting a non-white border.
-	ld a, 1
+	; Establish palette.
+	ld c, CLUT
+	ld b, 0x10
+	ld hl, palette
+	otir
+
+	; Reenable display.
+	ld a, 0
 	out (BORDER), a
 
-	; TODO: establish palette.
-
-;
-; Current test: a bouncing square. It's very "DVD screensaver".
-;
-
 @endless_loop:
-	call spans.clear
-
-	; Bounce a line back and forth as a test.
-	ld a, %00100000
-	out (LMPR), a
-
-	; Update y position.
-	ld a, (y_pos)
-	ld b, a
-	ld a, (y_delta)
-	add b
-	ld (y_pos), a
-
-	cp 180
-	jr c, @+not_180
-
-	ld a, (y_delta)
-	neg
-	ld (y_delta), a
-
-	@not_180:
-	cp 0
-	jr nz, @+update_x
-
-	ld a, (y_delta)
-	neg
-	ld (y_delta), a
-
-	; Get and update current x position.
-	@update_x:
-	ld a, (x_pos)
-	ld b, a
-
-	ld a, (x_delta)
-	add a, b
-	ld (x_pos), a
-
-	cp 244
-	jr nz, @+not_240
-
-	ld a, (x_delta)
-	neg
-	ld (x_delta), a
-	jr @+not_10
-
-@not_240:
-	cp 1
-	jr nz, @+not_10
-
-	ld a, (x_delta)
-	neg
-	ld (x_delta), a
-@not_10:
-
-	ld c, 0
-
-@write_blob:
-	; Set HL = start of line.
-	ld a, (y_pos)
-	add c
-	call spans.getaddress
-
-	ld a, (x_pos)
-
-	; Segment 1: 0 to x_pos (colour 0).
-	ld (hl), a
-	inc h
-	ld (hl), 0x00
-	dec h
-	ld l, a
-
-	; Segment 2: x_pos to x_pos+10 (colour ff).
-	add a, 10
-	ld (hl), a
-	inc h
-	ld (hl), 0xff
-	dec h
-	ld l, a
-
-	; Segment 3: to position 255.
-	ld a, 0xff
-	ld (hl), a
-	inc h
-	ld (hl), 0x00
-
-	; Loop if required.
-	ld a, c
-	inc a
-	ld c, a
-	cp 10
-	jr nz, @-write_blob
-
+	call road.draw
 	call spans.swap
+
+	ld a, (player_y)
+	inc a
+	inc a
+	ld (player_y), a
+
 	jr @-endless_loop
 
 
@@ -171,3 +86,193 @@ x_delta: db 1
 y_delta: db 2
 
 include "span_buffers.z80s"
+include "road_tables.z80s"
+
+road.draw:
+	;
+	; Fill sky above road, a simple solid colour.
+	;
+	ld d, top_y
+	ld bc, 0xff00 | sky_colour
+
+@sky.fill:
+	ld a, d
+	call spans.getaddress
+	ld (hl), b
+	inc h
+	ld (hl), c
+
+	dec d
+	jr nz, @-sky.fill
+
+	;
+	; Draw road, per tables.
+	;
+	ld e, 0
+@road.fill:
+	ld d, 0
+
+	; B = road width.
+	ld hl, road_widths
+	add hl, de
+	ld b, (hl)
+
+	; C = line width.
+	ld hl, line_widths
+	add hl, de
+	ld c, (hl)
+
+	; H = offset.
+	ld hl, offsets
+	add hl, de
+	ld h, (hl)
+
+	ld a, (player_y)
+	add h
+	ld h, a
+
+	; L = centre.
+	; TODO: needs to be signed 16 bit.
+	ld l, 127
+
+	; A = y.
+	ld a, e
+	add top_y
+	call @road.segment
+
+	; Increment E and check for having hit line 192.
+	inc e
+	ld a, e
+	cp 192 - top_y
+	jr nz, @-road.fill
+
+	ret
+
+@road.segment:
+	push de			; Preserve E.
+	ex de, hl		; Switch to: B = road width, C = line width, D = offset, E = centre.
+
+	; Get HL = start of line.
+	call spans.getaddress
+
+	; Pick a grass colour, dynamically reprogram due to lack of registers.
+	ld a, d
+	rla
+	jr nc, @+set_grass_colour1
+
+	ld a, grass_colour1
+	jr @+done_grass_colour
+
+	@set_grass_colour1:
+	ld a, grass_colour2
+
+	@done_grass_colour:
+	ld (@+grass_colour1 + 1), a
+	ld (@+grass_colour2 + 1), a
+
+	; Grass on left, from -inf to `E - B` if that's not already to the left of the screen.
+	; And if `E - B` is to the right of the screen, stop already.
+	ld a, e
+	sub b
+	jr c, @+no_left_grass
+
+	ld (hl), a
+	inc h
+	@grass_colour1:
+	ld (hl), grass_colour1
+	dec h
+	ld l, a
+
+	@no_left_grass:
+
+	; Consider whether to draw a centre line.
+	ld a, c
+	or a
+	jr z, @+no_line
+
+	ld a, d
+	and 64
+	jr z, @+no_line
+
+	; Road on left of centre line.
+	ld a, e
+	sub c
+	jr c, @+no_left_road
+
+	ld (hl), a
+	inc h
+	ld (hl), road_colour
+	dec h
+	ld l, a
+
+	@no_left_road:
+
+	; Centre line.
+	ld a, e
+	add c
+	jr nc, @+non_terminal_centre
+
+	ld (hl), 0xff
+	inc h
+	ld (hl), line_colour
+	jr @+exit
+
+	@non_terminal_centre:
+
+	ld (hl), a
+	inc h
+	ld (hl), line_colour
+	dec h
+	ld l, a
+
+	@no_line:
+
+	; Road on right of centre line
+	ld a, e
+	add b
+	jr nc, @+non_terminal_right_road
+
+	ld (hl), 0xff
+	inc h
+	ld (hl), road_colour
+	jr @+exit
+
+	@non_terminal_right_road:
+
+	ld (hl), a
+	inc h
+	ld (hl), road_colour
+	dec h
+	ld l, a
+
+	; Grass on right, from wherever x currently is to end of screen.
+	ld (hl), 0xff
+	inc h
+	@grass_colour2:
+	ld (hl), grass_colour1
+
+@exit:
+	pop de
+	ret
+
+player_y: db 0
+
+;
+; Colour selections and palette.
+;
+border_colour: EQU 0
+sky_colour: EQU 0x11
+grass_colour1: EQU 0x22
+grass_colour2: EQU 0x33
+road_colour: EQU 0x44
+line_colour: EQU 0x55
+
+; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
+palette:
+	db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	db %1110111		; line
+	db %0000111		; road
+	db %1000010		; grass 2
+	db %0000100		; grass 1
+	db %0011000		; sky
+	db %0000000		; screen border
