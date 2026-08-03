@@ -100,7 +100,7 @@ private:
 
 	// Angle for each screen column.
 	uint8_t offsets[192];
-	uint16_t road_widths[192];
+	uint8_t road_widths[192];
 	uint8_t line_widths[192];
 
 	uint8_t one_over_distances[192];
@@ -137,7 +137,7 @@ private:
 
 			const float distance = height * cos_screen_angle / cos(cast_angle);
 
-			road_widths[y] = int(0.5f + (140.0f / distance));
+			road_widths[y] = int(0.5f + (131.0f / distance));
 			line_widths[y] = int(0.5f + (4.0f / distance));
 			curve_offset[y] = sin(distance / 20.0f) * 128.0f;
 			one_over_distances[y] = 128.0f / distance;
@@ -147,7 +147,31 @@ private:
 			squares[c] = (c * c) / 4;
 		}
 
-		printf("Floor occupies %d lines\n", 192 - top_y);
+		printf("top_y: db %d\n", top_y);
+
+		const auto dump_table = [&](const char *name, const auto *table) {
+			printf("%s:", name);
+
+			int c = 0;
+			for(int y = top_y; y < 192; y++) {
+				if(!(c & 15)) {
+					if constexpr (sizeof(table[0]) == 1) {
+						printf("\n\tdb ");
+					} else {
+						printf("\n\tdw ");
+					}
+				} else {
+					printf(", ");
+				}
+				++c;
+
+				printf("%d", table[y]);
+			}
+			printf("\n");
+		};
+		dump_table("road_widths", road_widths);
+		dump_table("line_widths", line_widths);
+		dump_table("offsets", offsets);
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) {
