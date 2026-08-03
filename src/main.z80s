@@ -64,6 +64,10 @@ VIDEOPAGE:	EQU 6 * 2
 	ld hl, palette
 	otir
 
+	; Seed pixels while display is off.
+	call road.draw
+	call spans.swap
+
 	; Reenable display.
 	ld a, 0
 	out (BORDER), a
