@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -105,6 +106,8 @@ private:
 	uint8_t one_over_distances[192];
 	uint8_t curve_offset[192];
 
+	uint16_t squares[512];
+
 	int top_y = 0;
 
 	void setup_tables() {
@@ -140,23 +143,41 @@ private:
 			one_over_distances[y] = 128.0f / distance;
 		}
 
+		for(int c = 0; c < 512; c++) {
+			squares[c] = (c * c) / 4;
+		}
+
 		printf("Floor occupies %d lines\n", 192 - top_y);
+	}
+
+	uint16_t mul(const uint8_t a, const uint8_t b) {
+		const uint8_t sub = std::abs(a - b);
+		const uint16_t add = a + b;
+		return squares[add] - squares[sub];
 	}
 
 	void populate_spans() {
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
-				127 +
-				(
-					(player_x >> 7) * one_over_distances[y]	// i9 * u8
-					+ curve * curve_offset[y]				// i8 * u8
-				) / 128;
-			// Expectation:
-			//
-			//		player_x >> 7 and curve are converted to u8 and u7 outside the loop, with the
-			// 		centre calculation here dynamically modified with relevant add or sub as per current signs.
-			//
-			// Hence a standard u8 x u8 -> u16 multiply is all that's required.
+				[&] {
+					int16_t result = 0;
+
+					// NB: sign test and adjustment for both player_x and curve can occur
+					// **outside the loop** in Z80 world.
+					if(player_x > 0) {
+						result += mul(player_x >> 7, one_over_distances[y]) >> 1;
+					} else {
+						result -= mul((-player_x) >> 7, one_over_distances[y]) >> 1;
+					}
+
+					if(curve > 0) {
+						result += mul(curve, curve_offset[y]) >> 1;
+					} else {
+						result -= mul(-curve, curve_offset[y]) >> 1;
+					}
+
+					return 127 + (result >> 6);
+				} ();
 
 			const uint8_t offset = offsets[y] + player_y;
 			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
