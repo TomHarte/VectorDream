@@ -34,7 +34,7 @@ multiply.u8.u8:
 
 	jr nc, @+low_page
 
-	ld h, 2 + squares / 256
+	inc h
 	ld l, a
 	ld a, (hl)
 	inc h
@@ -47,7 +47,7 @@ multiply.u8.u8:
 	ret
 
 @low_page:
-	ld h, squares / 256
+	dec h
 	ld l, a
 	ld a, (hl)
 	inc h
