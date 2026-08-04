@@ -305,6 +305,12 @@ ENDIF
 NEXT @page_loop
 
 
+finish_painting: MACRO
+	rl e	; just to get the top bit into carry; low 7 don't really matter.
+	rl d
+	ret
+	ENDM
+
 	;
 	; Paint from d = y, e = x to x = IYl in colour IXh.
 	;
@@ -342,7 +348,7 @@ NEXT @page_loop
 		jr c, @+with_final_left
 
 		call @+fill_bytes
-		jr @+finish_painting
+		finish_painting
 
 	@with_final_left:
 		jr z, @+no_fill_bytes
@@ -360,9 +366,7 @@ NEXT @page_loop
 		ld (de), a
 
 	@finish_painting:
-	rl e	; just to get the top bit into carry; low 7 don't really matter.
-	rl d
-	ret
+	finish_painting
 
 @fill_bytes:
 	; (HL) = aligned target address, A = number of bytes to paint; IXh = colour to paint.
