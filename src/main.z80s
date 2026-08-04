@@ -85,8 +85,7 @@ include "span_buffers.z80s"
 	call spans.swap
 
 	ld a, (player_y)
-	inc a
-	inc a
+	add 7
 	ld (player_y), a
 
 	ld a, (player_x)
