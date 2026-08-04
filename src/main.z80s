@@ -184,20 +184,12 @@ exit_segment: MACRO
 	ret
 	ENDM
 
-fill_to_e: MACRO
-	ld (hl), e
-	inc h
+fill_to: MACRO
 	ld (hl), \0
+	inc h
+	ld (hl), \1
 	dec h
-	ld l, e
-	ENDM
-
-get_centre: MACRO
-	; TODO: calculate real centre of line into DE, multiplying a player position by 1/z
-	; and possibly applying some curvature.
-	;
-	; Hard-coded to centre for now because I don't even have a multiply implemented yet.
-	ld de, 127
+	ld l, \0
 	ENDM
 
 @road.segment:
@@ -219,100 +211,133 @@ get_centre: MACRO
 	ld a, grass_colour2
 
 	@done_grass_colour:
-	ld (@+grass_fill0 + 3), a
 	ld (@+grass_fill1 + 3), a
-	ld (@+grass_fill2 + 1), a
+	ld (@+grass_fill2 + 3), a
+	ld (@+grass_fill3 + 1), a
+
+	; Preserve d for a moment.
+	ld a, d
+
+	; Calculate road centre into DE
+
+	; TODO: calculate real centre of line into DE, multiplying a player position by 1/z
+	; and possibly applying some curvature.
+	;
+	; Hard-coded to centre for now because I don't even have a multiply implemented yet.
+	ld de, 127
 
 	; Consider whether to draw a centre line.
+	and 64
+	jp z, @+draw_without_line		; No line; this is a gap.
+
 	ld a, c
 	or a
-	jr z, @+draw_without_line		; No line; it is too small to register.
-
-	ld a, d
-	and 64
-	jr z, @+draw_without_line		; No line; this is a gap between them.
-
+	jp z, @+draw_without_line		; No line; it is too small to register.
 
 @draw_with_line:
-	get_centre
-
-	; Calculate left extreme: DE - B.
+	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
 	subde b
+	jp m, @+road_starts_off_left
+	jp nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
-	jp m, @+no_left_grass			; DE < 0; test for the centre line.
-	jr nz, @+complete_with_grass	; D != 0; only the left area of grass is visible.
+@grass_fill1:
+	fill_to e, 0	; grass colour
 
-	;
-	; Left grass is visible but does not fill entire width of display.
-	;
-	@grass_fill0:
-	fill_to_e 0
+	ld a, b
+	sub c
+	ld d, a			; D = road width - line width.
 
-@no_left_grass:
+	ld a, e
+	add d
+	jp c, @+complete_with_road
 
-	; Calculate left edge of line: DE - C.
+@from_road_8bit:
+	fill_to a, road_colour
+
+	add c
+	jp c, @+complete_with_line
+	add c
+	jp c, @+complete_with_line
+	fill_to a, line_colour
+
+	add d
+	jp c, @+complete_with_road
+	fill_to a, road_colour
+	jp @+complete_with_grass
+
+@road_starts_off_left:
+	; Road started off left of display; test position of start of line.
 	addde b
 	subde c
+	jp m, @+line_starts_off_left
+	jp nz, @+complete_with_road	; Road was off-screen to the left, line was off-screen to the right. So all road.
 
-	jp m, @+no_left_road			; DE < 0: test the centre line of the road.
-	jr nz, @+complete_with_road		; D != 0; road fills the entire display.
+	; Left edge of line was on-screen so fill road to it and proceed in 8-bit from there.
+	ld a, b
+	sub c
+	ld d, a			; D = road width - line width.
 
-	;
-	; Road is visible but does not fill entire width of display.
-	;
-	fill_to_e road_colour
+	ld a, e
+	jp @-from_road_8bit
 
-@no_left_road:
-
-	; Calculate right edge of line: DE + C.
+@line_starts_off_left:
+	; Test right-edge of line.
 	addde c
 	addde c
+	jp m, @+right_starts_off_left
+	jp nz, @+complete_with_line
 
-	jp m, @+no_centre_line			; DE < 0: test the right-hand side of the road.
-	jr nz, @+complete_with_line		; D != 0; line completes the display.
+	; Right edge of line ends within display. Go 8-bit from there.
+	ld a, b
+	sub c
+	ld c, a
 
-	fill_to_e line_colour
+	ld a, e
+	fill_to a, line_colour
+	add c
+	jp c, @+complete_with_road
+	fill_to a, road_colour
+	jp @+complete_with_grass
 
-@no_centre_line:
-
-	; Calculate right edge of road: DE + B.
+@right_starts_off_left:
+	; Test right-edge of road.
 	subde c
 	addde b
 
-	jp m, @+complete_with_grass			; DE < 0: test the right-hand side of the road.
-	jr nz, @+complete_with_road			; D != 0; line completes the display.
+	jp m, @+complete_with_grass
+	jp nz, @+complete_with_road
 
-	fill_to_e road_colour
-	jr @+complete_with_grass
+	fill_to e, road_colour
+	jp @+complete_with_road
 
 @draw_without_line:
-	get_centre
-
-	; Calculate left extreme: DE - B.
+	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
 	subde b
+	jp m, @+starts_off_left
+	jr nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
-	jp m, @+no_left_grass			; DE < 0; left area of grass is off screen to left.
-	jr nz, @+complete_with_grass	; D != 0; only the left area of grass is visible.
+	ld a, e
+@grass_fill2:
+	fill_to a, 0	; grass colour
 
-	;
-	; Left grass is visible but does not fill entire width of display.
-	;
-	@grass_fill1:
-	fill_to_e 0
+	; Add twice road width to get to the other side.
+	add b
+	jr c, @+complete_with_road
+	add b
+	jr c, @+complete_with_road
 
-@no_left_grass:
-	; Calculate right extreme: DE + B.
+	fill_to a, road_colour
+	jr @+complete_with_grass
+
+@starts_off_left:
+	; Find right edge of road.
 	addde b
 	addde b
+	jp m, @+complete_with_grass
+	jr nz, @+complete_with_road
 
-	jp m, @+complete_with_grass		; DE < 0: only the right area of grass is visible.
-	jr nz, @+complete_with_road		; D != 0; road fills the entire display.
-
-	;
-	; Road is visible but does not fill entire width of display.
-	;
-	fill_to_e road_colour
-
+	fill_to e, road_colour
+	jr @+complete_with_grass
 
 ;
 ; 'Complete'rs; draw a solid colour to the end of the display and stop.
@@ -321,7 +346,7 @@ get_centre: MACRO
 @complete_with_grass:
 	ld (hl), 0xff
 	inc h
-	@grass_fill2:
+	@grass_fill3:
 	ld (hl), 0
 
 	exit_segment
