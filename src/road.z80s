@@ -1,19 +1,34 @@
+; @skews: ds (192 - top_y) * 2
+
 road.draw:
 	;
 	; Fill sky above road, a simple solid colour.
 	;
-	ld d, top_y
+	ld d, 0
 	ld bc, 0xff00 | sky_colour
 
-@sky.fill:
+@sky.fillpage:
 	ld a, d
 	call spans.getaddress
+
+@sky.fill:
 	ld (hl), b
 	inc h
 	ld (hl), c
 
-	dec d
-	jr nz, @-sky.fill
+	inc d
+	ld a, d
+	cp top_y
+	jr z, @+sky.stop
+
+	and %11111
+	jr z, @-sky.fillpage
+
+	inc h
+	jr @-sky.fill
+
+
+@sky.stop:
 
 	;
 	; Draw road, per tables.
