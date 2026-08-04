@@ -135,7 +135,7 @@ spans.swap:
 	; Overarching register assignment:
 	;
 	;	D = line.
-	;	E = offset within line.			[so that an `ex de, hl` can temporarily swap main pointers]
+	;	E = offset within line.
 	;	BC = pointer to new spans.
 	;	HL = pointer to old spans.		[for benefit of cp (hl)]
 	;
