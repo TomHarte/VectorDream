@@ -23,8 +23,8 @@
 ALIGN 256
 @span_fill:
 	@column: EQU FOR 128
-	ld (hl), a
-	inc l
+	ld (de), a
+	inc e
 	NEXT @column
 	ret
 
@@ -311,30 +311,28 @@ NEXT @page_loop
 	; Preserves HL, BC and D. Requires IYl >= 1.
 	;
 @fill_span:
-	ex de, hl
-
 	; Compute frame buffer address.
 	scf
-	rr h
-	rr l
+	rr d
+	rr e
 
 	jr nc, @+no_initial_right
 
-	; Store low pixel of new colour.
-	ld a, ixh
-	and 0x0f
-	ld ixl, a
+		; Store low pixel of new colour.
+		ld a, ixh
+		and 0x0f
+		ld ixl, a
 
-	; Mutate current target of (HL) to include new pixel colour.
-	ld a, (hl)
-	and 0xf0
-	or ixl
-	ld (hl), a
-	inc l
+		; Mutate current target of (HL) to include new pixel colour.
+		ld a, (de)
+		and 0xf0
+		or ixl
+		ld (de), a
+		inc e
 
-	; Decrement remaining pixel count, possibly exit.
-	dec iyl
-	jr z, @+finish_painting
+		; Decrement remaining pixel count, possibly exit.
+		dec iyl
+		jr z, @+finish_painting
 
 	; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
 	@no_initial_right:
@@ -355,16 +353,15 @@ NEXT @page_loop
 		and 0xf0
 		ld ixl, a
 
-		ld a, (hl)
+		ld a, (de)
 		and 0x0f
 		or ixl
 
-		ld (hl), a
+		ld (de), a
 
 	@finish_painting:
-	rl l	; just to get the top bit into carry; low 7 don't really matter.
-	rl h
-	ex de, hl
+	rl e	; just to get the top bit into carry; low 7 don't really matter.
+	rl d
 	ret
 
 @fill_bytes:
@@ -375,8 +372,8 @@ NEXT @page_loop
 
 	ld a, ixh
 
-	@destination:
-		jp @-span_fill
+@destination:
+	jp @-span_fill
 
 ;
 ;	spans.getaddress
