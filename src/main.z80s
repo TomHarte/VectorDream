@@ -63,15 +63,6 @@ include "span_buffers.z80s"
 	; Set stack high.
 	ld sp, 0
 
-	; Do some test multiplications.
-	ld d, 23
-	ld e, 128
-	call multiply
-
-	ld d, 7
-	ld e, 6
-	call multiply
-
 	; Seed display.
 	call spans.setup
 
@@ -372,7 +363,7 @@ fill_to: MACRO
 	jp nz, @+complete_with_road
 
 	fill_to e, road_colour
-	jp @+complete_with_road
+	jp @+complete_with_grass
 
 @draw_without_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
