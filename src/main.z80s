@@ -25,6 +25,9 @@ VIDEOPAGE:	EQU 6 * 2
 ;
 	ORG 0xe000
 	DUMP VIDEOPAGE + 1, 8192
+
+include "span_buffers.z80s"
+
 	AUTOEXEC
 
 	; Disable interrupts and display.
@@ -89,7 +92,6 @@ y_pos: db 0
 x_delta: db 1
 y_delta: db 2
 
-include "span_buffers.z80s"
 include "road_tables.z80s"
 
 road.draw:

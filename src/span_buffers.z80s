@@ -20,6 +20,14 @@
 ;
 
 
+ALIGN 256
+@span_fill:
+	@column: EQU FOR 128
+	ld (hl), a
+	inc l
+	NEXT @column
+	ret
+
 @current_spans:	db 0
 
 ;
@@ -368,15 +376,7 @@ NEXT @page_loop
 	ld a, ixh
 
 	@destination:
-		jp @+span_fill
-
-ALIGN 256
-@span_fill:
-	@column: EQU FOR 128
-	ld (hl), a
-	inc l
-	NEXT @column
-	ret
+		jp @-span_fill
 
 ;
 ;	spans.getaddress
