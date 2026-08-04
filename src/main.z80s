@@ -98,6 +98,10 @@ include "span_buffers.z80s"
 	inc a
 	ld (player_y), a
 
+	ld a, (player_x)
+	inc a
+	ld (player_x), a
+
 	jr @-endless_loop
 
 
@@ -231,16 +235,60 @@ fill_to: MACRO
 	ld (@+grass_fill2 + 3), a
 	ld (@+grass_fill3 + 1), a
 
+	; Calculate road centre into DE
+
+	; TODO: make this the responsibility of the caller to avoid
+	; tripping over myself with registers maybe?
+	ld a, e
+
+	exx
+
+	ld e, a
+	ld a, (player_x)
+	or a
+	jp p, @+player_x_positive
+
+	neg
+	ld d, a
+	call multiply
+
+	add hl, hl
+	ld l, h
+	ld h, 0
+
+	ld a, 127
+	sub l
+	ld l, a
+	ld a, 0
+	sbc h
+	ld h, a
+	jr @+store_centre
+
+@player_x_positive:
+	ld d, a
+	call multiply
+
+	add hl, hl
+	ld l, h
+	ld h, 0
+
+	ld a, 127
+	add a, l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+
+@store_centre:
+	push hl
+
+	exx
+
 	; Preserve d for a moment.
 	ld a, d
 
-	; Calculate road centre into DE
-
-	; TODO: calculate real centre of line into DE, multiplying a player position by 1/z
-	; and possibly applying some curvature.
-	;
-	; Hard-coded to centre for now because I don't even have a multiply implemented yet.
-	ld de, 127
+	; Get road centre.
+	pop de
 
 	; Consider whether to draw a centre line.
 	and 64
