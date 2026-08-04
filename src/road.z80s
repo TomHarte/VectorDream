@@ -1,0 +1,316 @@
+road.draw:
+	;
+	; Fill sky above road, a simple solid colour.
+	;
+	ld d, top_y
+	ld bc, 0xff00 | sky_colour
+
+@sky.fill:
+	ld a, d
+	call spans.getaddress
+	ld (hl), b
+	inc h
+	ld (hl), c
+
+	dec d
+	jr nz, @-sky.fill
+
+	;
+	; Draw road, per tables.
+	;
+	ld e, 0
+@road.fill:
+	ld d, 0
+
+	; B = road width.
+	ld hl, road_widths
+	add hl, de
+	ld b, (hl)
+
+	; C = line width.
+	ld hl, line_widths
+	add hl, de
+	ld c, (hl)
+
+	; A = 1/z, temporarily.
+	ld hl, one_over_zs
+	add hl, de
+	ld a, (hl)
+
+	; H = offset from table.
+	ld hl, offsets
+	add hl, de
+	ld h, (hl)
+
+	; Shuffle A into L.
+	ld l, a
+
+	; Add current player position to offset.
+	ld a, (player.y+1)
+	add h
+	ld h, a
+
+	; A = y.
+	ld a, e
+	add top_y
+	call @road.segment
+
+	; Increment E and check for having hit line 192.
+	inc e
+	ld a, e
+	cp 192 - top_y
+	jr nz, @-road.fill
+
+	ret
+
+; Adds the 8-bit unsigned value in the register in the operand to DE. Clobbers A.
+addde: MACRO
+	ld a, e
+	add \0
+	ld e, a
+
+	adc d
+	sub e
+	ld d, a
+	ENDM
+
+; Subtracts the 8-bit unsigned value in the register in the operand from DE. Clobbers A.
+subde: MACRO
+	ld a, e
+	sub \0
+	ld e, a
+
+	ld a, d
+	sbc 0
+	ld d, a
+	ENDM
+
+exit_segment: MACRO
+	pop de
+	ret
+	ENDM
+
+fill_to: MACRO
+	ld (hl), \0
+	inc h
+	ld (hl), \1
+	dec h
+	ld l, \0
+	ENDM
+
+@road.segment:
+	push de			; Preserve E.
+	ex de, hl		; Switch to: B = road width, C = line width, D = offset, E = 1/z.
+
+	; Get HL = start of line.
+	call spans.getaddress
+
+	; Pick a grass colour, dynamically reprogram due to lack of registers.
+	ld a, d
+	rla
+	jr nc, @+set_grass_colour1
+
+	ld a, grass_colour1
+	jr @+done_grass_colour
+
+	@set_grass_colour1:
+	ld a, grass_colour2
+
+	@done_grass_colour:
+	ld (@+grass_fill1 + 3), a
+	ld (@+grass_fill2 + 3), a
+	ld (@+grass_fill3 + 1), a
+
+	; Calculate road centre into DE
+
+	; TODO: make this the responsibility of the caller to avoid
+	; tripping over myself with registers maybe?
+	ld a, e
+
+	exx
+
+	ld e, a
+	ld a, (player.x)
+	or a
+	jp p, @+player_x_positive
+
+	neg
+	ld d, a
+	call multiply.u8.u8
+
+	add hl, hl
+	ld l, h
+	ld h, 0
+
+	ld a, 127
+	sub l
+	ld l, a
+	ld a, 0
+	sbc h
+	ld h, a
+	jr @+store_centre
+
+@player_x_positive:
+	ld d, a
+	call multiply.u8.u8
+
+	add hl, hl
+	ld l, h
+	ld h, 0
+
+	ld a, 127
+	add a, l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+
+@store_centre:
+	push hl
+
+	exx
+
+	; Preserve d for a moment.
+	ld a, d
+
+	; Get road centre.
+	pop de
+
+	; Consider whether to draw a centre line.
+	and 64
+	jp z, @+draw_without_line		; No line; this is a gap.
+
+	ld a, c
+	or a
+	jp z, @+draw_without_line		; No line; it is too small to register.
+
+@draw_with_line:
+	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
+	subde b
+	jp m, @+road_starts_off_left
+	jp nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
+
+@grass_fill1:
+	fill_to e, 0	; grass colour
+
+	ld a, b
+	sub c
+	ld d, a			; D = road width - line width.
+
+	ld a, e
+	add d
+	jp c, @+complete_with_road
+
+@from_road_8bit:
+	fill_to a, road_colour
+
+	add c
+	jp c, @+complete_with_line
+	add c
+	jp c, @+complete_with_line
+	fill_to a, line_colour
+
+	add d
+	jp c, @+complete_with_road
+	fill_to a, road_colour
+	jp @+complete_with_grass
+
+@road_starts_off_left:
+	; Road started off left of display; test position of start of line.
+	addde b
+	subde c
+	jp m, @+line_starts_off_left
+	jp nz, @+complete_with_road	; Road was off-screen to the left, line was off-screen to the right. So all road.
+
+	; Left edge of line was on-screen so fill road to it and proceed in 8-bit from there.
+	ld a, b
+	sub c
+	ld d, a			; D = road width - line width.
+
+	ld a, e
+	jp @-from_road_8bit
+
+@line_starts_off_left:
+	; Test right-edge of line.
+	addde c
+	addde c
+	jp m, @+right_starts_off_left
+	jp nz, @+complete_with_line
+
+	; Right edge of line ends within display. Go 8-bit from there.
+	ld a, b
+	sub c
+	ld c, a
+
+	ld a, e
+	fill_to a, line_colour
+	add c
+	jp c, @+complete_with_road
+	fill_to a, road_colour
+	jp @+complete_with_grass
+
+@right_starts_off_left:
+	; Test right-edge of road.
+	subde c
+	addde b
+
+	jp m, @+complete_with_grass
+	jp nz, @+complete_with_road
+
+	fill_to e, road_colour
+	jp @+complete_with_grass
+
+@draw_without_line:
+	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
+	subde b
+	jp m, @+starts_off_left
+	jr nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
+
+	ld a, e
+@grass_fill2:
+	fill_to a, 0	; grass colour
+
+	; Add twice road width to get to the other side.
+	add b
+	jr c, @+complete_with_road
+	add b
+	jr c, @+complete_with_road
+
+	fill_to a, road_colour
+	jr @+complete_with_grass
+
+@starts_off_left:
+	; Find right edge of road.
+	addde b
+	addde b
+	jp m, @+complete_with_grass
+	jr nz, @+complete_with_road
+
+	fill_to e, road_colour
+	jr @+complete_with_grass
+
+;
+; 'Complete'rs; draw a solid colour to the end of the display and stop.
+;
+
+@complete_with_grass:
+	ld (hl), 0xff
+	inc h
+	@grass_fill3:
+	ld (hl), 0
+
+	exit_segment
+
+@complete_with_line:
+	ld (hl), 0xff
+	inc h
+	ld (hl), line_colour
+
+	exit_segment
+
+@complete_with_road:
+	ld (hl), 0xff
+	inc h
+	ld (hl), road_colour
+
+	exit_segment
