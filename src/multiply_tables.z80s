@@ -1,0 +1,28 @@
+;
+; Lookup tables are below for standard square-table multiplication.
+;
+; These require 256-byte alignment so are offered separately from the
+; multiplication routine to ease manual packing.
+;
+
+ALIGN 256
+squares:
+	@low_first256: EQU FOR 256
+		@index: EQU @low_first256
+		db ((@index * @index) / 4) \ 256
+	NEXT @low_first256
+
+	@high_first256: EQU FOR 256
+		@index: EQU @high_first256
+		db ((@index * @index) / 4) / 256
+	NEXT @high_first256	
+
+	@low_second256: EQU FOR 256
+		@index: EQU @low_second256 + 256
+		db ((@index * @index) / 4) \ 256
+	NEXT @low_second256
+
+	@high_second256: EQU FOR 256
+		@index: EQU @high_second256 + 256
+		db ((@index * @index) / 4) / 256
+	NEXT @high_second256

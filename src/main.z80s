@@ -32,6 +32,8 @@ VIDEOPAGE:	EQU 6 * 2
 ;
 include "multiply_tables.z80s"
 include "span_buffers.z80s"
+include "road_tables.z80s"
+include "multiply.z80s"
 
 	AUTOEXEC
 
@@ -99,8 +101,6 @@ x_pos: db 1
 y_pos: db 0
 x_delta: db 1
 y_delta: db 2
-
-include "road_tables.z80s"
 
 road.draw:
 	;
@@ -240,7 +240,7 @@ fill_to: MACRO
 
 	neg
 	ld d, a
-	call multiply
+	call multiply.u8.u8
 
 	add hl, hl
 	ld l, h
@@ -256,7 +256,7 @@ fill_to: MACRO
 
 @player_x_positive:
 	ld d, a
-	call multiply
+	call multiply.u8.u8
 
 	add hl, hl
 	ld l, h
@@ -422,57 +422,6 @@ fill_to: MACRO
 player_x: db 0
 player_y: db 0
 
-;
-; Calculate HL = D * E.
-;
-;
-; Clobbers: A, BC.
-;
-multiply:
-	; Get BC = ((d - e)^2) / 4 taking abs(d - e) if necessary.
-	ld a, d
-	sub e
-
-	jr nc, @+no_neg
-	neg
-
-@no_neg:
-	ld h, squares / 256
-	ld l, a
-
-	ld c, (hl)
-	inc h
-	ld b, (hl)
-
-	; Get HL = ((d + e)^2) / 4
-	ld a, d
-	add e
-
-	jr nc, @+low_page
-
-	ld h, 2 + squares / 256
-	ld l, a
-	ld a, (hl)
-	inc h
-	ld h, (hl)
-	ld l, a
-
-	; Subtract the two things and return.
-	or a
-	sbc hl, bc
-	ret
-
-@low_page:
-	ld h, squares / 256
-	ld l, a
-	ld a, (hl)
-	inc h
-	ld h, (hl)
-	ld l, a
-
-	or a
-	sbc hl, bc
-	ret
 ;
 ; Colour selections and palette.
 ;
