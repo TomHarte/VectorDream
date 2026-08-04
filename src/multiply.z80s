@@ -32,10 +32,10 @@ multiply.u8.u8:
 	ld a, d
 	add e
 
+	ld l, a
 	jr nc, @+low_page
 
 	inc h
-	ld l, a
 	ld a, (hl)
 	inc h
 	ld h, (hl)
@@ -48,12 +48,12 @@ multiply.u8.u8:
 
 @low_page:
 	dec h
-	ld l, a
 	ld a, (hl)
 	inc h
 	ld h, (hl)
 	ld l, a
 
-	or a
+	; C is guarantted to be clear here; @low_page was the target of a `jr nc`
+	; and neither `ld` nor `inc/dec r` modify carry.
 	sbc hl, bc
 	ret
