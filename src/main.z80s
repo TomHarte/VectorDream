@@ -33,7 +33,6 @@ VIDEOPAGE:	EQU 6 * 2
 include "multiply_tables.z80s"
 include "span_buffers.z80s"
 include "road_tables.z80s"
-include "multiply.z80s"
 
 	AUTOEXEC
 
@@ -82,25 +81,66 @@ include "multiply.z80s"
 	ld a, 0
 	out (BORDER), a
 
-@endless_loop:
+@game_loop:
 	call road.draw
 	call spans.swap
 
-	ld a, (player_y)
-	add 7
-	ld (player_y), a
+	; Read joystick/67890.
+	ld bc, 0xeffe
+	in a, (c)
+	rra
+	rra
+	jr c, @+no_up
 
-	ld a, (player_x)
-	inc a
-	ld (player_x), a
+	ld hl, (player.yvelocity)
+	ld de, 64
+	add hl, de
+	ld (player.yvelocity), hl
 
-	jr @-endless_loop
+	@no_up:
+	rra
+	jr c, @+no_down
 
+	ld hl, (player.yvelocity)
+	ld de, -64
+	add hl, de
+	ld (player.yvelocity), hl
 
-x_pos: db 1
-y_pos: db 0
-x_delta: db 1
-y_delta: db 2
+	@no_down:
+	rra 
+	jr c, @+no_right
+
+	ld b, a
+	ld a, (player.x)
+	sub 5
+	jp po, @+store_a
+	ld a, -128
+	@store_a:
+	ld (player.x), a
+	ld a, b
+
+	@no_right:
+	rra
+	jr c, @+no_left
+
+	ld a, (player.x)
+	add 5
+	jp po, @+store_a
+	ld a, 127
+	@store_a:
+	ld (player.x), a
+
+	@no_left:
+
+	ld hl, (player.yvelocity)
+	ex de, hl
+	ld hl, (player.y)
+	add hl, de
+	ld (player.y), hl
+
+	jr @-game_loop
+
+include "multiply.z80s"
 
 road.draw:
 	;
@@ -150,7 +190,7 @@ road.draw:
 	ld l, a
 
 	; Add current player position to offset.
-	ld a, (player_y)
+	ld a, (player.y+1)
 	add h
 	ld h, a
 
@@ -234,7 +274,7 @@ fill_to: MACRO
 	exx
 
 	ld e, a
-	ld a, (player_x)
+	ld a, (player.x)
 	or a
 	jp p, @+player_x_positive
 
@@ -419,8 +459,10 @@ fill_to: MACRO
 
 	exit_segment
 
-player_x: db 0
-player_y: db 0
+player.x: dw 0
+
+player.y: dw 0
+player.yvelocity: dw 0
 
 ;
 ; Colour selections and palette.
