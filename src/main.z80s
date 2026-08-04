@@ -26,6 +26,11 @@ VIDEOPAGE:	EQU 6 * 2
 	ORG 0xe000
 	DUMP VIDEOPAGE + 1, 8192
 
+;
+; Install various tables first, because they're all 256-byte aligned and this
+; causes them to be tightly-packed.
+;
+include "multiply_tables.z80s"
 include "span_buffers.z80s"
 
 	AUTOEXEC
@@ -57,6 +62,15 @@ include "span_buffers.z80s"
 @finish_paging:
 	; Set stack high.
 	ld sp, 0
+
+	; Do some test multiplications.
+	ld d, 23
+	ld e, 128
+	call multiply
+
+	ld d, 7
+	ld e, 6
+	call multiply
 
 	; Seed display.
 	call spans.setup
@@ -367,8 +381,60 @@ fill_to: MACRO
 
 	exit_segment
 
+player_x: db 0
 player_y: db 0
 
+;
+; Calculate HL = D * E.
+;
+;
+; Clobbers: A, BC.
+;
+multiply:
+	; Get BC = ((d - e)^2) / 4 taking abs(d - e) if necessary.
+	ld a, d
+	sub e
+
+	jr nc, @+no_neg
+	neg
+
+@no_neg:
+	ld h, squares / 256
+	ld l, a
+
+	ld c, (hl)
+	inc h
+	ld b, (hl)
+
+	; Get HL = ((d + e)^2) / 4
+	ld a, d
+	add e
+
+	jr nc, @+low_page
+
+	ld h, 2 + squares / 256
+	ld l, a
+	ld a, (hl)
+	inc h
+	ld h, (hl)
+	ld l, a
+
+	; Subtract the two things and return.
+	or a
+	sbc hl, bc
+	ret
+
+@low_page:
+	ld h, squares / 256
+	ld l, a
+	ld a, (hl)
+	inc h
+	ld h, (hl)
+	ld l, a
+
+	or a
+	sbc hl, bc
+	ret
 ;
 ; Colour selections and palette.
 ;
