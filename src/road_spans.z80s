@@ -43,18 +43,11 @@ road.span:
 	; Pick a grass colour, dynamically reprogram due to lack of registers.
 	ld a, d
 	rla
-	jr nc, @+set_grass_colour1
 
-	ld a, grass_colour1
-	jr @+done_grass_colour
-
-	@set_grass_colour1:
-	ld a, grass_colour2
-
-	@done_grass_colour:
-	ld (@+grass_fill1 + 3), a
-	ld (@+grass_fill2 + 3), a
-	ld (@+grass_fill3 + 1), a
+	ld ixl, grass_colour1
+	jr nc, @+keep_grass_colour1
+	ld ixl, grass_colour2
+	@keep_grass_colour1:
 
 	; Calculate road centre into DE
 
@@ -125,8 +118,8 @@ road.span:
 	jp m, @+road_starts_off_left
 	jp nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
-@grass_fill1:
-	fill_to e, 0	; grass colour
+	ld a, ixl		; grass colour
+	fill_to e, a
 
 	ld a, b
 	sub c
@@ -201,11 +194,11 @@ road.span:
 	jp m, @+starts_off_left
 	jr nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
-	ld a, e
-@grass_fill2:
-	fill_to a, 0	; grass colour
+	ld a, ixl			; grass colour
+	fill_to e, a
 
 	; Add twice road width to get to the other side.
+	ld a, e
 	add b
 	jr c, @+complete_with_road
 	add b
@@ -231,8 +224,8 @@ road.span:
 @complete_with_grass:
 	ld (hl), 0xff
 	inc h
-	@grass_fill3:
-	ld (hl), 0
+	ld a, ixl
+	ld (hl), a
 
 	exit_segment
 
