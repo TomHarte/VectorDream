@@ -3,18 +3,80 @@
 road.draw:
 
 	;
-	; TODO: calculate road centres for real.
+	; Calculate per-line road skew.
+	; TODO: include some curvature.
 	;
-	; For now: just write 127 for all centres.
-	;
-	ld b, 192 - top_y
-	ld hl, @-road.centres
+
+
+	; TODO: negative branch
+
+	ld a, (player.x)	; TODO: + 1
+	or a
+	jp p, @+player_x_positive
+@player_x_positive:
+	; TODO: relate magic constants to one_over_z. Possibly the multiplications can be direct lookups?
+	ld d, 4
+	ld e, a
+	call multiply.u8.u8
+
+	add hl, hl	; HL >>= 7.
+	ld l, h
+	ld h, 0
+
+	ld de, 127
+	add hl, de
+	push hl					; top of stack = horizontal screen position of line 0.
+
+	ld d, 233
+	ld a, (player.x)
+	ld e, a
+	call multiply.u8.u8
+
+	add hl, hl	; HL >>= 7.
+	ld l, h
+	ld h, 0
+
+	ld de, 127
+	add hl, de
+	pop de					; HL = horizontal screen position at line 128;
+							; DE = horizontal screen position at line 0.
+							; Player position is >= 0, so it's guaranteed that HL >= DE
+
+	or a
+	sbc hl, de				; HL = adder * 128; DE = start.
+
+	xor a
+	add hl, hl
+	adc 0					; A:HL = adder * 256.
+
+	ex de, hl				; HL = start; A:DE = adder * 256.
+
+	ld ixl, e
+	ld c, d
+	ld b, a					; BC:IXl = adder.
+
+	xor a					; HL:A = current position.
+
+	ld de, @-road.centres	; DE = write pointer.
+	ld iyl, 192 - top_y		; IYl = loop counter.
+
 @write_centre:
-	ld (hl), 127
+	ex de, hl
+	ld (hl), e
 	inc hl
-	ld (hl), 0
+	ld (hl), d
 	inc hl
-	djnz @-write_centre
+	ex de, hl
+
+	add a, ixl
+	jr nc, @+no_inc
+	inc hl
+@no_inc:
+	add hl, bc
+
+	dec iyl
+	jr nz, @-write_centre
+
 
 	;
 	; Fill sky above road, a simple solid colour.

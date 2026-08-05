@@ -143,7 +143,7 @@ include "road_tables.z80s"
 include "multiply.z80s"
 include "road.z80s"
 
-player.x: dw 0
+player.x: dw 16
 
 player.y: dw 0
 player.yvelocity: dw 0
