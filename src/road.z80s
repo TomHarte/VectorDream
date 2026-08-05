@@ -1,5 +1,17 @@
 @road.centres: ds (192 - top_y) * 2
 
+calculate_offset: MACRO
+	ld d, \0
+	ld e, a
+	call multiply.u8.u8
+
+	add hl, hl
+	ld l, h
+	ld h, 0			; HL >>= 7.
+	ENDM
+
+screen_centre: EQU 127
+
 road.draw:
 
 	;
@@ -7,34 +19,48 @@ road.draw:
 	; TODO: include some curvature.
 	;
 
-
-	; TODO: negative branch
-
 	ld a, (player.x)	; TODO: + 1
 	or a
 	jp p, @+player_x_positive
+
+	neg
+
+	calculate_offset one_over_z_0
+	ex de, hl
+	ld hl, screen_centre
+	or a
+	sbc hl, de
+	push hl					; top of stack = horizontal screen position of line 0.
+
+	ld a, (player.x)
+	neg
+	calculate_offset one_over_z_127
+
+	ex de, hl
+	ld hl, screen_centre
+	or a
+	sbc hl, de
+	pop de					; HL = horizontal screen position at line 128;
+							; DE = horizontal screen position at line 0.
+							; Player position is < 0, so it's guaranteed that HL < DE
+
+	; TODO: as below, but handling signs properly.
+	;
+	; I guess I want (-HL - DE), then subtract that at each step in
+
+	jr @+prior_test_jmp
+@prior_test_jmp:
+	jr @+test_jmp_TODO
+
 @player_x_positive:
-	; TODO: relate magic constants to one_over_z. Possibly the multiplications can be direct lookups?
-	ld d, 4
-	ld e, a
-	call multiply.u8.u8
+	calculate_offset one_over_z_0
 
-	add hl, hl	; HL >>= 7.
-	ld l, h
-	ld h, 0
-
-	ld de, 127
+	ld de, screen_centre
 	add hl, de
 	push hl					; top of stack = horizontal screen position of line 0.
 
-	ld d, 233
 	ld a, (player.x)
-	ld e, a
-	call multiply.u8.u8
-
-	add hl, hl	; HL >>= 7.
-	ld l, h
-	ld h, 0
+	calculate_offset one_over_z_127
 
 	ld de, 127
 	add hl, de
@@ -42,6 +68,7 @@ road.draw:
 							; DE = horizontal screen position at line 0.
 							; Player position is >= 0, so it's guaranteed that HL >= DE
 
+@test_jmp_TODO:
 	or a
 	sbc hl, de				; HL = adder * 128; DE = start.
 
@@ -69,10 +96,7 @@ road.draw:
 	ex de, hl
 
 	add a, ixl
-	jr nc, @+no_inc
-	inc hl
-@no_inc:
-	add hl, bc
+	adc hl, bc
 
 	dec iyl
 	jr nz, @-write_centre

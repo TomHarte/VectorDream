@@ -178,7 +178,9 @@ private:
 			combo_table.push_back(offsets[y]);
 		}
 		dump_table("segments", combo_table.begin(), combo_table.end());
-		dump_table("one_over_z", std::begin(one_over_distances) + top_y, std::end(one_over_distances));
+
+		printf("one_over_z_0: EQU %d\n", one_over_distances[top_y]);
+		printf("one_over_z_127: EQU %d\n", one_over_distances[top_y+128]);
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) {
