@@ -1,6 +1,20 @@
-; @road.centres: ds (192 - top_y) * 2
+@road.centres: ds (192 - top_y) * 2
 
 road.draw:
+
+	;
+	; TODO: calculate road centres for real.
+	;
+	; For now: just write 127 for all centres.
+	;
+	ld b, 192 - top_y
+	ld hl, @-road.centres
+@write_centre:
+	ld (hl), 127
+	inc hl
+	ld (hl), 0
+	inc hl
+	djnz @-write_centre
 
 	;
 	; Fill sky above road, a simple solid colour.
@@ -54,9 +68,9 @@ road.draw:
 	inc h
 
 @address_done:
+	; Establish B = half road width, C = half line width, A = offset.
 	push hl
 
-	; B = half road width, C = half line width, A = offset.
 	ld hl, segments
 	add hl, de
 	add hl, de
@@ -69,14 +83,20 @@ road.draw:
 	ld a, (player.y + 1)
 	add (hl)
 
-	; Now preserve DE for next loop around
 	pop hl
+
+	; Preserve DE for next loop around
 	push de
 
 	; Set DE = centre.
-	;
-	; TODO: calculate properly. Outside the loop. But load here.
-	ld de, 127
+	push hl
+	ld hl, @-road.centres
+	add hl, de
+	add hl, de
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	pop hl
 
 	; Draw 2d element.
 	call road.span2d
