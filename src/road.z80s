@@ -71,7 +71,7 @@ road.draw:
 	; A = y.
 	ld a, e
 	add top_y
-	call @road.span
+	call road.span
 
 	; Increment E and check for having hit line 192.
 	inc e
