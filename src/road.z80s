@@ -50,6 +50,7 @@ road.draw:
 	;
 	; Draw road, per tables.
 	;
+	ld iy, @-road.centres
 	ld de, 0
 	ld a, e
 @road.fill:
@@ -89,14 +90,10 @@ road.draw:
 	push de
 
 	; Set DE = centre.
-	push hl
-	ld hl, @-road.centres
-	add hl, de
-	add hl, de
-	ld e, (hl)
-	inc hl
-	ld d, (hl)
-	pop hl
+	ld e, (iy)
+	ld d, (iy + 1)
+	inc iy
+	inc iy
 
 	; Draw 2d element.
 	call road.span2d
