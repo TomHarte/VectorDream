@@ -37,12 +37,23 @@ road.draw:
 	; Draw road, per tables.
 	;
 	ld de, 0
+	ld a, e
 @road.fill:
+	add top_y
+	and %11111
+	jr nz, @+incremental_address
 
-	; HL = target span address.
 	ld a, e
 	add top_y
 	call spans.getaddress
+	jr @+address_done
+
+	; HL = target span address.
+@incremental_address:
+	ld l, 0
+	inc h
+
+@address_done:
 	push hl
 
 	; B = half road width, C = half line width, A = offset.
