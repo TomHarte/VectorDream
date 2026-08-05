@@ -168,7 +168,10 @@ IF @page_loop == 5
 ENDIF
 
 @compare_spans:
-	; Compare endpoints of the current spans.
+	;
+	; INITIAL DISPATCH. Compare endpoints of the current spans.
+	; From here onwards there's a tail dispatch for each of the cases.
+	;
 	ld a, (bc)
 	cp (hl)
 
@@ -207,7 +210,15 @@ ENDIF
 		ld a, (hl)
 		ld l, a
 		ld e, a
-		jr @-compare_spans
+
+		;
+		; TAIL DISPATCH.
+		;
+		ld a, (bc)
+		cp (hl)
+
+		jr z, @+same_ending
+		jr nc, @-bc_greater
 
 	@hl_greater:
 		; If here: (hl) was greater.
@@ -241,7 +252,15 @@ ENDIF
 		ld a, (bc)
 		ld c, a
 		ld e, a
-		jr @-compare_spans
+
+		;
+		; TAIL DISPATCH.
+		;
+		ld a, (bc)
+		cp (hl)
+
+		jr c, @-hl_greater
+		jr nz, @-bc_greater
 
 	@same_ending:
 		; If here: (bc) == (hl), so both spans end in the same place.
@@ -275,7 +294,17 @@ ENDIF
 
 		; Check whether that ended the line.
 		inc a
-		jr nz, @-compare_spans
+		jr z, @+next_line
+
+		;
+		; TAIL DISPATCH.
+		;
+		ld a, (bc)
+		cp (hl)
+
+		jr z, @-same_ending
+		jr c, @-hl_greater
+		jr @-bc_greater
 
 	@next_line:
 		; Advance high part of span pointers.
