@@ -10,65 +10,7 @@ calculate_offset: MACRO
 	ld h, 0			; HL >>= 7.
 	ENDM
 
-screen_centre: EQU 127
-
-road.draw:
-
-	;
-	; Calculate per-line road skew.
-	; TODO: include some curvature.
-	;
-
-	ld a, (player.x)	; TODO: + 1
-	or a
-	jp p, @+player_x_positive
-
-	neg
-
-	calculate_offset one_over_z_0
-	ex de, hl
-	ld hl, screen_centre
-	or a
-	sbc hl, de
-	push hl					; top of stack = horizontal screen position of line 0.
-
-	ld a, (player.x)
-	neg
-	calculate_offset one_over_z_127
-
-	ex de, hl
-	ld hl, screen_centre
-	or a
-	sbc hl, de
-	pop de					; HL = horizontal screen position at line 128;
-							; DE = horizontal screen position at line 0.
-							; Player position is < 0, so it's guaranteed that HL < DE
-
-	; TODO: as below, but handling signs properly.
-	;
-	; I guess I want (-HL - DE), then subtract that at each step in
-
-	jr @+prior_test_jmp
-@prior_test_jmp:
-	jr @+test_jmp_TODO
-
-@player_x_positive:
-	calculate_offset one_over_z_0
-
-	ld de, screen_centre
-	add hl, de
-	push hl					; top of stack = horizontal screen position of line 0.
-
-	ld a, (player.x)
-	calculate_offset one_over_z_127
-
-	ld de, 127
-	add hl, de
-	pop de					; HL = horizontal screen position at line 128;
-							; DE = horizontal screen position at line 0.
-							; Player position is >= 0, so it's guaranteed that HL >= DE
-
-@test_jmp_TODO:
+calculate_interpolator: MACRO
 	or a
 	sbc hl, de				; HL = adder * 128; DE = start.
 
@@ -83,6 +25,76 @@ road.draw:
 	ld b, a					; BC:IXl = adder.
 
 	xor a					; HL:A = current position.
+	ENDM
+
+screen_centre: EQU 127
+
+road.draw:
+
+	;
+	; Calculate per-line road skew.
+	; TODO: include some curvature.
+	;
+
+	ld a, (player.x)	; TODO: + 1
+	or a
+	jp p, @+player_x_positive
+
+	neg
+	calculate_offset one_over_z_0
+	push hl					; top of stack = horizontal screen position of line 0.
+
+	ld a, (player.x)
+	neg
+	calculate_offset one_over_z_127
+	pop de					; HL = horizontal screen position at line 128;
+							; DE = horizontal screen position at line 0.
+							; It's guaranteed that HL >= DE
+
+	calculate_interpolator
+
+	ex de, hl
+	ld hl, screen_centre
+	or a
+	sbc hl, de
+
+	ld de, @-road.centres	; DE = write pointer.
+	ld iyl, 192 - top_y		; IYl = loop counter.
+
+@write_centre:
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+
+	sub ixl
+	sbc hl, bc
+
+	dec iyl
+	jr nz, @-write_centre
+
+
+	jr @+fill_sky
+
+@player_x_positive:
+	calculate_offset one_over_z_0
+
+	push hl					; top of stack = horizontal screen position of line 0.
+
+	ld a, (player.x)
+	calculate_offset one_over_z_127
+
+	pop de					; HL = horizontal screen position at line 128;
+							; DE = horizontal screen position at line 0.
+							; It's guaranteed that HL >= DE
+
+
+	calculate_interpolator
+
+	ld de, screen_centre
+	add hl, de
 
 	ld de, @-road.centres	; DE = write pointer.
 	ld iyl, 192 - top_y		; IYl = loop counter.
@@ -102,6 +114,7 @@ road.draw:
 	jr nz, @-write_centre
 
 
+@fill_sky:
 	;
 	; Fill sky above road, a simple solid colour.
 	;
