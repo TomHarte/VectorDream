@@ -1,3 +1,50 @@
+;
+; TODO: put code that achieves similar effect as below into road.z80s.
+;
+
+;	exx
+;
+;	ld e, a
+;	ld a, (player.x)
+;	or a
+;	jp p, @+player_x_positive
+;
+;	neg
+;	ld d, a
+;	call multiply.u8.u8
+;
+;	add hl, hl
+;	ld l, h
+;	ld h, 0
+;
+;	ld a, 127
+;	sub l
+;	ld l, a
+;	ld a, 0
+;	sbc h
+;	ld h, a
+;	jr @+store_centre
+;
+;@player_x_positive:
+;	ld d, a
+;	call multiply.u8.u8
+;
+;	add hl, hl
+;	ld l, h
+;	ld h, 0
+;
+;	ld a, 127
+;	add a, l
+;	ld l, a
+;	adc h
+;	sub l
+;	ld h, a
+;
+;@store_centre:
+;	push hl
+;
+;	exx
+
 ; Adds the 8-bit unsigned value in the register in the operand to DE. Clobbers A.
 addde: MACRO
 	ld a, e
@@ -20,11 +67,6 @@ subde: MACRO
 	ld d, a
 	ENDM
 
-exit_segment: MACRO
-	pop de
-	ret
-	ENDM
-
 fill_to: MACRO
 	ld (hl), \0
 	inc h
@@ -33,80 +75,33 @@ fill_to: MACRO
 	ld l, \0
 	ENDM
 
-road.span:
-	push de			; Preserve E.
-	ex de, hl		; Switch to: B = road width, C = line width, D = offset, E = 1/z.
-
-	; Get HL = start of line.
-	call spans.getaddress
-
-	; Pick a grass colour, dynamically reprogram due to lack of registers.
-	ld a, d
+;
+; road.span2d
+;
+;	Input:
+;		HL = pointer to span buffer.
+;		DE = centre of road.
+;		B = half road width.
+;		C = half line width.
+;		A = y offset.
+;
+;	Output:
+;		H = pointer within colour portion of span buffer.
+;
+;	Clobbers:
+;		A, L, IXl.
+;
+road.span2d:
+	; Get a grass colour into IXl.
 	rla
-
 	ld ixl, grass_colour1
 	jr nc, @+keep_grass_colour1
 	ld ixl, grass_colour2
 	@keep_grass_colour1:
 
-	; Calculate road centre into DE
-
-	; TODO: make this the responsibility of the caller to avoid
-	; tripping over myself with registers maybe?
-	ld a, e
-
-	exx
-
-	ld e, a
-	ld a, (player.x)
-	or a
-	jp p, @+player_x_positive
-
-	neg
-	ld d, a
-	call multiply.u8.u8
-
-	add hl, hl
-	ld l, h
-	ld h, 0
-
-	ld a, 127
-	sub l
-	ld l, a
-	ld a, 0
-	sbc h
-	ld h, a
-	jr @+store_centre
-
-@player_x_positive:
-	ld d, a
-	call multiply.u8.u8
-
-	add hl, hl
-	ld l, h
-	ld h, 0
-
-	ld a, 127
-	add a, l
-	ld l, a
-	adc h
-	sub l
-	ld h, a
-
-@store_centre:
-	push hl
-
-	exx
-
-	; Preserve d for a moment.
-	ld a, d
-
-	; Get road centre.
-	pop de
-
 	; Consider whether to draw a centre line.
-	and 64
-	jp z, @+draw_without_line		; No line; this is a gap.
+	rla
+	jp c, @+draw_without_line		; No line; this is a gap.
 
 	ld a, c
 	or a
@@ -226,19 +221,16 @@ road.span:
 	inc h
 	ld a, ixl
 	ld (hl), a
-
-	exit_segment
+	ret
 
 @complete_with_line:
 	ld (hl), 0xff
 	inc h
 	ld (hl), line_colour
-
-	exit_segment
+	ret
 
 @complete_with_road:
 	ld (hl), 0xff
 	inc h
 	ld (hl), road_colour
-
-	exit_segment
+	ret

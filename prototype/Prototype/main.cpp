@@ -149,13 +149,13 @@ private:
 
 		printf("top_y: EQU %d\n", top_y);
 
-		const auto dump_table = [&](const char *name, const auto *table) {
+		const auto dump_table = [&](const char *name, const auto begin, const auto end) {
 			printf("%s:", name);
 
 			int c = 0;
-			for(int y = top_y; y < 192; y++) {
+			for(auto it = begin; it != end; it++) {
 				if(!(c & 15)) {
-					if constexpr (sizeof(table[0]) == 1) {
+					if constexpr (sizeof(*begin) == 1) {
 						printf("\n\tdb ");
 					} else {
 						printf("\n\tdw ");
@@ -165,14 +165,20 @@ private:
 				}
 				++c;
 
-				printf("%d", table[y]);
+				printf("%d", *it);
 			}
 			printf("\n");
 		};
-		dump_table("road_widths", road_widths);
-		dump_table("line_widths", line_widths);
-		dump_table("offsets", offsets);
-		dump_table("one_over_z", one_over_distances);
+
+
+		std::vector<uint8_t> combo_table;
+		for(int y = top_y; y < 192; y++) {
+			combo_table.push_back(road_widths[y]);
+			combo_table.push_back(line_widths[y]);
+			combo_table.push_back(offsets[y]);
+		}
+		dump_table("segments", combo_table.begin(), combo_table.end());
+		dump_table("one_over_z", std::begin(one_over_distances) + top_y, std::end(one_over_distances));
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) {

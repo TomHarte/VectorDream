@@ -36,44 +36,42 @@ road.draw:
 	;
 	; Draw road, per tables.
 	;
-	ld e, 0
+	ld de, 0
 @road.fill:
-	ld d, 0
 
-	; B = road width.
-	ld hl, road_widths
-	add hl, de
-	ld b, (hl)
-
-	; C = line width.
-	ld hl, line_widths
-	add hl, de
-	ld c, (hl)
-
-	; A = 1/z, temporarily.
-	ld hl, one_over_zs
-	add hl, de
-	ld a, (hl)
-
-	; H = offset from table.
-	ld hl, offsets
-	add hl, de
-	ld h, (hl)
-
-	; Shuffle A into L.
-	ld l, a
-
-	; Add current player position to offset.
-	ld a, (player.y+1)
-	add h
-	ld h, a
-
-	; A = y.
+	; HL = target span address.
 	ld a, e
 	add top_y
-	call road.span
+	call spans.getaddress
+	push hl
+
+	; B = half road width, C = half line width, A = offset.
+	ld hl, segments
+	add hl, de
+	add hl, de
+	add hl, de
+
+	ld b, (hl)
+	inc hl
+	ld c, (hl)
+	inc hl
+	ld a, (player.y + 1)
+	add (hl)
+
+	; Now preserve DE for next loop around
+	pop hl
+	push de
+
+	; Set DE = centre.
+	;
+	; TODO: calculate properly. Outside the loop. But load here.
+	ld de, 127
+
+	; Draw 2d element.
+	call road.span2d
 
 	; Increment E and check for having hit line 192.
+	pop de
 	inc e
 	ld a, e
 	cp 192 - top_y
