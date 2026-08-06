@@ -1,49 +1,3 @@
-;
-; TODO: put code that achieves similar effect as below into road.z80s.
-;
-
-;	exx
-;
-;	ld e, a
-;	ld a, (player.x)
-;	or a
-;	jp p, @+player_x_positive
-;
-;	neg
-;	ld d, a
-;	call multiply.u8.u8
-;
-;	add hl, hl
-;	ld l, h
-;	ld h, 0
-;
-;	ld a, 127
-;	sub l
-;	ld l, a
-;	ld a, 0
-;	sbc h
-;	ld h, a
-;	jr @+store_centre
-;
-;@player_x_positive:
-;	ld d, a
-;	call multiply.u8.u8
-;
-;	add hl, hl
-;	ld l, h
-;	ld h, 0
-;
-;	ld a, 127
-;	add a, l
-;	ld l, a
-;	adc h
-;	sub l
-;	ld h, a
-;
-;@store_centre:
-;	push hl
-;
-;	exx
 
 ; Adds the 8-bit unsigned value in the register in the operand to DE. Clobbers A.
 addde: MACRO
@@ -111,7 +65,7 @@ road.span:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
 	subde b
 	jp m, @+road_starts_off_left
-	jp nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
+	jr nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
 	ld a, ixl		; grass colour
 	fill_to e, a
@@ -122,28 +76,28 @@ road.span:
 
 	ld a, e
 	add d
-	jp c, @+complete_with_road
+	jr c, @+complete_with_road
 
 @from_road_8bit:
 	fill_to a, road_colour
 
 	add c
-	jp c, @+complete_with_line
+	jr c, @+complete_with_line
 	add c
-	jp c, @+complete_with_line
+	jr c, @+complete_with_line
 	fill_to a, line_colour
 
 	add d
-	jp c, @+complete_with_road
+	jr c, @+complete_with_road
 	fill_to a, road_colour
-	jp @+complete_with_grass
+	jr @+complete_with_grass
 
 @road_starts_off_left:
 	; Road started off left of display; test position of start of line.
 	addde b
 	subde c
 	jp m, @+line_starts_off_left
-	jp nz, @+complete_with_road	; Road was off-screen to the left, line was off-screen to the right. So all road.
+	jr nz, @+complete_with_road	; Road was off-screen to the left, line was off-screen to the right. So all road.
 
 	; Left edge of line was on-screen so fill road to it and proceed in 8-bit from there.
 	ld a, b
@@ -151,61 +105,13 @@ road.span:
 	ld d, a			; D = road width - line width.
 
 	ld a, e
-	jp @-from_road_8bit
-
-@line_starts_off_left:
-	; Test right-edge of line.
-	addde c
-	addde c
-	jp m, @+right_starts_off_left
-	jp nz, @+complete_with_line
-
-	; Right edge of line ends within display. Go 8-bit from there.
-	ld a, b
-	sub c
-	ld c, a
-
-	ld a, e
-	fill_to a, line_colour
-	add c
-	jp c, @+complete_with_road
-	fill_to a, road_colour
-	jp @+complete_with_grass
+	jr @-from_road_8bit
 
 @right_starts_off_left:
 	; Test right-edge of road.
 	subde c
 	addde b
 
-	jp m, @+complete_with_grass
-	jp nz, @+complete_with_road
-
-	fill_to e, road_colour
-	jp @+complete_with_grass
-
-@draw_without_line:
-	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
-	subde b
-	jp m, @+starts_off_left
-	jr nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
-
-	ld a, ixl			; grass colour
-	fill_to e, a
-
-	; Add twice road width to get to the other side.
-	ld a, e
-	add b
-	jr c, @+complete_with_road
-	add b
-	jr c, @+complete_with_road
-
-	fill_to a, road_colour
-	jr @+complete_with_grass
-
-@starts_off_left:
-	; Find right edge of road.
-	addde b
-	addde b
 	jp m, @+complete_with_grass
 	jr nz, @+complete_with_road
 
@@ -234,3 +140,51 @@ road.span:
 	inc h
 	ld (hl), road_colour
 	ret
+
+@line_starts_off_left:
+	; Test right-edge of line.
+	addde c
+	addde c
+	jp m, @-right_starts_off_left
+	jr nz, @-complete_with_line
+
+	; Right edge of line ends within display. Go 8-bit from there.
+	ld a, b
+	sub c
+	ld c, a
+
+	ld a, e
+	fill_to a, line_colour
+	add c
+	jr c, @-complete_with_road
+	fill_to a, road_colour
+	jr @-complete_with_grass
+
+@draw_without_line:
+	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
+	subde b
+	jp m, @+starts_off_left
+	jr nz, @-complete_with_grass	; If the left edge is off screen to the right, all is grass.
+
+	ld a, ixl			; grass colour
+	fill_to e, a
+
+	; Add twice road width to get to the other side.
+	ld a, e
+	add b
+	jr c, @-complete_with_road
+	add b
+	jr c, @-complete_with_road
+
+	fill_to a, road_colour
+	jr @-complete_with_grass
+
+@starts_off_left:
+	; Find right edge of road.
+	addde b
+	addde b
+	jp m, @-complete_with_grass
+	jr nz, @-complete_with_road
+
+	fill_to e, road_colour
+	jr @-complete_with_grass
