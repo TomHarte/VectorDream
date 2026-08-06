@@ -89,9 +89,9 @@ fill_to: MACRO
 ;		H = pointer within colour portion of span buffer.
 ;
 ;	Clobbers:
-;		A, L, IXl.
+;		A, DE, L, IXl.
 ;
-road.span2d:
+road.span:
 	; Get a grass colour into IXl.
 	rla
 	ld ixl, grass_colour1
@@ -101,7 +101,7 @@ road.span2d:
 
 	; Consider whether to draw a centre line.
 	rla
-	jp c, @+draw_without_line		; No line; this is a gap.
+	jp nc, @+draw_without_line		; No line; this is a gap.
 
 	ld a, c
 	or a

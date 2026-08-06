@@ -111,24 +111,24 @@ include "road_tables.z80s"
 	jr c, @+no_right
 
 	ld b, a
-	ld a, (player.x)
+	ld a, (player.x + 1)
 	sub 5
 	jp po, @+store_a
 	ld a, -128
 	@store_a:
-	ld (player.x), a
+	ld (player.x + 1), a
 	ld a, b
 
 	@no_right:
 	rra
 	jr c, @+no_left
 
-	ld a, (player.x)
+	ld a, (player.x + 1)
 	add 5
 	jp po, @+store_a
 	ld a, 127
 	@store_a:
-	ld (player.x), a
+	ld (player.x + 1), a
 
 	@no_left:
 

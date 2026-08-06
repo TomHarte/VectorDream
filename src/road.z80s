@@ -36,7 +36,7 @@ road.draw:
 	; TODO: include some curvature.
 	;
 
-	ld a, (player.x)	; TODO: + 1
+	ld a, (player.x + 1)
 	or a
 	jp p, @+player_x_positive
 
@@ -44,7 +44,7 @@ road.draw:
 	calculate_offset one_over_z_0
 	push hl					; top of stack = horizontal screen position of line 0.
 
-	ld a, (player.x)
+	ld a, (player.x + 1)
 	neg
 	calculate_offset one_over_z_127
 	pop de					; HL = horizontal screen position at line 128;
@@ -83,7 +83,7 @@ road.draw:
 
 	push hl					; top of stack = horizontal screen position of line 0.
 
-	ld a, (player.x)
+	ld a, (player.x + 1)
 	calculate_offset one_over_z_127
 
 	pop de					; HL = horizontal screen position at line 128;
@@ -195,7 +195,7 @@ road.draw:
 	inc iy
 
 	; Draw 2d element.
-	call road.span2d
+	call road.span
 
 	; Increment E and check for having hit line 192.
 	pop de
