@@ -30,7 +30,7 @@ VIDEOPAGE:	EQU 6 * 2
 ; Install various tables first, because they're all 256-byte aligned and this
 ; causes them to be tightly-packed.
 ;
-include "multiply_tables.z80s"
+include "multiply/tables.z80s"
 include "span_buffers.z80s"
 include "road_tables.z80s"
 
@@ -205,7 +205,7 @@ ALIGN 256
 
 	ret
 
-include "multiply.z80s"
+include "multiply/multiply.z80s"
 include "road.z80s"
 
 player.x: dw 16
