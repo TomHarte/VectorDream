@@ -1,3 +1,11 @@
+;
+; Draws a classic-style 2.5d road into a span buffer.
+;
+; Exported symbols:
+;
+;	* `road.draw` which draws the road.
+;
+
 calculate_offset: MACRO
 	ld d, \0
 	ld e, a
@@ -27,6 +35,20 @@ calculate_interpolator: MACRO
 
 screen_centre: EQU 127
 
+;
+; road.draw
+;
+; Draws the current road based on its level of curvature and upon the global variables player.[x/y].
+;
+;	Input:
+;		global variables player.x, player.y and the current curvature state.
+;
+;	Output:
+;		none directly; populates the span buffer.
+;
+;	Clobbers:
+;		A, BC, DE, HL, IY, IXl.
+;
 road.draw:
 
 	;
@@ -205,3 +227,16 @@ road.draw:
 	ret
 
 include "road_spans.z80s"
+
+
+road.setup:
+	;
+	; Zero out the curvature table.
+	;
+	ld hl, road.curvature
+	ld (hl), 0
+	ld de, road.curvature + 1
+	ld bc, (192 - top_y) * 2
+	ldir
+
+	ret

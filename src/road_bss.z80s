@@ -3,3 +3,4 @@
 ;
 
 road.centres: ds (192 - top_y) * 2
+road.curvature: ds (192 - top_y) * 2

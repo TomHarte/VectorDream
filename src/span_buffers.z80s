@@ -1,5 +1,5 @@
 ;
-; This code managed a double-buffered 'span buffer', i.e. a buffer that stores continuous solid horiontal spans of colour.
+; Manages a double-buffered 'span buffer', i.e. a buffer that stores continuous solid horiontal spans of colour.
 ;
 ; It can do differential drawing — comparing a new buffer to an old one and outputting only the differences.
 ;

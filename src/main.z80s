@@ -32,6 +32,7 @@ VIDEOPAGE:	EQU 6 * 2
 ;
 include "multiply_tables.z80s"
 include "span_buffers.z80s"
+; TODO: a 257-byte interrupt vector table, if required, would best fit here.
 include "road_tables.z80s"
 
 	AUTOEXEC
@@ -66,6 +67,7 @@ include "road_tables.z80s"
 
 	; Seed display.
 	call spans.setup
+	call road.setup
 
 	; Establish palette.
 	ld c, CLUT

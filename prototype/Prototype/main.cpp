@@ -178,6 +178,7 @@ private:
 			combo_table.push_back(offsets[y]);
 		}
 		dump_table("segments", combo_table.begin(), combo_table.end());
+		dump_table("curve_offsets", std::begin(curve_offset) + top_y, std::end(curve_offset));
 
 		printf("one_over_z_0: EQU %d\n", one_over_distances[top_y]);
 		printf("one_over_z_127: EQU %d\n", one_over_distances[top_y+128]);
