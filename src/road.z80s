@@ -47,7 +47,7 @@ screen_centre: EQU 127
 ;		none directly; populates the span buffer.
 ;
 ;	Clobbers:
-;		A, BC, DE, HL, IY, IXl.
+;		A, BC, DE, HL, IY, IX.
 ;
 road.draw:
 
@@ -78,8 +78,10 @@ road.draw:
 	or a
 	sbc hl, de
 
+	; HL:A = starting span coordinate in 16:8 form.
+	; BC:IXl = per-line delta.
 	ld de, road.centres		; DE = write pointer.
-	ld iyl, 192 - top_y		; IYl = loop counter.
+	ld ixh, 192 - top_y		; IYl = loop counter.
 
 @write_centre:
 	ex de, hl
@@ -92,11 +94,11 @@ road.draw:
 	sub ixl
 	sbc hl, bc
 
-	dec iyl
+	dec ixh
 	jr nz, @-write_centre
 
 
-	jr @+fill_sky
+	jr @+apply_curvature
 
 @player_x_positive:
 	calculate_offset one_over_z_0
@@ -116,8 +118,10 @@ road.draw:
 	ld de, screen_centre
 	add hl, de
 
-	ld de, road.centres	; DE = write pointer.
-	ld iyl, 192 - top_y		; IYl = loop counter.
+	; HL:A = starting span coordinate in 16:8 form.
+	; BC:IXl = per-line delta.
+	ld de, road.centres		; DE = write pointer.
+	ld ixh, 192 - top_y		; IYl = loop counter.
 
 @write_centre:
 	ex de, hl
@@ -130,8 +134,55 @@ road.draw:
 	add a, ixl
 	adc hl, bc
 
-	dec iyl
+	dec ixh
 	jr nz, @-write_centre
+
+
+@apply_curvature:
+	ld hl, road.centres
+	ld de, road.curvature
+	ld b, 192 - top_y
+
+	; Below currently assumes all curvature is positive.
+
+@apply:
+
+	; Load only high byte of accumulated curvature, test sign.
+	inc de
+	ld a, (de)
+	or a
+	jp p, @+positive
+
+	; Add to low byte
+	add (hl)
+	ld (hl), a
+	inc hl
+
+	jr c, @+advance
+
+	ld a, 0xff
+	add (hl)
+	ld (hl), a
+	jr @+advance
+
+@positive:
+	; Add to low byte of road centre and propagate carry.
+	add (hl)
+	ld (hl), a
+	inc hl
+
+	jr nc, @+no_carry
+	inc (hl)
+
+@no_carry:
+@advance:
+	; Advance.
+	inc de
+	inc hl
+
+	; Repeat.
+	dec b
+	jr nz, @-apply
 
 
 @fill_sky:
@@ -228,7 +279,6 @@ road.draw:
 
 include "road_spans.z80s"
 
-
 road.setup:
 	;
 	; Zero out the curvature table.
@@ -238,5 +288,84 @@ road.setup:
 	ld de, road.curvature + 1
 	ld bc, (192 - top_y) * 2
 	ldir
+
+	ret
+
+;
+; Adjusts current road curvature by one notch rightward.
+;
+road.curve_right:
+	ld ix, curve_offsets
+	ld hl, road.curvature
+	ld a, 192 - top_y
+	ld b, 0
+
+@apply:
+	; BC = curvature delta.
+	ld c, (ix)
+
+	; DE = current curvature.
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+
+	; Add BC to DE.
+	ex de, hl
+	add hl, bc
+	ex de, hl
+
+	; Write out current curvature.
+	ld (hl), d
+	dec hl
+	ld (hl), e
+
+	; Advance pointers.
+	inc hl
+	inc hl
+	inc ix
+
+	; Repeat if necessary.
+	dec a
+	jr nz, @-apply
+
+	ret
+
+;
+; Adjusts current road curvature by one notch leftward.
+;
+road.curve_left:
+	ld ix, curve_offsets
+	ld hl, road.curvature
+	ld a, 192 - top_y
+	ld b, 0
+
+@apply:
+	; BC = curvature delta.
+	ld c, (ix)
+
+	; DE = current curvature.
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+
+	; Subtract BC from DE.
+	ex de, hl
+	or a
+	sbc hl, bc
+	ex de, hl
+
+	; Write out current curvature.
+	ld (hl), d
+	dec hl
+	ld (hl), e
+
+	; Advance pointers.
+	inc hl
+	inc hl
+	inc ix
+
+	; Repeat if necessary.
+	dec a
+	jr nz, @-apply
 
 	ret

@@ -134,6 +134,23 @@ include "road_tables.z80s"
 
 	@no_left:
 
+	; Read QW.
+	ld bc, 0xfbfe
+	in a, (c)
+	rra
+	jr c, @+no_q
+
+	call road.curve_left
+	jr @+no_w
+
+	@no_q:
+	rra
+	jr c, @+no_w
+	call road.curve_right
+
+	@no_w:
+
+	; Apply velocity.
 	ld hl, (player.yvelocity)
 	ex de, hl
 	ld hl, (player.y)
