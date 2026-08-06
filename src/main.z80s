@@ -32,7 +32,7 @@ VIDEOPAGE:	EQU 6 * 2
 ;
 include "multiply/tables.z80s"
 include "span_buffers.z80s"
-include "road_tables.z80s"
+include "road/tables.z80s"
 
 ;
 ; Although it is a shame that interrupt mode 2 has to be used, requiring this
@@ -206,7 +206,7 @@ ALIGN 256
 	ret
 
 include "multiply/multiply.z80s"
-include "road.z80s"
+include "road/road.z80s"
 
 player.x: dw 16
 
@@ -233,7 +233,7 @@ palette:
 	db %0011000		; sky
 	db %0000000		; screen border
 
-include "road_bss.z80s"
+include "road/bss.z80s"
 
 @frame_counter: db 0
 

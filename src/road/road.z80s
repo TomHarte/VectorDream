@@ -277,7 +277,7 @@ road.draw:
 
 	ret
 
-include "road_spans.z80s"
+include "spans.z80s"
 
 road.setup:
 	;
