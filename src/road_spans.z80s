@@ -29,6 +29,15 @@ fill_to: MACRO
 	ld l, \0
 	ENDM
 
+
+complete_with_grass: MACRO
+	ld (hl), 0xff
+	inc h
+	ld a, ixl
+	ld (hl), a
+	ret
+	ENDM
+
 ;
 ; road.span2d
 ;
@@ -90,7 +99,7 @@ road.span:
 	add d
 	jr c, @+complete_with_road
 	fill_to a, road_colour
-	jr @+complete_with_grass
+	complete_with_grass
 
 @road_starts_off_left:
 	; Road started off left of display; test position of start of line.
@@ -116,7 +125,7 @@ road.span:
 	jr nz, @+complete_with_road
 
 	fill_to e, road_colour
-	jr @+complete_with_grass
+	;complete_with_grass		[[fallthrough]]
 
 ;
 ; 'Complete'rs; draw a solid colour to the end of the display and stop.
@@ -158,7 +167,7 @@ road.span:
 	add c
 	jr c, @-complete_with_road
 	fill_to a, road_colour
-	jr @-complete_with_grass
+	complete_with_grass
 
 @draw_without_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
@@ -177,7 +186,7 @@ road.span:
 	jr c, @-complete_with_road
 
 	fill_to a, road_colour
-	jr @-complete_with_grass
+	complete_with_grass
 
 @starts_off_left:
 	; Find right edge of road.
@@ -187,4 +196,4 @@ road.span:
 	jr nz, @-complete_with_road
 
 	fill_to e, road_colour
-	jr @-complete_with_grass
+	complete_with_grass
