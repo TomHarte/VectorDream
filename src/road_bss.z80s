@@ -1,0 +1,5 @@
+;
+; Uninitialised data storage for the road drawer.
+;
+
+road.centres: ds (192 - top_y) * 2

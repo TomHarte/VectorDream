@@ -1,5 +1,3 @@
-@road.centres: ds (192 - top_y) * 2
-
 calculate_offset: MACRO
 	ld d, \0
 	ld e, a
@@ -58,7 +56,7 @@ road.draw:
 	or a
 	sbc hl, de
 
-	ld de, @-road.centres	; DE = write pointer.
+	ld de, road.centres		; DE = write pointer.
 	ld iyl, 192 - top_y		; IYl = loop counter.
 
 @write_centre:
@@ -96,7 +94,7 @@ road.draw:
 	ld de, screen_centre
 	add hl, de
 
-	ld de, @-road.centres	; DE = write pointer.
+	ld de, road.centres	; DE = write pointer.
 	ld iyl, 192 - top_y		; IYl = loop counter.
 
 @write_centre:
@@ -149,7 +147,7 @@ road.draw:
 	;
 	; Draw road, per tables.
 	;
-	ld iy, @-road.centres
+	ld iy, road.centres
 	ld de, 0
 	ld a, e
 @road.fill:
