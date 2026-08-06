@@ -32,12 +32,24 @@ VIDEOPAGE:	EQU 6 * 2
 ;
 include "multiply_tables.z80s"
 include "span_buffers.z80s"
+include "road_tables.z80s"
+
+;
+; Although it is a shame that interrupt mode 2 has to be used, requiring this
+; 257-byte table of palindromic interrupt vectors, I don't see a way to avoid
+; that. Both the span buffers and the frame buffer need to be pageable at once.
+; I cannot use address 0x38 on a frame-buffer page. If I were to use address 0x38
+; on a span buffer page I'd need to use it on _all_ span buffer pages, which
+; would necessitate a one-line gap every 32 lines.
+;
+; So the interrupt handler lives here, within the top 8kb of the frame-buffer page,
+; and necessitates interrupt mode 2 and this table.
+;
 ALIGN 256
 @interrupt_vector:
 	@interrupt_table: EQU FOR 257
 		db @interrupt / 256
 		NEXT @interrupt_table
-include "road_tables.z80s"
 
 	AUTOEXEC
 
@@ -226,7 +238,8 @@ include "road_bss.z80s"
 @frame_counter: db 0
 
 ;
-; Interrupt handler. Just counts them, for frame-rate compensation.
+; Interrupt handler. Just counts frames, for frame-rate compensation.
+; Probably TODO: add music player here.
 ;
 
 @interrupt: EQU 0xfefe
