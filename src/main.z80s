@@ -32,7 +32,11 @@ VIDEOPAGE:	EQU 6 * 2
 ;
 include "multiply_tables.z80s"
 include "span_buffers.z80s"
-; TODO: a 257-byte interrupt vector table, if required, would best fit here.
+ALIGN 256
+@interrupt_vector:
+	@interrupt_table: EQU FOR 257
+		db @interrupt / 256
+		NEXT @interrupt_table
 include "road_tables.z80s"
 
 	AUTOEXEC
@@ -83,10 +87,40 @@ include "road_tables.z80s"
 	ld a, 0
 	out (BORDER), a
 
+	; Enable frame-counting interrupts.
+	ld a, @interrupt_vector / 256
+	ld i, a
+	im 2
+	ei
+
 @game_loop:
 	call road.draw
 	call spans.swap
 
+	; Get B = number of frames since last did updates.
+@get_frame_counter:
+	di
+	ld a, (@+frame_counter)
+	ld b, a
+	xor a
+	ld (@+frame_counter), a
+	ei
+
+	; Spin until at least one frame has passed (this is optimistic!).
+	ld a, b
+	or a
+	jr z, @-get_frame_counter
+
+@update_loop:
+	push bc
+	call @update
+	pop bc
+	djnz @-update_loop
+
+	jr @-game_loop
+
+
+@update:
 	; Read joystick/67890.
 	ld bc, 0xeffe
 	in a, (c)
@@ -95,7 +129,7 @@ include "road_tables.z80s"
 	jr c, @+no_up
 
 	ld hl, (player.yvelocity)
-	ld de, 64
+	ld de, 32
 	add hl, de
 	ld (player.yvelocity), hl
 
@@ -104,7 +138,7 @@ include "road_tables.z80s"
 	jr c, @+no_down
 
 	ld hl, (player.yvelocity)
-	ld de, -64
+	ld de, -32
 	add hl, de
 	ld (player.yvelocity), hl
 
@@ -114,7 +148,7 @@ include "road_tables.z80s"
 
 	ld b, a
 	ld a, (player.x + 1)
-	sub 5
+	sub 2
 	jp po, @+store_a
 	ld a, -128
 	@store_a:
@@ -126,7 +160,7 @@ include "road_tables.z80s"
 	jr c, @+no_left
 
 	ld a, (player.x + 1)
-	add 5
+	add 2
 	jp po, @+store_a
 	ld a, 127
 	@store_a:
@@ -157,7 +191,7 @@ include "road_tables.z80s"
 	add hl, de
 	ld (player.y), hl
 
-	jr @-game_loop
+	ret
 
 include "multiply.z80s"
 include "road.z80s"
@@ -188,3 +222,29 @@ palette:
 	db %0000000		; screen border
 
 include "road_bss.z80s"
+
+@frame_counter: db 0
+
+;
+; Interrupt handler. Just counts them, for frame-rate compensation.
+;
+
+@interrupt: EQU 0xfefe
+
+ORG @interrupt
+DUMP VIDEOPAGE + 1, @interrupt & 16383
+
+@interrupt:
+	push af
+	in a, (STATUS)
+	and 8
+	jr nz, @+not_end_of_frame
+
+	ld a, (@-frame_counter)
+	inc a
+	ld (@-frame_counter), a
+
+@not_end_of_frame:
+	pop af
+	ei
+	reti
