@@ -146,7 +146,6 @@ spans.swap:
 	;
 
 @page_loop: EQU for 6
-page{@page_loop}:
 
 	; Page in proper source and destination buffers.
 	ld a, %00100000 + (@page_loop * 2)
