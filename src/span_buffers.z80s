@@ -486,8 +486,8 @@ spans.overprint:
 	ld e, l		; E = pointer to span that includes the start point.
 
 
-	ld a, c
-	cp 0xff
+	ld a, c		; There is no right span to split if C = 0xff.
+	inc a
 	jr z, @+no_right_split
 
 	cp (hl)
