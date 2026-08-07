@@ -511,7 +511,7 @@ spans.overprint:
 	ld l, c
 	ld (hl), d
 	dec h
-	ld (hl), c
+	ld (hl), a
 
 @no_right_split:
 
@@ -529,7 +529,7 @@ spans.overprint:
 	ld (hl), c
 	inc h
 	ld a, ixl
-	ld (hl), ixl
+	ld (hl), a
 	dec h
 
 	ret
