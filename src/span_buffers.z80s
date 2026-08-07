@@ -487,17 +487,14 @@ spans.overprint:
 
 
 	ld a, c
-;	cp 0xff
-;	jr @+just_rewrite_front	; TODO: avoid searching infinitely for the span that includes position 0xff. None of them do.
+	cp 0xff
+	jr z, @+no_right_split
 
 	cp (hl)
 	jr c, @+found_last
 @find_last:
 	ld l, (hl)
 	cp (hl)
-	jr z, @+no_right_split			; TODO: does this extra in-loop conditional to catch a special case help or hinder?
-									; It's supposed to avoid a small block of work as below, not sure whether the comparison
-									; work it adds is worth it. Omitting this check doesn't affect correctness.
 	jr nc, @-find_last
 
 @found_last:
@@ -519,7 +516,9 @@ spans.overprint:
 	dec h
 	ld (hl), a
 
-@no_right_split:
+@no_right_split:		; My instinct is that a jr z-type test per span within the find_last loop
+						; would cost more in total than the occasional saving from avoiding the code above.
+						; But possibly experiment with profiling that later.
 
 	;
 	; Split start span if necessary.

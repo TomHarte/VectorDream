@@ -114,7 +114,7 @@ ALIGN 256
 	ld a, iyl
 	call spans.getaddress
 	ld b, 23
-	ld c, 150
+	ld c, 0xff
 	ld d, 0x22
 	call spans.overprint
 	inc iyl
