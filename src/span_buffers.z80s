@@ -463,10 +463,11 @@ spans.getaddress:
 ;		HL = pointer to beginning of span list.
 ;
 ;	Output:
-;		TODO.
+;		The span buffer is modified.
 ;
 ;	Clobbers:
-;		A, DE.
+;		A, DE, L, IXl.
+;
 spans.overprint:
 
 	; Squirrel away D, due to register pressure.
