@@ -475,24 +475,24 @@ spans.overprint:
 
 	; Find first span that includes the start point.
 	ld a, b
-@find_first:
 	cp (hl)
 	jr c, @+found_first			; i.e. (HL) > start x
-
+@find_first:
 	ld l, (hl)
-	jr @-find_first
+	cp (hl)
+	jr nc, @-find_first
 
 @found_first:
 	ld e, l		; E = pointer to span that includes the start point.
 
 
 	ld a, c
-@find_last:
 	cp (hl)
 	jr c, @+found_last
-
+@find_last:
 	ld l, (hl)
-	jr @-find_last
+	cp (hl)
+	jr nc, @-find_last
 
 @found_last:
 				; L = pointer to span that includes the end point.
