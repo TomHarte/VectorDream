@@ -450,3 +450,101 @@ spans.getaddress:
 	ld l, 0
 
 	ret
+
+;
+;	spans.overprint
+;
+;	Adds a new span to the buffer, visually overwriting what was there before.
+;
+;	Input:
+; 		B = start x.
+;		C = end x.
+;		D = colour.
+;		HL = pointer to beginning of span list.
+;
+;	Output:
+;		H = (original H) + 1.
+;
+;	Clobbers:
+;		A, DE, L, IXl.
+;
+spans.overprint:
+
+	; Squirrel away D, due to register pressure.
+	ld ixl, d
+
+	; Find first span that includes the start point.
+	ld a, b
+	cp (hl)
+	jr c, @+found_first			; i.e. (HL) > start x
+@find_first:
+	ld l, (hl)
+	cp (hl)
+	jr nc, @-find_first
+
+@found_first:
+	ld e, l		; E = pointer to span that includes the start point.
+
+
+	ld a, c		; There is no right span to split if C = 0xff.
+	inc a
+	jr z, @+no_right_split
+
+	cp (hl)
+	jr c, @+found_last
+@find_last:
+	ld l, (hl)
+	cp (hl)
+	jr nc, @-find_last
+
+@found_last:
+				; L = pointer to span that includes the end point.
+
+	;
+	; Split end span if necessary.
+	;
+
+	; Get original end point and colour.
+	ld a, (hl)
+	inc h
+	ld d, (hl)		; A = original endpoint; D = original colour.
+
+	; Invent a new span from where the one about to be inserted ends
+	; through until where the old one ends.
+	ld l, c
+	ld (hl), d
+	dec h
+	ld (hl), a
+
+@no_right_split:		; My instinct is that a jr z-type test per span within the find_last loop
+						; would cost more in total than the occasional saving from avoiding the code above.
+						; But possibly experiment with profiling that later.
+
+	;
+	; Split start span if necessary.
+	; 
+	ld l, e
+
+	ld a, e
+	cp b
+	jr z, @+rewrite_start
+
+	; Split is necessary.
+	ld (hl), b
+	ld l, b
+	ld (hl), c
+	inc h
+	ld a, ixl
+	ld (hl), a
+
+	ret
+
+	; Start span already started exactly where the new one does.
+	; So just hijack it.
+@rewrite_start:
+	ld (hl), c
+	ld a, ixl
+	inc h
+	ld (hl), a
+
+	ret
