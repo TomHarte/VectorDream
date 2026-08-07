@@ -109,12 +109,17 @@ ALIGN 256
 	call road.draw
 
 	; Experiment: add a single black line across a low portion of the display.
-	ld a, 64
+	ld iyl, 64
+@rectangle_loop:
+	ld a, iyl
 	call spans.getaddress
 	ld b, 38
-	ld c, 170
-	ld d, 0x00
+	ld c, 150
+	ld d, 0x22
 	call spans.overprint
+	inc iyl
+	jp po, @-rectangle_loop
+
 
 	call spans.swap
 
