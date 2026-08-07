@@ -463,7 +463,7 @@ spans.getaddress:
 ;		HL = pointer to beginning of span list.
 ;
 ;	Output:
-;		The span buffer is modified.
+;		H = (original H) + 1.
 ;
 ;	Clobbers:
 ;		A, DE, L, IXl.
@@ -487,11 +487,17 @@ spans.overprint:
 
 
 	ld a, c
+;	cp 0xff
+;	jr @+just_rewrite_front	; TODO: avoid searching infinitely for the span that includes position 0xff. None of them do.
+
 	cp (hl)
 	jr c, @+found_last
 @find_last:
 	ld l, (hl)
 	cp (hl)
+	jr z, @+no_right_split			; TODO: does this extra in-loop conditional to catch a special case help or hinder?
+									; It's supposed to avoid a small block of work as below, not sure whether the comparison
+									; work it adds is worth it. Omitting this check doesn't affect correctness.
 	jr nc, @-find_last
 
 @found_last:
@@ -500,7 +506,6 @@ spans.overprint:
 	;
 	; Split end span if necessary.
 	;
-	jr z, @+no_right_split
 
 	; Get original end point and colour.
 	ld a, (hl)
@@ -532,7 +537,6 @@ spans.overprint:
 	inc h
 	ld a, ixl
 	ld (hl), a
-	dec h
 
 	ret
 
@@ -543,6 +547,5 @@ spans.overprint:
 	ld a, ixl
 	inc h
 	ld (hl), a
-	dec h
 
 	ret
