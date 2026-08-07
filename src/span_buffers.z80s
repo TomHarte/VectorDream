@@ -519,7 +519,8 @@ spans.overprint:
 	; Split start span if necessary.
 	; 
 	ld l, e
-	ld a, (hl)
+
+	ld a, e
 	cp b
 	jr z, @+rewrite_start
 

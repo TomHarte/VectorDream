@@ -113,7 +113,7 @@ ALIGN 256
 @rectangle_loop:
 	ld a, iyl
 	call spans.getaddress
-	ld b, 38
+	ld b, 23
 	ld c, 150
 	ld d, 0x22
 	call spans.overprint
