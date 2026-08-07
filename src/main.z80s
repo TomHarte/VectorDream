@@ -107,6 +107,15 @@ ALIGN 256
 
 @game_loop:
 	call road.draw
+
+	; Experiment: add a single black line across a low portion of the display.
+	ld a, 64
+	call spans.getaddress
+	ld b, 38
+	ld c, 170
+	ld d, 0x00
+	call spans.overprint
+
 	call spans.swap
 
 	; Get B = number of frames since last did updates.
@@ -260,7 +269,7 @@ include "multiply/multiply.z80s"
 include "road/road.z80s"
 
 curvature: dw 0
-player.x: dw 0
+player.x: dw 16 * 256
 player.xvelocity: dw 0
 
 player.y: dw 0

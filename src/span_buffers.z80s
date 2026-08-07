@@ -450,3 +450,97 @@ spans.getaddress:
 	ld l, 0
 
 	ret
+
+;
+;	spans.overprint
+;
+;	Adds a new span to the buffer, visually overwriting what was there before.
+;
+;	Input:
+; 		B = start x.
+;		C = end x.
+;		D = colour.
+;		HL = pointer to beginning of span list.
+;
+;	Output:
+;		TODO.
+;
+;	Clobbers:
+;		A, DE.
+spans.overprint:
+
+	; Squirrel away D, due to register pressure.
+	ld ixl, d
+
+	; Find first span that includes the start point.
+	ld a, b
+@find_first:
+	cp (hl)
+	jr c, @+found_first			; i.e. (HL) > start x
+
+	ld l, (hl)
+	jr @-find_first
+
+@found_first:
+	ld e, l		; E = pointer to span that includes the start point.
+
+
+	ld a, c
+@find_last:
+	cp (hl)
+	jr c, @+found_last
+
+	ld l, (hl)
+	jr @-find_last
+
+@found_last:
+				; L = pointer to span that includes the end point.
+
+	;
+	; Split end span if necessary.
+	;
+	jr z, @+no_right_split
+
+	; Get original end point and colour.
+	ld a, (hl)
+	inc h
+	ld d, (hl)		; A = original endpoint; D = original colour.
+
+	; Invent a new span from where the one about to be inserted ends
+	; through until where the old one ends.
+	ld l, c
+	ld (hl), d
+	dec h
+	ld (hl), c
+
+@no_right_split:
+
+	;
+	; Split start span if necessary.
+	; 
+	ld l, e
+	ld a, (hl)
+	cp b
+	jr z, @+rewrite_start
+
+	; Split is necessary.
+	ld (hl), b
+	ld l, b
+	ld (hl), c
+	inc h
+	ld a, ixl
+	ld (hl), ixl
+	dec h
+
+	ret
+
+	; Start span already started exactly where the new one does.
+	; So just hijack it.
+@rewrite_start:
+	ld (hl), c
+	ld a, ixl
+	inc h
+	ld (hl), a
+	dec h
+
+	ret

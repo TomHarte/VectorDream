@@ -34,6 +34,7 @@ calculate_interpolator: MACRO
 	ENDM
 
 screen_centre: EQU 127
+final_line: EQU 192
 
 ;
 ; road.draw
@@ -80,8 +81,8 @@ road.draw:
 
 	; HL:A = starting span coordinate in 16:8 form.
 	; BC:IXl = per-line delta.
-	ld de, road.centres		; DE = write pointer.
-	ld ixh, 192 - top_y		; IYl = loop counter.
+	ld de, road.centres				; DE = write pointer.
+	ld ixh, final_line - top_y		; IYl = loop counter.
 
 @write_centre:
 	ex de, hl
@@ -120,8 +121,8 @@ road.draw:
 
 	; HL:A = starting span coordinate in 16:8 form.
 	; BC:IXl = per-line delta.
-	ld de, road.centres		; DE = write pointer.
-	ld ixh, 192 - top_y		; IYl = loop counter.
+	ld de, road.centres				; DE = write pointer.
+	ld ixh, final_line - top_y		; IYl = loop counter.
 
 @write_centre:
 	ex de, hl
@@ -141,7 +142,7 @@ road.draw:
 @apply_curvature:
 	ld hl, road.centres
 	ld de, road.curvature
-	ld b, 192 - top_y
+	ld b, final_line - top_y
 
 	; Below currently assumes all curvature is positive.
 
@@ -268,11 +269,11 @@ road.draw:
 	; Draw 2d element.
 	call road.span
 
-	; Increment E and check for having hit line 192.
+	; Increment E and check for having hit the final line.
 	pop de
 	inc e
 	ld a, e
-	cp 192 - top_y
+	cp final_line - top_y
 	jr nz, @-road.fill
 
 	ret
@@ -286,7 +287,7 @@ road.setup:
 	ld hl, road.curvature
 	ld (hl), 0
 	ld de, road.curvature + 1
-	ld bc, (192 - top_y) * 2
+	ld bc, (final_line - top_y) * 2
 	ldir
 
 	ret
@@ -297,7 +298,7 @@ road.setup:
 road.curve_right:
 	ld ix, curve_offsets
 	ld hl, road.curvature
-	ld a, 192 - top_y
+	ld a, final_line - top_y
 	ld b, 0
 
 @apply:
@@ -336,7 +337,7 @@ road.curve_right:
 road.curve_left:
 	ld ix, curve_offsets
 	ld hl, road.curvature
-	ld a, 192 - top_y
+	ld a, final_line - top_y
 	ld b, 0
 
 @apply:
