@@ -141,7 +141,7 @@ ALIGN 256
 	jr c, @+no_up
 
 	ld hl, (player.yvelocity)
-	ld de, 32
+	ld de, 8
 	add hl, de
 	ld (player.yvelocity), hl
 
@@ -150,7 +150,7 @@ ALIGN 256
 	jr c, @+no_down
 
 	ld hl, (player.yvelocity)
-	ld de, -32
+	ld de, -8
 	add hl, de
 	ld (player.yvelocity), hl
 
@@ -158,25 +158,15 @@ ALIGN 256
 	rra 
 	jr c, @+no_right
 
-	ld b, a
-	ld a, (player.x + 1)
-	sub 2
-	jp po, @+store_a
-	ld a, -128
-	@store_a:
-	ld (player.x + 1), a
-	ld a, b
+	ld bc, -512
+	ld (player.xvelocity), bc
 
 	@no_right:
 	rra
 	jr c, @+no_left
 
-	ld a, (player.x + 1)
-	add 2
-	jp po, @+store_a
-	ld a, 127
-	@store_a:
-	ld (player.x + 1), a
+	ld bc, 512
+	ld (player.xvelocity), bc
 
 	@no_left:
 
@@ -187,6 +177,12 @@ ALIGN 256
 	jr c, @+no_q
 
 	call road.curve_left
+
+	ld hl, (curvature)
+	ld bc, -7
+	add hl, bc
+	ld (curvature), hl
+
 	jr @+no_w
 
 	@no_q:
@@ -194,21 +190,78 @@ ALIGN 256
 	jr c, @+no_w
 	call road.curve_right
 
+	ld hl, (curvature)
+	ld bc, 7
+	add hl, bc
+	ld (curvature), hl
+
 	@no_w:
 
-	; Apply velocity.
-	ld hl, (player.yvelocity)
-	ex de, hl
-	ld hl, (player.y)
-	add hl, de
-	ld (player.y), hl
+	;
+	; Y velocity.
+	;
+
+		; Apply
+		ld bc, (player.yvelocity)
+		ld hl, (player.y)
+		add hl, bc
+		ld (player.y), hl
+
+		ld a, (player.yvelocity + 1)
+		sra a
+
+		; Dampen a little.
+		ld b, 0x00
+		ld c, a
+		or a
+		jp p, @+positive
+		ld b, 0xff
+		@positive:
+
+		ld c, a
+		ld hl, (player.yvelocity)
+		or a
+		sbc hl, bc
+		ld (player.yvelocity), hl
+
+	;
+	; X velocity.
+	;
+		; Apply. With 8-bit arithmetic in order to catch overflow.
+		ld bc, (player.xvelocity)
+		ld hl, (player.x)
+		ld a, c
+		add l
+		ld l, a
+		ld a, b
+		adc h
+		ld h, a
+		jp po, @+no_overflow
+
+		or a
+		sbc hl, bc
+
+	@no_overflow:
+		ld (player.x), hl
+
+		; Dampen harshly.
+		ld hl, (player.xvelocity)
+		sra b
+		rr c
+		sra b
+		rr c
+		or a
+		sbc hl, bc
+		ld (player.xvelocity), hl
 
 	ret
 
 include "multiply/multiply.z80s"
 include "road/road.z80s"
 
-player.x: dw 16
+curvature: dw 0
+player.x: dw 0
+player.xvelocity: dw 0
 
 player.y: dw 0
 player.yvelocity: dw 0
