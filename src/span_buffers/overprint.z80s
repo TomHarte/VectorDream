@@ -37,7 +37,7 @@ spans.overprint:
 
 
 	ld a, c		; There is no right span to split if C = 0xff.
-	inc a
+	cp 0xff
 	jr z, @+no_right_split
 
 	cp (hl)

@@ -112,7 +112,7 @@ ALIGN 256
 
 	; New experiment: draw a trapezium. Advanced voodoo!
 	exx
-	ld hl, 30		; Right edge = from 0xfe, +512/256ths a line.
+	ld hl, 0xfe		; Right edge = from 0xfe, +512/256ths a line.
 	ld bc, 18
 	exx
 
@@ -122,19 +122,20 @@ ALIGN 256
 	ld d, 100		; Start at y = 100.
 	ld e, 170		; End at y = 170.
 
+	ld a, 0x45
 	call trapezium	; Draw.
 
 	; Experiment: add a single black line across a low portion of the display.
-;	ld iyl, 64
-;@rectangle_loop:
-;	ld a, iyl
-;	call spans.getaddress
-;	ld b, 23
-;	ld c, 0xff
-;	ld d, 0x22
-;	call spans.overprint
-;	inc iyl
-;	jp po, @-rectangle_loop
+; 	ld iyl, 64
+; @rectangle_loop:
+; 	ld a, iyl
+; 	call spans.getaddress
+; 	ld b, 23
+; 	ld c, 0xfe
+; 	ld d, 0x22
+; 	call spans.overprint
+; 	inc iyl
+; 	jp po, @-rectangle_loop
 
 
 	call spans.swap
