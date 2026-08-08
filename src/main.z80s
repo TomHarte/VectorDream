@@ -34,6 +34,7 @@ include "multiply/tables.z80s"
 include "span_buffers/span_buffers.z80s"
 include "road/tables.z80s"
 include "span_buffers/overprint.z80s"
+include "span_buffers/trapezium.z80s"
 
 ;
 ; Although it is a shame that interrupt mode 2 has to be used, requiring this
@@ -108,6 +109,20 @@ ALIGN 256
 
 @game_loop:
 	call road.draw
+
+	; New experiment: draw a trapezium. Advanced voodoo!
+	exx
+	ld hl, 30		; Right edge = from 0xfe, +512/256ths a line.
+	ld bc, 18
+	exx
+
+	ld hl, 14		; Left edge = from 4, -63/256ths a line.
+	ld bc, -63
+
+	ld d, 100		; Start at y = 100.
+	ld e, 170		; End at y = 170.
+
+	call trapezium	; Draw.
 
 	; Experiment: add a single black line across a low portion of the display.
 ;	ld iyl, 64
@@ -302,6 +317,7 @@ palette:
 	db %0000000		; screen border
 
 include "road/bss.z80s"
+include "span_buffers/bss.z80s"
 
 @frame_counter: db 0
 

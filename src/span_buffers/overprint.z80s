@@ -9,6 +9,9 @@
 ;		D = colour.
 ;		HL = pointer to beginning of span list.
 ;
+;	Requires:
+;		B < C.
+;
 ;	Output:
 ;		H = (original H) + 1.
 ;

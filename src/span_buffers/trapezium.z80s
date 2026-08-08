@@ -1,0 +1,181 @@
+;
+; trapezium
+;
+; Overprints a trapezium with x-axis-aligned top and bottom.
+;
+;	Input:
+;		HL = initial left edge (integral; 0–255 = on-screen, other values = off)
+;		BC = left edge delta — amount to add to the left edge per line (8.8 fixed point)
+;		HL' = initial right edge;
+;		BC' = initiel right edge delta;
+;		D = start y;
+;		E = end y;
+;		A = colour.
+;
+;	Requires:
+;		D < E.
+;
+;	Output:
+;		TODO.
+;
+;	Clobbers:
+;		IX, IY, A.
+;
+trapezium:
+
+	; Due to register pressure, I've chickened out and decided to use an
+	; intermediate buffer for start and endpoints. On the plus side, having a
+	; single "draw what is in the buffers" call that automatically does smart
+	; paging will be a benefit for things like triangle rasterisation in the future.
+
+
+	; Store colour in IXh, start y in IXl.
+	ld ixh, a
+	ld ixl, d
+
+	; Store height into IYh.
+	ld a, e
+	sub d
+	ld iyh, a
+
+	; Scan edges.
+	ld iyl, a
+	ld de, edge_list_left
+	call @+output_edge
+
+	ld iyl, iyh
+	exx
+	ld de, edge_list_right
+	call @+output_edge
+
+	; Clamp edges.
+	ld iyl, iyh
+	ld hl, edge_list_left
+	call @+clamp_edge
+
+	ld iyl, iyh
+	ld hl, edge_list_right
+	call @+clamp_edge
+
+	; Walk edges, overprinting where width is non-zero.
+	ld a, ixl
+	dec a
+	ld hl, edge_list_left
+	ld de, edge_list_right
+
+	push af
+
+@overprint_line:
+	ld a, (de)
+	inc de
+	inc de
+	ld b, (hl)
+	inc hl
+	inc hl
+	cp b
+	jr z, @+no_line
+	ld c, a					; B = left, C = right.
+
+	; TODO: it's very dumb to call spans.getaddress every line.
+	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
+
+	; Restore and increment screen Y.
+	pop af
+	inc a
+	push af
+
+	push de
+	push hl
+
+	call spans.getaddress	; HL = pointer to start of spans.
+	ld d, ixh				; D = colour.
+	call spans.overprint
+
+	pop hl
+	pop de
+
+@end_loop:
+	dec iyl
+	jr nz, @-overprint_line
+
+	pop af
+	ret
+
+@no_line:
+	pop af
+	inc a
+	push af
+	jr @-end_loop
+
+;
+; 
+;
+@output_edge:
+	; Set BC:IXl = delta.
+	ld ixh, c
+	ld c, b
+
+	ld a, b
+	rla				; carry = sign bit
+	sbc a, a		; a = a - a (- another bit, if sign was set)
+	ld b, a
+
+	; Set HL:A = left position.
+	xor a
+
+@output_line:
+	; HL:A += BC:IXl.
+	add a, ixh
+	adc hl, bc
+
+	; Write HL to (DE), incrementing the pointer.
+	;
+	; TODO: can I find the registers to clamp here? Would save substantial table space.
+	;
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+
+	; Test for end of loop.
+	dec iyl
+	jr nz, @-output_line
+
+	ret
+
+
+
+end_loop: MACRO
+	inc hl
+	inc hl
+	dec iyl
+	jr nz, test_edge
+	ret
+	ENDM
+;
+;
+;
+@clamp_edge:
+	ld bc, 0xff00
+
+test_edge:
+	inc hl
+	ld a, (hl)
+	or a
+	jr z, @+in_range
+	jp p, @+clamp_255
+
+	; Clamp to 0.
+	dec hl
+	ld (hl), c
+	end_loop
+
+@clamp_255:
+	dec hl
+	ld (hl), b
+
+@in_range:
+	end_loop
+
