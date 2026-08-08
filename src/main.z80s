@@ -31,8 +31,9 @@ VIDEOPAGE:	EQU 6 * 2
 ; causes them to be tightly-packed.
 ;
 include "multiply/tables.z80s"
-include "span_buffers.z80s"
+include "span_buffers/span_buffers.z80s"
 include "road/tables.z80s"
+include "span_buffers/overprint.z80s"
 
 ;
 ; Although it is a shame that interrupt mode 2 has to be used, requiring this
