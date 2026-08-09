@@ -15,6 +15,7 @@
 ;
 ;	Requires:
 ;		D < E.
+;		0 <= D, E < 192.
 ;		Edges do not cross.
 ;
 ;	Output:
