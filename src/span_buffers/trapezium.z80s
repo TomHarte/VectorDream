@@ -5,12 +5,12 @@
 ; the 'initial' left and right coordinates are for the _bottom_ of the trapezium.
 ;
 ;	Input:
-;		HL = initial left edge (integral; 0–255 = on-screen, other values = off)
+;		HL = position of left edge at high y (integral; 0–255 = on-screen, other values = off)
 ;		BC = left edge delta — amount to add to the left edge per line (8.8 fixed point)
-;		HL' = initial right edge;
-;		BC' = initiel right edge delta;
-;		D = start y;
-;		E = end y;
+;		HL' = position of right edge at low y;
+;		BC' = right edge delta;
+;		D = low y;
+;		E = high y;
 ;		A = colour.
 ;
 ;	Requires:
@@ -53,8 +53,8 @@ trapezium:
 
 	; Walk edges, overprinting where width is non-zero.
 	ld hl, edge_list_right
-	ld d, ixl
-	ld e, iyh				; Set D = current y; E = total lines.
+	ld a, ixl
+	ld iyl, a			; IYl = current screen position.
 
 @overprint_line:
 	ld a, (hl)
@@ -67,12 +67,11 @@ trapezium:
 	jr z, @+no_line
 
 	ld c, a				; B = left, C = right.
-	ld a, d				; A = screen y.
+	ld a, iyl			; A = screen y.
 
 	; TODO: it's very dumb to call spans.getaddress every line.
 	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
 
-	push de
 	push hl
 
 	call spans.getaddress	; HL = pointer to start of spans.
@@ -81,17 +80,16 @@ trapezium:
 	call spans.overprint
 
 	pop hl
-	pop de
 
 @no_line:
-	dec d
-	dec e
+	dec iyl
+	dec iyh
 	jr nz, @-overprint_line
 
 	ret
 
 ;
-; 
+; Input: DE = pointer to list, IYl = lines to write.
 ;
 @output_edge:
 	; Set IXh:BC = delta.
@@ -100,7 +98,7 @@ trapezium:
 	sbc a, a		; a = a - a (- another bit, if sign was set)
 	ld ixh, a
 
-	; Set HL:A = left position.
+	; Set A:HL = left position.
 	ld a, h
 	ld h, l
 	ld l, 0
