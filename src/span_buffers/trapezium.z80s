@@ -124,10 +124,6 @@ trapezium:
 	xor a
 
 @output_line:
-	; HL:A += BC:IXl.
-	add a, ixh
-	adc hl, bc
-
 	; Write HL to (DE), incrementing the pointer.
 	;
 	; TODO: can I find the registers to clamp here? Would save substantial table space.
@@ -138,6 +134,10 @@ trapezium:
 	ld (hl), d
 	inc hl
 	ex de, hl
+
+	; HL:A += BC:IXl.
+	add a, ixh
+	adc hl, bc
 
 	; Test for end of loop.
 	dec iyl
@@ -159,9 +159,9 @@ end_loop: MACRO
 ;
 @clamp_edge:
 	ld bc, 0xff00
+	inc hl
 
 test_edge:
-	inc hl
 	ld a, (hl)
 	or a
 	jr z, @+in_range
