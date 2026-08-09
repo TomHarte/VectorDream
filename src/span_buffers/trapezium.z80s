@@ -170,11 +170,13 @@ test_edge:
 	; Clamp to 0.
 	dec hl
 	ld (hl), c
+	inc hl
 	end_loop
 
 @clamp_255:
 	dec hl
 	ld (hl), b
+	inc hl
 
 @in_range:
 	end_loop
