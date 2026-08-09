@@ -51,15 +51,6 @@ trapezium:
 	ld de, edge_list_right
 	call @+output_edge
 
-	; Clamp edges.
-	ld iyl, iyh
-	ld hl, edge_list_left
-	call @+clamp_edge
-
-	ld iyl, iyh
-	ld hl, edge_list_right
-	call @+clamp_edge
-
 	; Walk edges, overprinting where width is non-zero.
 	ld hl, edge_list_left
 	ld de, edge_list_right
@@ -71,9 +62,7 @@ trapezium:
 @overprint_line:
 	ld a, (de)
 	inc de
-	inc de
 	ld b, (hl)
-	inc hl
 	inc hl
 	cp b
 	jr z, @+no_line
@@ -119,18 +108,32 @@ trapezium:
 	xor a
 
 @output_line:
-	; Write HL to (DE), incrementing the pointer.
-	;
-	; TODO: can I find the registers to clamp here? Would save substantial table space.
-	;
+	; Clamp and write HL to (DE), incrementing the pointer.
+	push af
 	ex de, hl
+	ld a, d
+	or a
+	jr z, @+write_literal
+	jp p, @+write_255
+
+	ld (hl), 0x00
+	inc hl
+	jr @+increment
+
+@write_255:
+	ld (hl), 0xff
+	inc hl
+	jr @+increment
+
+@write_literal:
 	ld (hl), e
 	inc hl
-	ld (hl), d
-	inc hl
+
+@increment:
 	ex de, hl
 
 	; HL:A += BC:IXh.
+	pop af
 	add a, ixh
 	adc hl, bc
 
@@ -139,40 +142,3 @@ trapezium:
 	jr nz, @-output_line
 
 	ret
-
-
-
-end_loop: MACRO
-	inc hl
-	inc hl
-	dec iyl
-	jr nz, test_edge
-	ret
-	ENDM
-;
-;
-;
-@clamp_edge:
-	ld bc, 0xff00
-	inc hl
-
-test_edge:
-	ld a, (hl)
-	or a
-	jr z, @+in_range
-	jp p, @+clamp_255
-
-	; Clamp to 0.
-	dec hl
-	ld (hl), c
-	inc hl
-	end_loop
-
-@clamp_255:
-	dec hl
-	ld (hl), b
-	inc hl
-
-@in_range:
-	end_loop
-

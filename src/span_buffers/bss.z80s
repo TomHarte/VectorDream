@@ -1,2 +1,2 @@
-edge_list_left:		ds 192 * 2
-edge_list_right:	ds 192 * 2
+edge_list_left:		ds 192
+edge_list_right:	ds 192
