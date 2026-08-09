@@ -89,7 +89,19 @@ trapezium:
 	ret
 
 ;
-; Input: DE = pointer to list, IYl = lines to write.
+; @output_edge
+;
+; Applies a per-line fractional delta to a 16-bit integral position,
+; clamps it into the range [0, 255] and writes out to an edge list.
+;
+; 	Input:
+;		DE = pointer to list.
+;		IYl = lines to write.
+;		HL = first position to write in 16:0.
+;		BC = per-line delta in 8:8.
+;
+;	Clobbers:
+;		A, IYl, HL, DE.
 ;
 @output_edge:
 	; Set IXh:BC = delta.
