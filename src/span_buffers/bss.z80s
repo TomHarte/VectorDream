@@ -1,3 +1,2 @@
-align 256
-edge_list_left:		ds 256 * 2
-edge_list_right:	ds 256 * 2
+edge_list_left:		ds 192 * 2
+edge_list_right:	ds 192 * 2
