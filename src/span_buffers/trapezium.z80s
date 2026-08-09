@@ -1,7 +1,8 @@
 ;
 ; trapezium
 ;
-; Overprints a trapezium with x-axis-aligned top and bottom.
+; Overprints a trapezium with x-axis-aligned top and bottom. This code draws bottom-up;
+; the 'initial' left and right coordinates are for the _bottom_ of the trapezium.
 ;
 ;	Input:
 ;		HL = initial left edge (integral; 0–255 = on-screen, other values = off)
@@ -32,7 +33,7 @@ trapezium:
 
 	; Dynamically reprogram to preserve colour, put start y in IXl.
 	ld (@+load_colour + 1), a
-	ld ixl, d
+	ld ixl, e
 
 	; Store height into IYh.
 	ld a, e
@@ -94,7 +95,7 @@ trapezium:
 	pop de
 
 @no_line:
-	inc iyl
+	dec iyl
 	dec iyh
 	jr nz, @-overprint_line
 
