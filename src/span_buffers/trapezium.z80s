@@ -30,7 +30,7 @@ trapezium:
 
 
 	; Dynamically reprogram to preserve colour, put start y in IXl.
-	ld (@+load_colour + 2), a
+	ld (@+load_colour + 1), a
 	ld ixl, d
 
 	; Store height into IYh.
@@ -57,13 +57,13 @@ trapezium:
 	ld hl, edge_list_right
 	call @+clamp_edge
 
-	; Move colour into IXh.
-@load_colour:
-	ld ixh, 0
-
 	; Walk edges, overprinting where width is non-zero.
 	ld hl, edge_list_left
 	ld de, edge_list_right
+
+	; Shuffle IXl into IYl. TODO: could I avoid this through avoiding use of IYl elsewhere?
+	ld a, ixl
+	ld iyl, a
 
 @overprint_line:
 	ld a, (de)
@@ -74,34 +74,30 @@ trapezium:
 	inc hl
 	cp b
 	jr z, @+no_line
+
 	ld c, a					; B = left, C = right.
+	ld a, iyl				; A = screen y.
 
 	; TODO: it's very dumb to call spans.getaddress every line.
 	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
-
-	; Restore and increment screen Y.
-	ld a, ixl
-	inc ixl
 
 	push de
 	push hl
 
 	call spans.getaddress	; HL = pointer to start of spans.
-	ld d, ixh				; D = colour.
+@load_colour:
+	ld d, 0					; D = colour.
 	call spans.overprint
 
 	pop hl
 	pop de
 
-@end_loop:
+@no_line:
+	inc iyl
 	dec iyh
 	jr nz, @-overprint_line
 
 	ret
-
-@no_line:
-	inc ixl
-	jr @-end_loop
 
 ;
 ; 
