@@ -32,7 +32,7 @@ trapezium:
 	; paging will be a benefit for things like triangle rasterisation in the future.
 
 
-	; Dynamically reprogram to preserve colour, put start y in IXl.
+	; Dynamically reprogram to preserve colour, put initial y in IXl.
 	ld (@+load_colour + 1), a
 	ld ixl, e
 
@@ -52,23 +52,22 @@ trapezium:
 	call @+output_edge
 
 	; Walk edges, overprinting where width is non-zero.
-	ld hl, edge_list_left
-	ld de, edge_list_right
-
-	; Shuffle IXl into IYl. TODO: could I avoid this through avoiding use of IYl elsewhere?
-	ld a, ixl
-	ld iyl, a
+	ld hl, edge_list_right
+	ld d, ixl
+	ld e, iyh				; Set D = current y; E = total lines.
 
 @overprint_line:
-	ld a, (de)
-	inc de
+	ld a, (hl)
+	dec h
 	ld b, (hl)
-	inc hl
+	inc h
+	inc l
+
 	cp b
 	jr z, @+no_line
 
-	ld c, a					; B = left, C = right.
-	ld a, iyl				; A = screen y.
+	ld c, a				; B = left, C = right.
+	ld a, d				; A = screen y.
 
 	; TODO: it's very dumb to call spans.getaddress every line.
 	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
@@ -85,8 +84,8 @@ trapezium:
 	pop de
 
 @no_line:
-	dec iyl
-	dec iyh
+	dec d
+	dec e
 	jr nz, @-overprint_line
 
 	ret
@@ -114,17 +113,17 @@ trapezium:
 	jp p, @+write_255
 
 	ld (hl), 0x00
-	inc hl
+	inc l
 	jr @+increment
 
 @write_255:
 	ld (hl), 0xff
-	inc hl
+	inc l
 	jr @+increment
 
 @write_d:
 	ld (hl), d
-	inc hl
+	inc l
 
 @increment:
 	ex de, hl
@@ -132,9 +131,6 @@ trapezium:
 	; HL:A += BC:IXh.
 	add hl, bc
 	adc a, ixh
-
-	; TODO: can I use the flags from this ADC to avoid the OR A above?
-	; (also TODO: could turn this into a macro and avoid two JRs).
 
 	; Test for end of loop.
 	dec iyl
