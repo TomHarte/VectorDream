@@ -1,16 +1,17 @@
 ;
 ; trapezium
 ;
-; Overprints a trapezium with x-axis-aligned top and bottom. This code draws bottom-up;
-; the 'initial' left and right coordinates are for the _bottom_ of the trapezium.
+; Overprints a trapezium with x-axis-aligned top and bottom. This code draws bottom-up and
+; stops one line before the listed 'low' y; the 'initial' left and right coordinates are for
+; the _bottom_ of the trapezium and it is (high y - low y) lines tall.
 ;
 ;	Input:
-;		HL = initial left edge (integral; 0–255 = on-screen, other values = off)
+;		HL = position of left edge at high y (integral; 0–255 = on-screen, other values = off)
 ;		BC = left edge delta — amount to add to the left edge per line (8.8 fixed point)
-;		HL' = initial right edge;
-;		BC' = initiel right edge delta;
-;		D = start y;
-;		E = end y;
+;		HL' = position of right edge at high y;
+;		BC' = right edge delta;
+;		D = low y;
+;		E = high y;
 ;		A = colour.
 ;
 ;	Requires:
@@ -32,7 +33,7 @@ trapezium:
 	; paging will be a benefit for things like triangle rasterisation in the future.
 
 
-	; Dynamically reprogram to preserve colour, put start y in IXl.
+	; Dynamically reprogram to preserve colour, put initial y in IXl.
 	ld (@+load_colour + 1), a
 	ld ixl, e
 
@@ -51,40 +52,27 @@ trapezium:
 	ld de, edge_list_right
 	call @+output_edge
 
-	; Clamp edges.
-	ld iyl, iyh
-	ld hl, edge_list_left
-	call @+clamp_edge
-
-	ld iyl, iyh
-	ld hl, edge_list_right
-	call @+clamp_edge
-
 	; Walk edges, overprinting where width is non-zero.
-	ld hl, edge_list_left
-	ld de, edge_list_right
-
-	; Shuffle IXl into IYl. TODO: could I avoid this through avoiding use of IYl elsewhere?
+	ld hl, edge_list_right
 	ld a, ixl
-	ld iyl, a
+	ld iyl, a			; IYl = current screen position.
 
 @overprint_line:
-	ld a, (de)
-	inc de
-	inc de
+	ld a, (hl)
+	dec h
 	ld b, (hl)
-	inc hl
-	inc hl
+	inc h
+	inc l
+
 	cp b
 	jr z, @+no_line
 
-	ld c, a					; B = left, C = right.
-	ld a, iyl				; A = screen y.
+	ld c, a				; B = left, C = right.
+	ld a, iyl			; A = screen y.
 
 	; TODO: it's very dumb to call spans.getaddress every line.
 	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
 
-	push de
 	push hl
 
 	call spans.getaddress	; HL = pointer to start of spans.
@@ -93,7 +81,6 @@ trapezium:
 	call spans.overprint
 
 	pop hl
-	pop de
 
 @no_line:
 	dec iyl
@@ -103,76 +90,61 @@ trapezium:
 	ret
 
 ;
-; 
+; @output_edge
+;
+; Applies a per-line fractional delta to a 16-bit integral position,
+; clamps it into the range [0, 255] and writes out to an edge list.
+;
+; 	Input:
+;		DE = pointer to list.
+;		IYl = lines to write.
+;		HL = first position to write in 16:0.
+;		BC = per-line delta in 8:8.
+;
+;	Clobbers:
+;		A, IYl, IXh, HL, DE.
 ;
 @output_edge:
-	; Set BC:IXh = delta.
-	ld ixh, c
-	ld c, b
-
+	; Set IXh:BC = delta.
 	ld a, b
 	rla				; carry = sign bit
 	sbc a, a		; a = a - a (- another bit, if sign was set)
-	ld b, a
+	ld ixh, a
 
-	; Set HL:A = left position.
-	xor a
+	; Set A:HL = left position.
+	ld a, h
+	ld h, l
+	ld l, 0
 
 @output_line:
-	; Write HL to (DE), incrementing the pointer.
-	;
-	; TODO: can I find the registers to clamp here? Would save substantial table space.
-	;
+	; Clamp and write HL to (DE), incrementing the pointer.
 	ex de, hl
-	ld (hl), e
-	inc hl
+	or a
+	jr z, @+write_d
+	jp p, @+write_255
+
+	ld (hl), 0x00
+	inc l
+	jr @+increment
+
+@write_255:
+	ld (hl), 0xff
+	inc l
+	jr @+increment
+
+@write_d:
 	ld (hl), d
-	inc hl
+	inc l
+
+@increment:
 	ex de, hl
 
 	; HL:A += BC:IXh.
-	add a, ixh
-	adc hl, bc
+	add hl, bc
+	adc a, ixh
 
 	; Test for end of loop.
 	dec iyl
 	jr nz, @-output_line
 
 	ret
-
-
-
-end_loop: MACRO
-	inc hl
-	inc hl
-	dec iyl
-	jr nz, test_edge
-	ret
-	ENDM
-;
-;
-;
-@clamp_edge:
-	ld bc, 0xff00
-	inc hl
-
-test_edge:
-	ld a, (hl)
-	or a
-	jr z, @+in_range
-	jp p, @+clamp_255
-
-	; Clamp to 0.
-	dec hl
-	ld (hl), c
-	inc hl
-	end_loop
-
-@clamp_255:
-	dec hl
-	ld (hl), b
-	inc hl
-
-@in_range:
-	end_loop
-

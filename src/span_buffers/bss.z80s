@@ -1,2 +1,4 @@
-edge_list_left:		ds 192 * 2
-edge_list_right:	ds 192 * 2
+ALIGN 256
+edge_list_left:		ds 192
+ALIGN 256
+edge_list_right:	ds 192
