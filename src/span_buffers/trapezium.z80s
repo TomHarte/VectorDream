@@ -94,31 +94,23 @@ trapezium:
 ;
 ; 
 ;
-
-; TODO: can I keep highest bytes in separate registers rather than lowest,
-; to eliminate stack activity around range testing?
-;
-; If so then maybe I could look at what flags I can get for free in the add.
 @output_edge:
-	; Set BC:IXh = delta.
-	ld ixh, c
-	ld c, b
-
+	; Set IXh:BC = delta.
 	ld a, b
 	rla				; carry = sign bit
 	sbc a, a		; a = a - a (- another bit, if sign was set)
-	ld b, a
+	ld ixh, a
 
 	; Set HL:A = left position.
-	xor a
+	ld a, h
+	ld h, l
+	ld l, 0
 
 @output_line:
 	; Clamp and write HL to (DE), incrementing the pointer.
-	push af
 	ex de, hl
-	ld a, d
 	or a
-	jr z, @+write_literal
+	jr z, @+write_d
 	jp p, @+write_255
 
 	ld (hl), 0x00
@@ -130,17 +122,19 @@ trapezium:
 	inc hl
 	jr @+increment
 
-@write_literal:
-	ld (hl), e
+@write_d:
+	ld (hl), d
 	inc hl
 
 @increment:
 	ex de, hl
 
 	; HL:A += BC:IXh.
-	pop af
-	add a, ixh
-	adc hl, bc
+	add hl, bc
+	adc a, ixh
+
+	; TODO: can I use the flags from this ADC to avoid the OR A above?
+	; (also TODO: could turn this into a macro and avoid two JRs).
 
 	; Test for end of loop.
 	dec iyl
