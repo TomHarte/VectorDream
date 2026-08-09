@@ -1,13 +1,14 @@
 ;
 ; trapezium
 ;
-; Overprints a trapezium with x-axis-aligned top and bottom. This code draws bottom-up;
-; the 'initial' left and right coordinates are for the _bottom_ of the trapezium.
+; Overprints a trapezium with x-axis-aligned top and bottom. This code draws bottom-up and
+; stops one line before the listed 'low' y; the 'initial' left and right coordinates are for
+; the _bottom_ of the trapezium and it is (high y - low y) lines tall.
 ;
 ;	Input:
 ;		HL = position of left edge at high y (integral; 0–255 = on-screen, other values = off)
 ;		BC = left edge delta — amount to add to the left edge per line (8.8 fixed point)
-;		HL' = position of right edge at low y;
+;		HL' = position of right edge at high y;
 ;		BC' = right edge delta;
 ;		D = low y;
 ;		E = high y;
@@ -101,7 +102,7 @@ trapezium:
 ;		BC = per-line delta in 8:8.
 ;
 ;	Clobbers:
-;		A, IYl, HL, DE.
+;		A, IYl, IXh, HL, DE.
 ;
 @output_edge:
 	; Set IXh:BC = delta.
