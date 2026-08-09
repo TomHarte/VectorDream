@@ -1,0 +1,176 @@
+;
+; trapezium
+;
+; Overprints a trapezium with x-axis-aligned top and bottom.
+;
+;	Input:
+;		HL = initial left edge (integral; 0–255 = on-screen, other values = off)
+;		BC = left edge delta — amount to add to the left edge per line (8.8 fixed point)
+;		HL' = initial right edge;
+;		BC' = initiel right edge delta;
+;		D = start y;
+;		E = end y;
+;		A = colour.
+;
+;	Requires:
+;		D < E.
+;		Edges do not cross.
+;
+;	Output:
+;		Modifies the current span list to include the described trapezium.
+;
+;	Clobbers:
+;		BC, BC', DE, DE', HL, HL', IX, IY, A.
+;
+trapezium:
+
+	; Due to register pressure, I've chickened out and decided to use an
+	; intermediate buffer for start and endpoints. On the plus side, having a
+	; single "draw what is in the buffers" call that automatically does smart
+	; paging will be a benefit for things like triangle rasterisation in the future.
+
+
+	; Dynamically reprogram to preserve colour, put start y in IXl.
+	ld (@+load_colour + 1), a
+	ld ixl, d
+
+	; Store height into IYh.
+	ld a, e
+	sub d
+	ld iyh, a
+
+	; Scan edges.
+	ld iyl, a
+	ld de, edge_list_left
+	call @+output_edge
+
+	ld iyl, iyh
+	exx
+	ld de, edge_list_right
+	call @+output_edge
+
+	; Clamp edges.
+	ld iyl, iyh
+	ld hl, edge_list_left
+	call @+clamp_edge
+
+	ld iyl, iyh
+	ld hl, edge_list_right
+	call @+clamp_edge
+
+	; Walk edges, overprinting where width is non-zero.
+	ld hl, edge_list_left
+	ld de, edge_list_right
+
+	; Shuffle IXl into IYl. TODO: could I avoid this through avoiding use of IYl elsewhere?
+	ld a, ixl
+	ld iyl, a
+
+@overprint_line:
+	ld a, (de)
+	inc de
+	inc de
+	ld b, (hl)
+	inc hl
+	inc hl
+	cp b
+	jr z, @+no_line
+
+	ld c, a					; B = left, C = right.
+	ld a, iyl				; A = screen y.
+
+	; TODO: it's very dumb to call spans.getaddress every line.
+	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
+
+	push de
+	push hl
+
+	call spans.getaddress	; HL = pointer to start of spans.
+@load_colour:
+	ld d, 0					; D = colour.
+	call spans.overprint
+
+	pop hl
+	pop de
+
+@no_line:
+	inc iyl
+	dec iyh
+	jr nz, @-overprint_line
+
+	ret
+
+;
+; 
+;
+@output_edge:
+	; Set BC:IXh = delta.
+	ld ixh, c
+	ld c, b
+
+	ld a, b
+	rla				; carry = sign bit
+	sbc a, a		; a = a - a (- another bit, if sign was set)
+	ld b, a
+
+	; Set HL:A = left position.
+	xor a
+
+@output_line:
+	; Write HL to (DE), incrementing the pointer.
+	;
+	; TODO: can I find the registers to clamp here? Would save substantial table space.
+	;
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+
+	; HL:A += BC:IXh.
+	add a, ixh
+	adc hl, bc
+
+	; Test for end of loop.
+	dec iyl
+	jr nz, @-output_line
+
+	ret
+
+
+
+end_loop: MACRO
+	inc hl
+	inc hl
+	dec iyl
+	jr nz, test_edge
+	ret
+	ENDM
+;
+;
+;
+@clamp_edge:
+	ld bc, 0xff00
+	inc hl
+
+test_edge:
+	ld a, (hl)
+	or a
+	jr z, @+in_range
+	jp p, @+clamp_255
+
+	; Clamp to 0.
+	dec hl
+	ld (hl), c
+	inc hl
+	end_loop
+
+@clamp_255:
+	dec hl
+	ld (hl), b
+	inc hl
+
+@in_range:
+	end_loop
+
