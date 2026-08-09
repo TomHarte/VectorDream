@@ -29,8 +29,8 @@ trapezium:
 	; paging will be a benefit for things like triangle rasterisation in the future.
 
 
-	; Store colour in IXh, start y in IXl.
-	ld ixh, a
+	; Store colour on stack, start y in IXl.
+	push af
 	ld ixl, d
 
 	; Store height into IYh.
@@ -56,6 +56,10 @@ trapezium:
 	ld iyl, iyh
 	ld hl, edge_list_right
 	call @+clamp_edge
+
+	; Move colour into IXh.
+	pop af
+	ld ixh, a
 
 	; Walk edges, overprinting where width is non-zero.
 	ld a, ixl
@@ -95,7 +99,7 @@ trapezium:
 	pop de
 
 @end_loop:
-	dec iyl
+	dec iyh
 	jr nz, @-overprint_line
 
 	pop af
@@ -111,7 +115,7 @@ trapezium:
 ; 
 ;
 @output_edge:
-	; Set BC:IXl = delta.
+	; Set BC:IXh = delta.
 	ld ixh, c
 	ld c, b
 
@@ -135,7 +139,7 @@ trapezium:
 	inc hl
 	ex de, hl
 
-	; HL:A += BC:IXl.
+	; HL:A += BC:IXh.
 	add a, ixh
 	adc hl, bc
 

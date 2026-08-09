@@ -122,7 +122,7 @@ ALIGN 256
 	ld d, 100		; Start at y = 100.
 	ld e, 129		; End at y = 170.
 
-	ld a, 0x45
+	ld a, 0x55		; Colour = 5.
 	call trapezium	; Draw.
 
 	; Experiment: add a single black line across a low portion of the display.
