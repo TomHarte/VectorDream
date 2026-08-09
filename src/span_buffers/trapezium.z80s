@@ -94,6 +94,11 @@ trapezium:
 ;
 ; 
 ;
+
+; TODO: can I keep highest bytes in separate registers rather than lowest,
+; to eliminate stack activity around range testing?
+;
+; If so then maybe I could look at what flags I can get for free in the add.
 @output_edge:
 	; Set BC:IXh = delta.
 	ld ixh, c
