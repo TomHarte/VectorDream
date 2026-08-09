@@ -19,7 +19,7 @@
 ;		TODO.
 ;
 ;	Clobbers:
-;		IX, IY, A.
+;		BC, BC', DE, DE', HL, HL', IX, IY, A.
 ;
 trapezium:
 
@@ -29,8 +29,8 @@ trapezium:
 	; paging will be a benefit for things like triangle rasterisation in the future.
 
 
-	; Store colour on stack, start y in IXl.
-	push af
+	; Dynamically reprogram to preserve colour, put start y in IXl.
+	ld (@+load_colour + 2), a
 	ld ixl, d
 
 	; Store height into IYh.
@@ -58,16 +58,12 @@ trapezium:
 	call @+clamp_edge
 
 	; Move colour into IXh.
-	pop af
-	ld ixh, a
+@load_colour:
+	ld ixh, 0
 
 	; Walk edges, overprinting where width is non-zero.
-	ld a, ixl
-	dec a
 	ld hl, edge_list_left
 	ld de, edge_list_right
-
-	push af
 
 @overprint_line:
 	ld a, (de)
@@ -84,9 +80,8 @@ trapezium:
 	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
 
 	; Restore and increment screen Y.
-	pop af
-	inc a
-	push af
+	ld a, ixl
+	inc ixl
 
 	push de
 	push hl
@@ -102,13 +97,10 @@ trapezium:
 	dec iyh
 	jr nz, @-overprint_line
 
-	pop af
 	ret
 
 @no_line:
-	pop af
-	inc a
-	push af
+	inc ixl
 	jr @-end_loop
 
 ;
