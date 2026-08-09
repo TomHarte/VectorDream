@@ -14,9 +14,10 @@
 ;
 ;	Requires:
 ;		D < E.
+;		Edges do not cross.
 ;
 ;	Output:
-;		TODO.
+;		Modifies the current span list to include the described trapezium.
 ;
 ;	Clobbers:
 ;		BC, BC', DE, DE', HL, HL', IX, IY, A.
