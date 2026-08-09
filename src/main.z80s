@@ -125,6 +125,21 @@ ALIGN 256
 	ld a, 0x55		; Colour = 5.
 	call trapezium	; Draw.
 
+	; Trapezium #2.
+	exx
+	ld hl, 0x10		; Right edge = from 0x10, +2/256ths a line.
+	ld bc, 2
+	exx
+
+	ld hl, 8		; Left edge = from 8, +67/256ths a line.
+	ld bc, 67
+
+	ld d, 10		; Start at y = 10.
+	ld e, 17		; End at y = 17.
+
+	ld a, 0x44		; Colour = 4.
+	call trapezium	; Draw.
+
 	; Experiment: add a single black line across a low portion of the display.
 ; 	ld iyl, 64
 ; @rectangle_loop:
