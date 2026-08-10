@@ -108,7 +108,7 @@ dlend:	ret
 	ld hl, 0
 	and a
 	sbc hl, de
-	ex hl, de
+	ex de, hl
 	call @-divpospos
 	ex de, hl
 	ld hl, 0
