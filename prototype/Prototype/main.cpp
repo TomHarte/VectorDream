@@ -63,7 +63,10 @@ public:
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 10;
-			object_offset -= 100;
+			object_offset -= 10 / DepthUnitConversion;
+			if(object_offset < 0) {
+				object_offset = 28.0f;
+			}
 			player_x_change += (curve * 256.0f) / 70.0f;
 		}
 
@@ -110,18 +113,16 @@ private:
 
 	uint16_t squares[512];
 
-	uint16_t object_offset = 40'000;
-
-//	uint8_t scales[512];
-//	uint8_t bases[512];
+	float object_offset = 28.00f;
 
 	int top_y = 0;
 
-	void setup_tables() {
-		static constexpr float height = 0.475f;
-		static constexpr float x_rotation = -0.3f;
-		static constexpr float field_of_view = 60.0f;	// In degrees.
+	static constexpr float DepthUnitConversion = 3.0f * 32.0f;
+	static constexpr float height = 0.475f;
+	static constexpr float x_rotation = -0.3f;
+	static constexpr float field_of_view = 60.0f;	// In degrees.
 
+	void setup_tables() {
 		//
 		// Calculate road-drawing tables: widths, 1/zs and curvature multiplier per screen line.
 		//
@@ -135,6 +136,8 @@ private:
 			return tan(angle) * height;
 		};
 
+		float max_depth = std::numeric_limits<float>::min();
+		float min_depth = std::numeric_limits<float>::max();
 		for(int y = 0; y < 192; y++) {
 			const float screen_angle = screen_angle_at(y);
 
@@ -146,7 +149,7 @@ private:
 			// .. and that needs to be multiplied by cos(screen_angle) to get distance from view plane.
 
 			const float cos_screen_angle = cos(screen_angle);
-			const float cast_angle = M_PI_2 - screen_angle + x_rotation;
+			const float cast_angle = cast_angle_at(y);
 
 			if(cast_angle > M_PI_2 - 0.01f) {
 				++top_y;
@@ -158,17 +161,22 @@ private:
 			line_widths[y] = int(0.5f + (4.0f / depth));
 			curve_offset[y] = sin(depth / 20.0f) * 128.0f;
 			one_over_distances[y] = 128.0f / depth;
+
+			max_depth = std::max(max_depth, depth);
+			min_depth = std::min(min_depth, depth);
 		}
 
-		const float planar_max = planar_depth(cast_angle_at(top_y));
-		const float planar_min = planar_depth(cast_angle_at(191));
-		const float planar_scale = 65535.0f / (planar_max - planar_min);
+		printf("Depth range: %0.2f -> %0.2f\n", min_depth, max_depth);
+
+//		const float planar_max = planar_depth(cast_angle_at(top_y));
+//		const float planar_min = planar_depth(cast_angle_at(191));
+//		const float planar_scale = 65535.0f / (planar_max - planar_min);
 		for(int y = top_y; y < 192; y++) {
 			const auto floor_depth = planar_depth(cast_angle_at(y));
-			floor_depths[y] = (floor_depth - planar_min) * planar_scale;
-			offsets[y] = uint8_t(floor_depth * 32.0f * 3.0f);
-
-			// TODO: unify above scalings, so that objects at least stick to lines.
+//			floor_depths[y] = (floor_depth - planar_min) * planar_scale;
+			offsets[y] = uint8_t(floor_depth * DepthUnitConversion);
+//
+//			// TODO: unify above scalings, so that objects at least stick to lines.
 		}
 
 		//
@@ -222,10 +230,10 @@ private:
 	}
 
 	void populate_spans() {
-		bool has_located_object = false;
-		int object_base = 0;
-		int object_width = 0;
-		int object_centre = 0;
+//		bool has_located_object = false;
+//		int object_base = 0;
+//		int object_width = 0;
+//		int object_centre = 0;
 
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
@@ -260,12 +268,12 @@ private:
 			const bool has_line = (offset & 64) && (line_width != 0);
 
 			// Does this line have the object on it?
-			if(!has_located_object && floor_depths[y] <= object_offset) {
-				has_located_object = true;
-				object_base = y;
-				object_width = line_widths[y];
-				object_centre = centre;
-			}
+//			if(!has_located_object && floor_depths[y] <= object_offset) {
+//				has_located_object = true;
+//				object_base = y;
+//				object_width = line_widths[y];
+//				object_centre = centre;
+//			}
 
 			// Special case: road too thin to appear.
 			//
@@ -327,9 +335,33 @@ private:
 		}
 
 		// Outside loop: overprint the object.
-		for(int y = object_base - object_width; y < object_base; y++) {
-			if(y < 0) continue;
-			overprint(object_centre - object_width * 3, object_centre - object_width * 2, y, 0xff);
+//		for(int y = object_base - object_width; y < object_base; y++) {
+//			if(y < 0) continue;
+//			overprint(object_centre - object_width * 3, object_centre - object_width * 2, y, 0xff);
+//		}
+
+
+		// Try to place a single object.
+		const float src_y = -height;
+		const float src_z = object_offset;
+
+		const float world_y = sin(x_rotation) * src_z - cos(x_rotation) * src_y;
+		const float world_z = cos(x_rotation) * src_z + sin(x_rotation) * src_y;
+
+		const float eye_y = (world_y / world_z) * (90.0f / field_of_view);
+		const float scale = 128.0f * (0.25f / world_z);
+
+		const float base = 96.0f + eye_y * 96.0f;
+
+		if(scale >= 1.0f) {
+			const int x1 = std::max(int(127 - scale), 0);
+			const int x2 = std::min(int(127 + scale), 255);
+
+			for(int y = int(base - scale); y < int(base); y++) {
+				if(y >= 0 && y < 192) {
+					overprint(x1, x2, y, 0xdd);
+				}
+			}
 		}
 	}
 
