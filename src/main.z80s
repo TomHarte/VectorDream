@@ -30,7 +30,7 @@ VIDEOPAGE:	EQU 6 * 2
 ; Install various tables first, because they're all 256-byte aligned and this
 ; causes them to be tightly-packed.
 ;
-include "multiply/tables.z80s"
+include "maths/multiply_tables.z80s"
 include "span_buffers/span_buffers.z80s"
 include "road/tables.z80s"
 include "span_buffers/overprint.z80s"
@@ -302,7 +302,8 @@ ALIGN 256
 
 	ret
 
-include "multiply/multiply.z80s"
+include "maths/multiply.z80s"
+include "maths/divide.z80s"
 include "road/road.z80s"
 
 curvature: dw 0
