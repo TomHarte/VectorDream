@@ -1,0 +1,117 @@
+;
+; fixdiv
+;
+; Calculates HL = BC / DE, where all are in signed 8.8 fixed point.
+;
+;	Input:
+;		BC = dividend;
+;		DE = divisor.
+;
+;	Output:
+;		HL = dividend / divisor.
+;
+;	Clobbers:
+;		A, BC, DE.
+;
+fixdiv:
+	; Check signs.
+	ld a, b
+	or a
+	jp p, @+check_de
+
+	; BC is negative.
+	ld a, d
+	or a
+	jp p, @+divnegpos
+
+	; Both are negative. Easy...
+	ld hl, 0
+	sbc hl, de
+	ex de, hl
+	ld hl, 0
+	and a
+	sbc hl, bc
+	ld b, h
+	ld c, l
+	jr @+divpospos
+
+@check_de:			; BC is positive. Check DE.
+	ld a, d
+	and a
+	jp m, @+divposneg
+
+@divpospos:			; BC is negative, DE is positive.
+	ld hl, 0
+
+@DIVLOOP1: EQU FOR 8
+	sla b
+	rl l			; L:B <<= 1
+
+	sbc hl, de		; Find HL - DE (carry is known to be clear).
+	jr nc, @+noadd	; HL <= DE so no adjustment necessary.
+
+	add hl, de		; HL < DE; add DE back in.
+@noadd:
+	NEXT @DIVLOOP1
+
+				; Now: B is the lowest byte of the answer, which we just throw away.
+dtpos:
+@DIVLOOP2: EQU FOR 8
+	sl1 c
+	adc hl, hl			; HL:C = (HL:C << 1) | 1
+
+	sbc hl, de			; HL -= DE (as carry is known clear).
+	jr nc, @+noadd		; HL <= DE => no adjustment.
+
+	add hl, de			; HL. DE; add DE back in.
+	dec c				; Remove bottom bit of C.
+@noadd:
+	NEXT @DIVLOOP2
+
+				; Now: C is the high byte of the answer...
+
+@DIVLOOP3: EQU FOR 8
+	sl1 b
+
+	add hl, hl			; HL <<= 1, ignoring any carry from B.
+	and a				; Clear carry.
+	sbc hl, de			; HL -= DE.
+	jr nc, @+noadd		; HL >= DE => no add.
+
+	add hl, de			; HL < DE, add DE back in, and...
+	dec b				; Clear bottom bit of B.
+@noadd:
+	NEXT @DIVLOOP3
+
+				; ... and B is middle byte of the answer.
+
+	ld h, c				; Transpose BC into HL.
+	ld l, b
+dlend:	ret
+
+@divnegpos:
+	; Negative BC.
+	ld hl, 0
+	and a
+	sbc hl, bc
+	ld b, h
+	ld c, l
+	call @-divpospos
+	ex de, hl
+	ld hl, 0
+	and a
+	sbc hl, de
+	ret
+
+@divposneg:
+	; Negative DE.
+	ld hl, 0
+	and a
+	sbc hl, de
+	ex hl, de
+	call @-divpospos
+	ex de, hl
+	ld hl, 0
+	and a
+	sbc hl, de
+	ret
