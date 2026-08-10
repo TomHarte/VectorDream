@@ -119,6 +119,8 @@ private:
 	static constexpr float MaxDepth = 20.0f * DepthUnitConversion; // A slightly arbitrary decision as to where objects first appear.
 	int16_t object_offset = MaxDepth;
 
+	static constexpr float DepthCurvatureDivider = 20.0f;
+
 	static constexpr float height = 0.475f;
 	static constexpr float x_rotation = -0.3f;
 	static constexpr float field_of_view = 60.0f;	// In degrees.
@@ -160,7 +162,7 @@ private:
 			const float depth = height * cos_screen_angle / cos(cast_angle);
 			road_widths[y] = int(0.5f + (131.0f / depth));
 			line_widths[y] = int(0.5f + (4.0f / depth));
-			curve_offset[y] = sin(depth / 20.0f) * 128.0f;
+			curve_offset[y] = sin(depth / DepthCurvatureDivider) * 128.0f;
 			one_over_distances[y] = 128.0f / depth;
 
 			max_depth = std::max(max_depth, depth);
@@ -231,8 +233,6 @@ private:
 	}
 
 	void populate_spans() {
-		int curvatures[192]{};
-
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
 				[&] {
@@ -252,8 +252,7 @@ private:
 						result -= mul(-curve, curve_offset[y]) >> 1;
 					}
 
-					curvatures[y] = 127 + (result >> 6);
-					return curvatures[y];
+					return 127 + (result >> 6);
 				} ();
 
 			const uint8_t offset = offsets[y] + player_y;
@@ -333,12 +332,14 @@ private:
 		const float world_z = cos(x_rotation) * src_z + sin(x_rotation) * src_y;
 
 		const float eye_y = (world_y / world_z) * (90.0f / field_of_view);
+		const float eye_x = player_x / (world_z * 128.0f);
 		const float scale = 128.0f * (0.25f / world_z);
 
 		const float base = 96.0f + eye_y * 96.0f;
 
 		if(scale >= 1.0f) {
-			const int centre = curvatures[int(base)];
+//			const int centre = curvatures[int(base)];
+			const int centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
 			const int x1 = std::max(centre - int(scale), 0);
 			const int x2 = std::min(centre + int(scale), 255);
 
