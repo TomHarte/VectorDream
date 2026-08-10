@@ -226,10 +226,18 @@ private:
 		printf("one_over_z_127: EQU %d\n", one_over_distances[top_y+128]);
 	}
 
-	uint16_t mul(const uint8_t a, const uint8_t b) {
+	uint16_t mul(const uint8_t a, const uint8_t b) const {
 		const uint8_t sub = std::abs(a - b);
 		const uint16_t add = a + b;
 		return squares[add] - squares[sub];
+	}
+
+	uint16_t fixmul(const uint16_t a, const uint16_t b) const {
+		return (a * b) >> 8;
+	}
+
+	uint16_t fixdiv(const uint16_t a, const uint16_t b) const {
+		return (a << 8) / b;
 	}
 
 	void populate_spans() {
@@ -326,13 +334,21 @@ private:
 
 		// Try to place a single object.
 		const uint8_t src_y = height * 256.0f;
-		const float src_z = float(object_offset) / DepthUnitConversion;
+		const uint16_t src_z = 256.0f * float(object_offset) / DepthUnitConversion;
 
 		const uint8_t sin_x = uint8_t(sin(-x_rotation) * 256.0f);
 		const uint8_t cos_x = uint8_t(cos(-x_rotation) * 256.0f);
 
-		const float world_y = (cos_x * float(src_y) / 256.0f - sin_x * src_z) / 256.0f;
-		const float world_z = (sin_x * float(src_y) / 256.0f + cos_x * src_z) / 256.0f;
+		const float world_y =
+			(
+				fixmul(cos_x, src_y) -
+				fixmul(sin_x, src_z)
+			) / 256.0f;
+		const float world_z =
+			(
+				fixmul(sin_x, src_y) +
+				fixmul(cos_x, src_z)
+			) / 256.0f;
 
 		const float eye_y = (world_y / world_z) * (90.0f / field_of_view);
 		const float eye_x = player_x / (world_z * 128.0f);
