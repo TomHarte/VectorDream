@@ -40,7 +40,7 @@ fixdiv:
 	and a
 	jp m, @+divposneg
 
-@divpospos:			; BC is negative, DE is positive.
+@divpospos:			; Both BC and DE are positive.
 	ld hl, 0
 
 @DIVLOOP1: EQU FOR 8
