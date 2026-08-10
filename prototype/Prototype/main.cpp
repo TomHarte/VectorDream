@@ -325,11 +325,14 @@ private:
 		}
 
 		// Try to place a single object.
-		const float src_y = -height;
+		const uint8_t src_y = height * 256.0f;
 		const float src_z = float(object_offset) / DepthUnitConversion;
 
-		const float world_y = sin(x_rotation) * src_z - cos(x_rotation) * src_y;
-		const float world_z = cos(x_rotation) * src_z + sin(x_rotation) * src_y;
+		const uint8_t sin_x = uint8_t(sin(-x_rotation) * 256.0f);
+		const uint8_t cos_x = uint8_t(cos(-x_rotation) * 256.0f);
+
+		const float world_y = (cos_x * float(src_y) / 256.0f - sin_x * src_z) / 256.0f;
+		const float world_z = (sin_x * float(src_y) / 256.0f + cos_x * src_z) / 256.0f;
 
 		const float eye_y = (world_y / world_z) * (90.0f / field_of_view);
 		const float eye_x = player_x / (world_z * 128.0f);
@@ -338,7 +341,6 @@ private:
 		const float base = 96.0f + eye_y * 96.0f;
 
 		if(scale >= 1.0f) {
-//			const int centre = curvatures[int(base)];
 			const int centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
 			const int x1 = std::max(centre - int(scale), 0);
 			const int x2 = std::min(centre + int(scale), 255);
