@@ -341,8 +341,8 @@ private:
 
 		const float world_y =
 			(
-				fixmul(cos_x, src_y) -
-				fixmul(sin_x, src_z)
+				fixmul(sin_x, src_z) -
+				fixmul(cos_x, src_y)
 			) / 256.0f;
 		const float world_z =
 			(
@@ -354,7 +354,7 @@ private:
 		const float eye_x = player_x / (world_z * 128.0f);
 		const float scale = 128.0f * (0.25f / world_z);
 
-		const float base = 96.0f + eye_y * 96.0f;
+		const float base = 96.0f - eye_y * 96.0f;
 
 		if(scale >= 1.0f) {
 			const int centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
