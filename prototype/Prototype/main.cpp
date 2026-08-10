@@ -63,6 +63,7 @@ public:
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 10;
+			object_offset -= 100;
 			player_x_change += (curve * 256.0f) / 70.0f;
 		}
 
@@ -100,6 +101,7 @@ private:
 
 	// Angle for each screen column.
 	uint8_t offsets[192];
+	uint16_t floor_depths[192];
 	uint8_t road_widths[192];
 	uint8_t line_widths[192];
 
@@ -108,15 +110,33 @@ private:
 
 	uint16_t squares[512];
 
+	uint16_t object_offset = 40'000;
+
+//	uint8_t scales[512];
+//	uint8_t bases[512];
+
 	int top_y = 0;
 
 	void setup_tables() {
 		static constexpr float height = 0.475f;
 		static constexpr float x_rotation = -0.3f;
-
 		static constexpr float field_of_view = 60.0f;	// In degrees.
+
+		//
+		// Calculate road-drawing tables: widths, 1/zs and curvature multiplier per screen line.
+		//
+		const auto screen_angle_at = [&](const int y) {
+			return atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
+		};
+		const auto cast_angle_at = [&](const int y) {
+			return M_PI_2 - screen_angle_at(y) + x_rotation;
+		};
+		const auto planar_depth = [&](const float angle) {
+			return tan(angle) * height;
+		};
+
 		for(int y = 0; y < 192; y++) {
-			const float screen_angle = atan2((float(y) - 96.0f) / (96.0f * (90.0f / field_of_view)), 1.0f);
+			const float screen_angle = screen_angle_at(y);
 
 			// tan(angle) = offset / height
 			// => offset = height * tan(angle)
@@ -133,16 +153,27 @@ private:
 				continue;
 			}
 
-			offsets[y] = uint8_t(tan(cast_angle) * height * 32.0f * 3.0f);
-
-			const float distance = height * cos_screen_angle / cos(cast_angle);
-
-			road_widths[y] = int(0.5f + (131.0f / distance));
-			line_widths[y] = int(0.5f + (4.0f / distance));
-			curve_offset[y] = sin(distance / 20.0f) * 128.0f;
-			one_over_distances[y] = 128.0f / distance;
+			const float depth = height * cos_screen_angle / cos(cast_angle);
+			road_widths[y] = int(0.5f + (131.0f / depth));
+			line_widths[y] = int(0.5f + (4.0f / depth));
+			curve_offset[y] = sin(depth / 20.0f) * 128.0f;
+			one_over_distances[y] = 128.0f / depth;
 		}
 
+		const float planar_max = planar_depth(cast_angle_at(top_y));
+		const float planar_min = planar_depth(cast_angle_at(191));
+		const float planar_scale = 65535.0f / (planar_max - planar_min);
+		for(int y = top_y; y < 192; y++) {
+			const auto floor_depth = planar_depth(cast_angle_at(y));
+			floor_depths[y] = (floor_depth - planar_min) * planar_scale;
+			offsets[y] = uint8_t(floor_depth * 32.0f * 3.0f);
+
+			// TODO: unify above scalings, so that objects at least stick to lines.
+		}
+
+		//
+		// Calculate square table, for fast multiplication.
+		//
 		for(int c = 0; c < 512; c++) {
 			squares[c] = (c * c) / 4;
 		}
@@ -191,6 +222,11 @@ private:
 	}
 
 	void populate_spans() {
+		bool has_located_object = false;
+		int object_base = 0;
+		int object_width = 0;
+		int object_centre = 0;
+
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
 				[&] {
@@ -222,6 +258,14 @@ private:
 			const uint8_t line_width = line_widths[y];
 
 			const bool has_line = (offset & 64) && (line_width != 0);
+
+			// Does this line have the object on it?
+			if(!has_located_object && floor_depths[y] <= object_offset) {
+				has_located_object = true;
+				object_base = y;
+				object_width = line_widths[y];
+				object_centre = centre;
+			}
 
 			// Special case: road too thin to appear.
 			//
@@ -280,6 +324,12 @@ private:
 
 			// Right-hand grass. Must exist if the loop got here.
 			overprint(x, 255, y, grass_colour);
+		}
+
+		// Outside loop: overprint the object.
+		for(int y = object_base - object_width; y < object_base; y++) {
+			if(y < 0) continue;
+			overprint(object_centre - object_width * 3, object_centre - object_width * 2, y, 0xff);
 		}
 	}
 
