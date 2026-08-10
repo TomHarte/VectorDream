@@ -63,9 +63,9 @@ public:
 
 		if(key_states[SDL_SCANCODE_UP]) {
 			player_y += 10;
-			object_offset -= 10 / DepthUnitConversion;
+			object_offset -= 10;
 			if(object_offset < 0) {
-				object_offset = 28.0f;
+				object_offset = MaxDepth;
 			}
 			player_x_change += (curve * 256.0f) / 70.0f;
 		}
@@ -113,11 +113,12 @@ private:
 
 	uint16_t squares[512];
 
-	float object_offset = 28.00f;
-
 	int top_y = 0;
 
-	static constexpr float DepthUnitConversion = 3.0f * 32.0f;
+	static constexpr float DepthUnitConversion = 128.0f;//3.0f * 32.0f;
+	static constexpr float MaxDepth = 20.0f * DepthUnitConversion; // A slightly arbitrary decision as to where objects first appear.
+	int16_t object_offset = MaxDepth;
+
 	static constexpr float height = 0.475f;
 	static constexpr float x_rotation = -0.3f;
 	static constexpr float field_of_view = 60.0f;	// In degrees.
@@ -230,10 +231,7 @@ private:
 	}
 
 	void populate_spans() {
-//		bool has_located_object = false;
-//		int object_base = 0;
-//		int object_width = 0;
-//		int object_centre = 0;
+		int curvatures[192]{};
 
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
@@ -254,7 +252,8 @@ private:
 						result -= mul(-curve, curve_offset[y]) >> 1;
 					}
 
-					return 127 + (result >> 6);
+					curvatures[y] = 127 + (result >> 6);
+					return curvatures[y];
 				} ();
 
 			const uint8_t offset = offsets[y] + player_y;
@@ -266,14 +265,6 @@ private:
 			const uint8_t line_width = line_widths[y];
 
 			const bool has_line = (offset & 64) && (line_width != 0);
-
-			// Does this line have the object on it?
-//			if(!has_located_object && floor_depths[y] <= object_offset) {
-//				has_located_object = true;
-//				object_base = y;
-//				object_width = line_widths[y];
-//				object_centre = centre;
-//			}
 
 			// Special case: road too thin to appear.
 			//
@@ -334,16 +325,9 @@ private:
 			overprint(x, 255, y, grass_colour);
 		}
 
-		// Outside loop: overprint the object.
-//		for(int y = object_base - object_width; y < object_base; y++) {
-//			if(y < 0) continue;
-//			overprint(object_centre - object_width * 3, object_centre - object_width * 2, y, 0xff);
-//		}
-
-
 		// Try to place a single object.
 		const float src_y = -height;
-		const float src_z = object_offset;
+		const float src_z = float(object_offset) / DepthUnitConversion;
 
 		const float world_y = sin(x_rotation) * src_z - cos(x_rotation) * src_y;
 		const float world_z = cos(x_rotation) * src_z + sin(x_rotation) * src_y;
@@ -354,12 +338,15 @@ private:
 		const float base = 96.0f + eye_y * 96.0f;
 
 		if(scale >= 1.0f) {
-			const int x1 = std::max(int(127 - scale), 0);
-			const int x2 = std::min(int(127 + scale), 255);
+			const int centre = curvatures[int(base)];
+			const int x1 = std::max(centre - int(scale), 0);
+			const int x2 = std::min(centre + int(scale), 255);
 
-			for(int y = int(base - scale); y < int(base); y++) {
-				if(y >= 0 && y < 192) {
-					overprint(x1, x2, y, 0xdd);
+			if(x2 > 0 && x1 < 255) {
+				for(int y = int(base - scale); y < int(base); y++) {
+					if(y >= 0 && y < 192) {
+						overprint(x1, x2, y, 0xdd);
+					}
 				}
 			}
 		}
