@@ -244,7 +244,7 @@ private:
 		return (a * b) >> 8;
 	}
 
-	uint16_t fixdiv(const uint16_t a, const uint16_t b) const {
+	int16_t fixdiv(const int16_t a, const int16_t b) const {
 		return (a << 8) / b;
 	}
 
@@ -354,24 +354,25 @@ private:
 			ufixmul(sin_x, src_y) +
 			ufixmul(cos_x, src_z);
 
-		const float world_y = float(wy) / 256.0f;
-		const float world_z = float(wz) / 256.0f;
+		if(wz > 80) {
+			const int16_t fiy = fixdiv(wy, wz);
+			const int16_t eye_y = fiy + (fiy >> 1); // = fiy * (90.0f / field_of_view)
+			const uint8_t base = 96 - (eye_y >> 2) - (eye_y >> 3);
 
-		const float eye_y = (world_y / world_z) * (90.0f / field_of_view);
-		const float eye_x = player_x / (world_z * 128.0f);
-		const float scale = 128.0f * (0.25f / world_z);
+			const float world_z = float(wz) / 256.0f;
+			const float scale = 128.0f * (0.25f / world_z);
+			const float eye_x = player_x / (world_z * 128.0f);
 
-		const float base = 96.0f - eye_y * 96.0f;
+			if(scale >= 1.0f) {
+				const int centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
+				const int x1 = std::max(centre - int(scale), 0);
+				const int x2 = std::min(centre + int(scale), 255);
 
-		if(scale >= 1.0f) {
-			const int centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
-			const int x1 = std::max(centre - int(scale), 0);
-			const int x2 = std::min(centre + int(scale), 255);
-
-			if(x2 > 0 && x1 < 255) {
-				for(int y = int(base - scale); y < int(base); y++) {
-					if(y >= 0 && y < 192) {
-						overprint(x1, x2, y, 0xdd);
+				if(x2 > 0 && x1 < 255) {
+					for(int y = int(base - scale); y < int(base); y++) {
+						if(y >= 0 && y < 192) {
+							overprint(x1, x2, y, 0xdd);
+						}
 					}
 				}
 			}
