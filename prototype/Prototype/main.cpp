@@ -361,7 +361,7 @@ private:
 				const int16_t eye_y = fiy + (fiy >> 1); 				// = fiy * (90.0f / field_of_view)
 				const uint8_t base = 96 - (eye_y >> 2) - (eye_y >> 3);	// = 96 - (eye_y * 96)
 
-				const float eye_x = (player_x * 2.0f) / float(wz);
+				const int16_t eye_x = fixdiv(player_x >> 7, wz);
 				const float world_z = float(wz) / 256.0f;
 				const int16_t centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
 
