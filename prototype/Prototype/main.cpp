@@ -116,8 +116,12 @@ private:
 	int top_y = 0;
 
 	static constexpr float DepthUnitConversion = 128.0f;//3.0f * 32.0f;
-	static constexpr float MaxDepth = 20.0f * DepthUnitConversion; // A slightly arbitrary decision as to where objects first appear.
+	static constexpr int16_t MaxDepth = 20.0f * DepthUnitConversion; // A slightly arbitrary decision as to where objects first appear.
+
 	int16_t object_offset = MaxDepth;
+
+	static constexpr int DepthToSineShift = 6;
+	uint8_t sine[2 + ((1 + 4915) >> DepthToSineShift)];
 
 	static constexpr float DepthCurvatureDivider = 20.0f;
 
@@ -180,6 +184,15 @@ private:
 			offsets[y] = uint8_t(floor_depth * DepthUnitConversion);
 //
 //			// TODO: unify above scalings, so that objects at least stick to lines.
+		}
+
+		for(auto it = std::begin(sine); it != std::end(sine); ++it) {
+			const auto depth = (it - std::begin(sine)) << DepthToSineShift;
+			const float world_z = float(depth) / 256.0f;
+			*it = uint8_t(sin(world_z / DepthCurvatureDivider) * 256.0f);
+
+//				const float world_z = float(wz) / 256.0f;
+//				const int16_t centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
 		}
 
 		//
@@ -362,8 +375,29 @@ private:
 				const uint8_t base = 96 - (eye_y >> 2) - (eye_y >> 3);	// = 96 - (eye_y * 96)
 
 				const int16_t eye_x = fixdiv(player_x >> 7, wz);
-				const float world_z = float(wz) / 256.0f;
-				const int16_t centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
+//				const int16_t centre = 128 + eye_x + curve * sin(world_z / DepthCurvatureDivider);
+
+//				const uint8_t x = sine[wz >> DepthToSineShift];
+//				const float world_z = float(wz) / 256.0f;
+//				const uint8_t s = sin(world_z / DepthCurvatureDivider) * 256.0f;
+
+				const auto index = wz >> DepthToSineShift;
+				assert(index + 1 < sizeof(sine));
+				const uint8_t s1 = sine[index];
+				const uint8_t s2 = sine[index + 1];
+
+				const auto mask = (1 << DepthToSineShift) - 1;
+				const auto soffset = wz & mask;
+				const uint8_t s = (mul(mask - soffset, s1) + mul(soffset, s2)) >> DepthToSineShift;
+
+//				const float world_z = float(wz) / 256.0f;
+				const int16_t centre =
+					128 +
+					eye_x +
+					(curve > 0 ?
+						ufixmul(curve, s) :
+						-ufixmul(-curve, s)
+					);
 
 				// Output as a 2:1 rectangle.
 				const int x1 = std::max(centre - scale, 0);
