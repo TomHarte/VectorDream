@@ -116,9 +116,10 @@ private:
 	int top_y = 0;
 
 	static constexpr float DepthUnitConversion = 128.0f;//3.0f * 32.0f;
-	static constexpr int16_t MaxDepth = 20.0f * DepthUnitConversion; // A slightly arbitrary decision as to where objects first appear.
+	static constexpr int16_t MaxDepth = 3751; //20.0f * DepthUnitConversion; // A slightly arbitrary decision as to where objects first appear.
 
 	int16_t object_offset = MaxDepth;
+	int16_t distances[192];
 
 	static constexpr int DepthToSineShift = 6;
 	uint8_t sine[2 + ((1 + 4915) >> DepthToSineShift)];
@@ -139,8 +140,8 @@ private:
 		const auto cast_angle_at = [&](const int y) {
 			return M_PI_2 - screen_angle_at(y) + x_rotation;
 		};
-		const auto planar_depth = [&](const float angle) {
-			return tan(angle) * height;
+		const auto planar_depth = [&](const float cast_angle) {
+			return tan(cast_angle) * height;
 		};
 
 		float max_depth = std::numeric_limits<float>::min();
@@ -182,7 +183,8 @@ private:
 			const auto floor_depth = planar_depth(cast_angle_at(y));
 //			floor_depths[y] = (floor_depth - planar_min) * planar_scale;
 			offsets[y] = uint8_t(floor_depth * DepthUnitConversion);
-//
+			distances[y] = floor_depth * DepthUnitConversion;
+
 //			// TODO: unify above scalings, so that objects at least stick to lines.
 		}
 
@@ -262,6 +264,9 @@ private:
 	}
 
 	void populate_spans() {
+		int16_t centres[192]{};
+		int object_base = 0;
+
 		for(int y = top_y; y < 192; y++) {
 			const int16_t centre =
 				[&] {
@@ -281,8 +286,13 @@ private:
 						result -= mul(-curve, curve_offset[y]) >> 1;
 					}
 
-					return 127 + (result >> 6);
+					centres[y] = 127 + (result >> 6);
+					return centres[y];
 				} ();
+
+			if(!object_base && distances[y] < object_offset) {
+				object_base = y;
+			}
 
 			const uint8_t offset = offsets[y] + player_y;
 			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
@@ -353,8 +363,61 @@ private:
 			overprint(x, 255, y, grass_colour);
 		}
 
+		// Linearly interpolate object, if visible.
+		if(object_base) {
+			const int16_t ratio =
+				fixdiv(object_offset - distances[object_base], distances[object_base - 1] - distances[object_base]);
+			const int16_t centre =
+				[&] () -> int16_t {
+					if(ratio == 256) {
+						return centres[object_base - 1];
+					}
+					if(!ratio) {
+						return centres[object_base];
+					}
+
+					if(centres[object_base - 1] < centres[object_base - 0]) {
+						const uint16_t length = centres[object_base - 0] - centres[object_base - 1];
+						return centres[object_base - 0] - ufixmul(length, ratio);
+					}
+
+					const uint16_t length = centres[object_base - 1] - centres[object_base - 0];
+					return centres[object_base - 0] + ufixmul(length, ratio);
+				} ();
+
+			const uint16_t scale =
+				[&] () -> uint16_t {
+					if(ratio == 256) {
+						return road_widths[object_base - 1];
+					}
+					if(!ratio) {
+						return road_widths[object_base];
+					}
+
+					return
+						(
+							mul(road_widths[object_base - 1], ratio) +
+							mul(road_widths[object_base - 0], 256 - ratio)
+						) >> 8;
+
+				} ();
+
+			const int x1 = std::max(centre - scale, 0);
+			const int x2 = std::min(centre + scale, 255);
+			if(x2 > 0 && x1 < 255) {
+				for(int y = object_base - scale; y < object_base; y++) {
+					if(y >= 0 && y < 192) {
+						overprint(x1, x2, y, 0xdd);
+					}
+				}
+			}
+		}
+
+//		printf("%d @ %d\n", object_scale, object_centre);
+
 		// Try to place a single object.
-		const uint8_t src_y = height * 256.0f;
+
+/*		const uint8_t src_y = height * 256.0f;
 		const uint16_t src_z = 256.0f * float(object_offset) / DepthUnitConversion;
 
 		const uint8_t sin_x = uint8_t(sin(-x_rotation) * 256.0f);
@@ -410,7 +473,7 @@ private:
 					}
 				}
 			}
-		}
+		}*/
 	}
 
 	void draw() {
