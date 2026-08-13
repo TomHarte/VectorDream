@@ -103,7 +103,7 @@ private:
 	//
 
 	// Angle for each screen column.
-	uint8_t offsets[192];
+//	uint8_t offsets[192];
 	uint16_t floor_depths[192];
 	uint8_t road_widths[192];
 	uint8_t line_widths[192];
@@ -182,7 +182,7 @@ private:
 		for(int y = top_y; y < 192; y++) {
 			const auto floor_depth = planar_depth(cast_angle_at(y));
 //			floor_depths[y] = (floor_depth - planar_min) * planar_scale;
-			offsets[y] = uint8_t(floor_depth * DepthUnitConversion);
+//			offsets[y] = uint8_t(floor_depth * DepthUnitConversion);
 			distances[y] = floor_depth * DepthUnitConversion;
 
 //			// TODO: unify above scalings, so that objects at least stick to lines.
@@ -232,7 +232,8 @@ private:
 		for(int y = top_y; y < 192; y++) {
 			combo_table.push_back(road_widths[y]);
 			combo_table.push_back(line_widths[y]);
-			combo_table.push_back(offsets[y]);
+			combo_table.push_back(distances[y] & 0xff);
+			combo_table.push_back(distances[y] >> 8);
 		}
 		dump_table("segments", combo_table.begin(), combo_table.end());
 		dump_table("curve_offsets", std::begin(curve_offset) + top_y, std::end(curve_offset));
@@ -294,7 +295,7 @@ private:
 				object_base = y;
 			}
 
-			const uint8_t offset = offsets[y] + player_y;
+			const uint8_t offset = distances[y] + player_y;
 			const uint8_t grass_colour = (offset & 128) ? 0xff : 0xee;
 			const uint8_t road_colour = 0x33;
 			const uint8_t line_colour = 0x44;
