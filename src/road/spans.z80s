@@ -132,11 +132,7 @@ road.span:
 ;
 
 @complete_with_grass:
-	ld (hl), 0xff
-	inc h
-	ld a, ixl
-	ld (hl), a
-	ret
+	complete_with_grass
 
 @complete_with_line:
 	ld (hl), 0xff
