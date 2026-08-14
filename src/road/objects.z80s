@@ -13,6 +13,10 @@ object.size: EQU 2				; At present, only:
 object:
 	dw max_object_depth
 
+@segment_pointer: dw 0
+
+@base_line: db 0
+@object_width: db 0
 
 objects.draw:
 
@@ -74,7 +78,9 @@ objects.draw:
 	dec l
 	ld e, (hl)
 
-	push hl		; Save pointer to segments[/depth] table at [y - 1]+2
+	; TODO: could dynamically reprogram here.
+	ld (@-segment_pointer), hl
+	ld (@-base_line), a
 
 	ex de, hl
 	or a
@@ -84,9 +90,7 @@ objects.draw:
 					; DE = distance from front line to object.
 
 	ex de, hl
-	push af
 	call fixdivpositive		; HL = DE / BC, required ratio.
-	pop af					; Restore A to selected screen line.
 
 	;
 	; Up to here:
@@ -101,8 +105,70 @@ objects.draw:
 	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
 	;
 
+	; TODO: special cases if HL = 0 or HL = 256.
+	;
+	; In either case, linear interpolation isn't necessary and would violate the assumption below about 8-bit
+	; arithmetic being sufficient for interpolation.
+
+
 	ex de, hl
-	pop hl
+	ld hl, (@-segment_pointer)
+
+	; Got to here, so E is the ratio, and HL points into the segments table.
+	; So work out interpolated road size first.
+	dec l
+	ld b, (hl)		; Road width at further line.
+	inc l
+	inc l
+	inc hl
+	inc l
+	ld a, (hl)		; Road width at closer line.
+	push af
+
+	sub b			; Difference in road width
+	ld d, a
+
+	call multiply.u8.u8
+
+	; H = amount to subtract from value that (hl) was pointing to.
+	pop af
+	sub h
+	ld (@-object_width), a		; Establish object width.
+
+	;
+	; TODO: grab relevant values from curvature table.
+	;
+
+	;
+	; TEST. Skip interpolating road centre, assume non-curving road.
+	;
+
+	add 127
+	ld c, a
+	ld a, 127
+	ld b, a		; B = start x, C = end x. Unclipped!
+
+	ld a, (@-base_line)		; A = line.
+	add top_y
+	call spans.getaddress		; HL = pointer.
+
+	ld d, 0x00
+	call spans.overprint
+
+	;
+	; Something?
+	;
+
+		; A = screen line.
+		; 
+
+
+; 		B = start x.
+;		C = end x.
+;		D = colour.
+;		HL = pointer to beginning of span list.
+;
+
 
 	pop af		; Throw away planar depth of object on stack.
 	ret			; TODO: this is to avoid hitting the same object more than once.
