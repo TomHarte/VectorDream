@@ -1,11 +1,14 @@
 ;
-; fixdiv
+; fixdiv and fixdivpositive
 ;
-; Calculates HL = BC / DE, where all are in signed 8.8 fixed point.
+; Calculates HL = DE / BC, where all are in signed 8.8 fixed point.
+;
+; fixdiv accepts any sign of dividend and divisor.
+; fixdivpositive assumes both positive.
 ;
 ;	Input:
-;		BC = dividend;
-;		DE = divisor.
+;		DE = dividend;
+;		BC = divisor.
 ;
 ;	Output:
 ;		HL = dividend / divisor.
@@ -15,12 +18,12 @@
 ;
 fixdiv:
 	; Check signs.
-	ld a, b
-	or a
-	jp p, @+check_de
-
-	; BC is negative.
 	ld a, d
+	or a
+	jp p, @+check_bc
+
+	; DE is negative.
+	ld a, b
 	or a
 	jp p, @+divnegpos
 
@@ -35,62 +38,63 @@ fixdiv:
 	ld c, l
 	jr @+divpospos
 
-@check_de:			; BC is positive. Check DE.
-	ld a, d
+@check_bc:			; DE is positive. Check BC.
+	ld a, b
 	and a
 	jp m, @+divposneg
 
+fixdivpositive:
 @divpospos:			; Both BC and DE are positive.
 	ld hl, 0
 
 @DIVLOOP1: EQU FOR 8
-	sla b
+	sla d
 	rl l			; L:B <<= 1
 
-	sbc hl, de		; Find HL - DE (carry is known to be clear).
+	sbc hl, bc		; Find HL - DE (carry is known to be clear).
 	jr nc, @+noadd	; HL <= DE so no adjustment necessary.
 
-	add hl, de		; HL < DE; add DE back in.
+	add hl, bc		; HL < DE; add DE back in.
 @noadd:
 	NEXT @DIVLOOP1
 
 				; Now: B is the lowest byte of the answer, which we just throw away.
 dtpos:
 @DIVLOOP2: EQU FOR 8
-	sl1 c
+	sl1 e
 	adc hl, hl			; HL:C = (HL:C << 1) | 1
 
-	sbc hl, de			; HL -= DE (as carry is known clear).
+	sbc hl, bc			; HL -= DE (as carry is known clear).
 	jr nc, @+noadd		; HL <= DE => no adjustment.
 
-	add hl, de			; HL. DE; add DE back in.
-	dec c				; Remove bottom bit of C.
+	add hl, bc			; HL. DE; add DE back in.
+	dec e				; Remove bottom bit of C.
 @noadd:
 	NEXT @DIVLOOP2
 
 				; Now: C is the high byte of the answer...
 
 @DIVLOOP3: EQU FOR 8
-	sl1 b
+	sl1 d
 
 	add hl, hl			; HL <<= 1, ignoring any carry from B.
 	and a				; Clear carry.
-	sbc hl, de			; HL -= DE.
+	sbc hl, bc			; HL -= DE.
 	jr nc, @+noadd		; HL >= DE => no add.
 
-	add hl, de			; HL < DE, add DE back in, and...
-	dec b				; Clear bottom bit of B.
+	add hl, bc			; HL < DE, add DE back in, and...
+	dec d				; Clear bottom bit of B.
 @noadd:
 	NEXT @DIVLOOP3
 
 				; ... and B is middle byte of the answer.
 
-	ld h, c				; Transpose BC into HL.
-	ld l, b
+	ld h, e				; Transpose BC into HL.
+	ld l, d
 dlend:	ret
 
-@divnegpos:
-	; Negative BC.
+@divposneg:
+	; Negative DE.
 	ld hl, 0
 	and a
 	sbc hl, bc
@@ -103,8 +107,8 @@ dlend:	ret
 	sbc hl, de
 	ret
 
-@divposneg:
-	; Negative DE.
+@divnegpos:
+	; Negative BC.
 	ld hl, 0
 	and a
 	sbc hl, de
