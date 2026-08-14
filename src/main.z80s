@@ -248,11 +248,14 @@ ALIGN 256
 	; Y velocity.
 	;
 
-		; Apply
+		; Apply.
+		ld a, (player.y + 2)
 		ld bc, (player.yvelocity)
 		ld hl, (player.y)
 		add hl, bc
+		adc 0						; Implicit assumption here: yvelocity is positive.
 		ld (player.y), hl
+		ld (player.y + 2), a
 
 		ld a, (player.yvelocity + 1)
 		sra a
@@ -312,7 +315,9 @@ curvature: dw 0
 player.x: dw 16 * 256
 player.xvelocity: dw 0
 
-player.y: dw 0
+player.y:
+	dw 0
+	db 0		; This is three bytes in 16:8 fixed form.
 player.yvelocity: dw 0
 
 ;
