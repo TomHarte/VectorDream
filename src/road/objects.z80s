@@ -1,0 +1,117 @@
+;
+; TODO: this needs to be more like a list of objects.
+; I'm still playing with the concepts here, so a single one is a good start.
+;
+
+object.size: EQU 2				; At present, only:
+								;
+								;		2 bytes for planar depth of the object.
+								;
+								; Clearly things like object type and more positioning information (if not implied by type)
+								; are TODO.
+
+object:
+	dw max_object_depth
+
+
+objects.draw:
+
+	;
+	; I wasn't able to fit this into the span-drawing loop at the time of writing,
+	; though that's certainly an aspiration and part of which I've picked this
+	; merge-sort-esque model of object placement.
+	;
+
+	ld a, 1					; Don't consider placement on the top line, due to
+							; need to have something to interpolate against.
+
+
+	ld hl, (object)
+	ld bc, (player.y + 1)
+	or a
+	sbc hl, bc
+	ex de, hl				; DE = planar depth to object from camera.
+
+	ld hl, segments + 3 - 4		; HL = pointer into depths table.
+
+@test_depth:
+
+	inc hl	; Advance to next depth within table.
+	inc l
+	inc l
+
+	; Let BC = depth of this line.
+	ld c, (hl)
+	inc l
+	ld b, (hl)
+
+	push de			; Save planar depth of object on stack.
+	ex de, hl		; Preserve pointer into segments table in DE.
+
+	; Let HL = (depth of object) - (depth of line).
+	or a
+	sbc hl, bc
+
+	jr c, @+not_here		; (depth of line) >= (depth of object), so it's not here.
+
+;	pop hl
+;	ex de, hl
+
+	; HL = distance from this line to object. Will be positive — it's how far behind the front
+	; of this line the object lies.
+	;
+	; BC still equals depth of this line; recede and get the one before into DE.
+	; Then use that to get the difference between the two.
+
+	ex de, hl	; HL = pointer to depth table.
+				; DE = distance from line to object.
+				; BC = depth of current line.
+
+	push de		; Save distance from line to object — quotient for upcoming ratio calculation.
+
+	dec l
+	dec l
+	dec l
+	dec hl
+	ld d, (hl)
+	dec l
+	ld e, (hl)
+
+	ex de, hl
+	or a
+	sbc hl, bc		; HL = distance between lines.
+
+	pop de			; HL = distance between lines (positive — it was further minus closer).
+					; DE = distance from front line to object.
+
+	ex de, hl
+	push af
+	call fixdivpositive		; HL = DE / BC, required ratio.
+	pop af					; Restore A to selected screen line.
+
+	;
+	; Up to here:
+	;
+	;	A = first line with a depth closer than the object.
+	;	HL = ratio (in 8:8 fixed point) of (object depth - closer line depth) / (further line depth - closer line depth).
+	;
+	; So from here:
+	;
+	;	Index into road.centres at [a] and [a-1]. Apply ratio to get centre of road at object depth.
+	;	Index into segments at [a] and [a-1] to get road widths. Apply ratio to get width of road at object depth.
+	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
+	;
+
+	pop af		; Throw away planar depth of object on stack.
+	ret			; TODO: this is to avoid hitting the same object more than once.
+
+@not_here:
+	ex de, hl		; Restore pointer into segments table into HL.
+	pop de			; Restore planar depth of object.
+
+	inc a
+	cp 192 - top_y
+	jr nz, @-test_depth
+
+	ret
+
