@@ -235,11 +235,13 @@ private:
 			combo_table.push_back(distances[y] & 0xff);
 			combo_table.push_back(distances[y] >> 8);
 		}
+		printf("align 1024\n");
 		dump_table("segments", combo_table.begin(), combo_table.end());
 		dump_table("curve_offsets", std::begin(curve_offset) + top_y, std::end(curve_offset));
 
 		printf("one_over_z_0: EQU %d\n", one_over_distances[top_y]);
 		printf("one_over_z_127: EQU %d\n", one_over_distances[top_y+128]);
+		printf("max_object_depth: EQU %d\n", int(max_depth * DepthUnitConversion));
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) const {

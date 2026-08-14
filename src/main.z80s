@@ -18,16 +18,16 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 ; Program defines.
 ;
 
-VIDEOPAGE:	EQU 6 * 2
+VIDEOPAGE:	EQU 6 * 2			; The page on which the actual framebuffer lies.
 
 ;
-; Place this code just after where the frame buffer will be, in the upper page.
+; Place this code just after where the frame buffer will be, in the upper half of memory.
 ;
 	ORG 0xe000
 	DUMP VIDEOPAGE + 1, 8192
 
 ;
-; Install various tables first, because they're all 256-byte aligned and this
+; Install various tables first, because they're all at least 256-byte aligned and this
 ; causes them to be tightly-packed.
 ;
 include "road/tables.z80s"
@@ -109,6 +109,7 @@ ALIGN 256
 
 @game_loop:
 	call road.draw
+	call objects.draw
 
 	; New experiment: draw a trapezium. Advanced voodoo!
 	; exx
@@ -304,6 +305,7 @@ ALIGN 256
 
 include "multiply/multiply.z80s"
 include "road/road.z80s"
+include "road/objects.z80s"
 
 curvature: dw 0
 player.x: dw 16 * 256
@@ -336,6 +338,18 @@ include "road/bss.z80s"
 include "span_buffers/bss.z80s"
 
 @frame_counter: db 0
+
+;
+; Occasional updates on this: frame_counter is the last thing in memory and is currently at F5C0.
+; So at the time of writing there's a bit more than 2.25kb left for objects, for an actual track
+; and ideally for a better curve algorithm to complete a hypothetical main gameplay loop.
+;
+; Then there's currently a spare 32kb, for having more than one track, menus, etc. It can even
+; host any audio elements if they don't fit in the 2.25kb.
+;
+; There are also a bunch of holes between aligned tables, plus currently 241 bytes after the
+; interrupt handler below, which is much more stack than I need.
+;
 
 ;
 ; Interrupt handler. Just counts frames, for frame-rate compensation.

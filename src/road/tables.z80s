@@ -53,3 +53,4 @@ curve_offsets:
 
 one_over_z_0: EQU 4
 one_over_z_127: EQU 233
+max_object_depth: EQU 3601
