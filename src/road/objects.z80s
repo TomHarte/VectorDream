@@ -54,9 +54,6 @@ objects.draw:
 
 	jr c, @+not_here		; (depth of line) >= (depth of object), so it's not here.
 
-;	pop hl
-;	ex de, hl
-
 	; HL = distance from this line to object. Will be positive — it's how far behind the front
 	; of this line the object lies.
 	;
@@ -76,6 +73,8 @@ objects.draw:
 	ld d, (hl)
 	dec l
 	ld e, (hl)
+
+	push hl		; Save pointer to segments[/depth] table at [y - 1]+2
 
 	ex de, hl
 	or a
@@ -101,6 +100,9 @@ objects.draw:
 	;	Index into segments at [a] and [a-1] to get road widths. Apply ratio to get width of road at object depth.
 	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
 	;
+
+	ex de, hl
+	pop hl
 
 	pop af		; Throw away planar depth of object on stack.
 	ret			; TODO: this is to avoid hitting the same object more than once.

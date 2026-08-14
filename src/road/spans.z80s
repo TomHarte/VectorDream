@@ -39,7 +39,7 @@ complete_with_grass: MACRO
 	ENDM
 
 ;
-; road.span2d
+; road.span
 ;
 ;	Input:
 ;		HL = pointer to span buffer.

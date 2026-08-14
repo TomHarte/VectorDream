@@ -250,9 +250,9 @@ road.draw:
 	add hl, hl
 	add hl, hl
 
-	ld b, (hl)
-	inc l
 	ld c, (hl)
+	inc l
+	ld b, (hl)
 	inc l
 	ld a, (player.y + 1)
 	add (hl)

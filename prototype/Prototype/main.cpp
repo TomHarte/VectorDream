@@ -230,8 +230,8 @@ private:
 
 		std::vector<uint8_t> combo_table;
 		for(int y = top_y; y < 192; y++) {
-			combo_table.push_back(road_widths[y]);
 			combo_table.push_back(line_widths[y]);
+			combo_table.push_back(road_widths[y]);
 			combo_table.push_back(distances[y] & 0xff);
 			combo_table.push_back(distances[y] >> 8);
 		}
