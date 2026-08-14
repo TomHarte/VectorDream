@@ -247,6 +247,7 @@ road.draw:
 	add hl, de
 	add hl, de
 	add hl, de
+	add hl, de
 
 	ld b, (hl)
 	inc hl
