@@ -31,7 +31,7 @@ VIDEOPAGE:	EQU 6 * 2			; The page on which the actual framebuffer lies.
 ; causes them to be tightly-packed.
 ;
 include "road/tables.z80s"
-include "multiply/tables.z80s"
+include "maths/multiply_tables.z80s"
 include "span_buffers/span_buffers.z80s"
 include "span_buffers/overprint.z80s"
 include "span_buffers/trapezium.z80s"
@@ -303,7 +303,8 @@ ALIGN 256
 
 	ret
 
-include "multiply/multiply.z80s"
+include "maths/multiply.z80s"
+include "maths/divide.z80s"
 include "road/road.z80s"
 include "road/objects.z80s"
 
