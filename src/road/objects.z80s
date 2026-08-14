@@ -14,9 +14,14 @@ object:
 	dw max_object_depth
 
 @segment_pointer: dw 0
-
-@base_line: db 0
 @object_width: db 0
+@ratio:
+	db 0	; Actual ratio.
+	db 0	; Throwaway top byte, to allow 16-bit stores.
+@base_line: 
+	db 0	; Actual value.
+	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
+
 
 objects.draw:
 
@@ -116,6 +121,8 @@ objects.draw:
 
 	; Got to here, so E is the ratio, and HL points into the segments table.
 	; So work out interpolated road size first.
+	ld (@-ratio), de
+
 	dec l
 	ld b, (hl)		; Road width at further line.
 	inc l
@@ -139,16 +146,71 @@ objects.draw:
 	; TODO: grab relevant values from curvature table.
 	;
 
+	ld hl, road.centres - 2
+	ld bc, (@-base_line)
+	add hl, bc
+	add hl, bc
+
+
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	inc hl
+	ld c, (hl)
+	inc hl
+	ld b, (hl)		; DE = centre at line above.
+					; BC = centre at line.
+
+	ex de, hl
+	or a
+	sbc hl, bc		; HL = (centre at line above) - (centre at line)
+					; Which is always less than a byte-sized quantity, per corner constraints.
+	jr z, @+no_interpolate
+	jp m, @+negative_interpolate
+
+	; TODO:
+	;	add (ratio * l) to BC, store in BC.
+	push bc
+
+	ld de, (@-ratio)	; E = ratio.
+	ld d, l
+	call multiply.u8.u8
+
+	ld l, h
+	ld h, 0
+	pop bc
+	add hl, bc
+	ld c, l
+	ld b, h
+	jr @+no_interpolate
+
+
+@negative_interpolate:
+	; TODO:
+	;	subtract (ratio * -l) from BC, store in BC.
+	ld a, l
+	neg
+
+
+
+@no_interpolate:
+	; Here: BC = centre to use.
+
+	; TODO: signed 16x8 arithmetic of: centre = BC + (DE - BC) * ratio.
+	; Which could convert into BC + (BC - DE) * ratio for an easier sign swap maybe?
+
 	;
 	; TEST. Skip interpolating road centre, assume non-curving road.
+	; Don't worry about proper coordinate clamping.
+	; Don't even treat BC as a 16-bit quantity.
 	;
 
-	add 127
+	ld a, (@-object_width)
+	ld b, c
+	add c
 	ld c, a
-	ld a, 127
-	ld b, a		; B = start x, C = end x. Unclipped!
 
-	ld a, (@-base_line)		; A = line.
+	ld a, (@-base_line)			; A = line.
 	add top_y
 	call spans.getaddress		; HL = pointer.
 
@@ -179,7 +241,7 @@ objects.draw:
 
 	inc a
 	cp 192 - top_y
-	jr nz, @-test_depth
+	jp nz, @-test_depth
 
 	ret
 
