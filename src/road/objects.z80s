@@ -89,12 +89,9 @@ objects.draw:
 
 	ex de, hl
 	or a
-	sbc hl, bc		; HL = distance between lines.
-
-	pop de			; HL = distance between lines (positive — it was further minus closer).
-					; DE = distance from front line to object.
-
-	ex de, hl
+	sbc hl, bc				; HL = distance between lines (positive — it was further minus closer).
+	pop bc					; BC  = distance from front line to object.
+	ex de, hl				; Now DE = distance between lines.
 	call fixdivpositive		; HL = DE / BC, required ratio.
 
 	;
