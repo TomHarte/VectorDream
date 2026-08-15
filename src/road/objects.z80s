@@ -163,48 +163,78 @@ objects.draw:
 	sbc hl, bc		; HL = (centre at line above) - (centre at line)
 					; Which is always less than a byte-sized quantity, per corner constraints.
 	jr z, @+no_interpolate
+
+	push bc
 	jp m, @+negative_interpolate
 
-	; TODO:
-	;	add (ratio * l) to BC, store in BC.
-	push bc
+	;
+	; Perform BC += (ratio * l).
+	;
 
 	ld de, (@-ratio)	; E = ratio.
 	ld d, l
 	call multiply.u8.u8
 
-	ld l, h
-	ld h, 0
-	pop bc
+	ld c, h
+	ld b, 0
+	pop hl
 	add hl, bc
-	ld c, l
-	ld b, h
-	jr @+no_interpolate
-
+	jr @+draw_object
 
 @negative_interpolate:
-	; TODO:
-	;	subtract (ratio * -l) from BC, store in BC.
+
+	;
+	; Perform BC -= (ratio * -l).
+	;
+
+	ld de, (@-ratio)	; E = ratio.
+
 	ld a, l
 	neg
+	ld d, a				; D = -l
 
+	call multiply.u8.u8
 
+	ld c, h
+	ld b, 0
+	pop hl
+	or a
+	sbc hl, bc
+
+@draw_object:
+	;
+	; Here: HL = centre to use.
+	;
+
+	pop af		; Throw away planar depth of object on stack.
+
+	call draw_object
+	ret	; TODO: this is to avoid hitting the same object more than once.
+		; Replace with an actual check of the object list
 
 @no_interpolate:
-	; Here: BC = centre to use.
+	ld h, b
+	ld l, c
+	jr @-draw_object
 
-	; TODO: signed 16x8 arithmetic of: centre = BC + (DE - BC) * ratio.
-	; Which could convert into BC + (BC - DE) * ratio for an easier sign swap maybe?
+@not_here:
+	ex de, hl		; Restore pointer into segments table into HL.
+	pop de			; Restore planar depth of object.
 
-	;
-	; TEST. Skip interpolating road centre, assume non-curving road.
-	; Don't worry about proper coordinate clamping.
-	; Don't even treat BC as a 16-bit quantity.
-	;
+	inc a
+	cp 192 - top_y
+	jp nz, @-test_depth
 
+	ret
+
+
+;
+; HL = centre of object; other parameters are in memory.
+;
+draw_object:
 	ld a, (@-object_width)
-	ld b, c
-	add c
+	ld b, l
+	add l
 	ld c, a
 
 	ld a, (@-base_line)			; A = line.
@@ -212,7 +242,7 @@ objects.draw:
 	call spans.getaddress		; HL = pointer.
 
 	ld d, 0x00
-	call spans.overprint
+	jp spans.overprint
 
 	;
 	; Something?
@@ -227,18 +257,3 @@ objects.draw:
 ;		D = colour.
 ;		HL = pointer to beginning of span list.
 ;
-
-
-	pop af		; Throw away planar depth of object on stack.
-	ret			; TODO: this is to avoid hitting the same object more than once.
-
-@not_here:
-	ex de, hl		; Restore pointer into segments table into HL.
-	pop de			; Restore planar depth of object.
-
-	inc a
-	cp 192 - top_y
-	jp nz, @-test_depth
-
-	ret
-
