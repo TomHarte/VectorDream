@@ -250,10 +250,17 @@ ALIGN 256
 
 		; Apply.
 		ld a, (player.y + 2)
-		ld bc, (player.yvelocity)
-		ld hl, (player.y)
+		ld d, a
+		ld hl, (player.y)					; D:HL = player,y
+
+		ld a, (player.yvelocity + 1)
+		rla
+		sbc a
+		ld bc, (player.yvelocity)			; A:BC = velocity, sign extended.
+
 		add hl, bc
-		adc 0						; Implicit assumption here: yvelocity is positive.
+		adc d
+
 		ld (player.y), hl
 		ld (player.y + 2), a
 
