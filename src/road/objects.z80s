@@ -92,7 +92,7 @@ objects.draw:
 	sbc hl, bc				; HL = distance between lines (positive — it was further minus closer).
 	pop bc					; BC  = distance from front line to object.
 	ex de, hl				; Now DE = distance between lines.
-	call fixdivpositive		; HL = DE / BC, required ratio.
+	call fixdivpositive		; HL = BC / DE, required ratio.
 
 	;
 	; Up to here:
@@ -129,7 +129,7 @@ objects.draw:
 	ld a, (hl)		; Road width at closer line.
 	push af
 
-	sub b			; Difference in road width
+	sub b			; Difference in road width.
 	ld d, a
 
 	call multiply.u8.u8
@@ -140,7 +140,7 @@ objects.draw:
 	ld (@-object_width), a		; Establish object width.
 
 	;
-	; TODO: grab relevant values from curvature table.
+	; Grab relevant values from curvature table.
 	;
 
 	ld hl, road.centres - 2
