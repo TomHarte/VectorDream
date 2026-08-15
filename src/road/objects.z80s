@@ -39,6 +39,7 @@ objects.draw:
 	ld bc, (player.y + 1)
 	or a
 	sbc hl, bc
+	ret m
 	ex de, hl				; DE = planar depth to object from camera.
 
 	ld hl, segments + 3 - 4		; HL = pointer into depths table.
@@ -232,28 +233,78 @@ objects.draw:
 ; HL = centre of object; other parameters are in memory.
 ;
 draw_object:
+	; Locate object at right-hand side of road.
 	ld a, (@-object_width)
-	ld b, l
-	add l
-	ld c, a
+	add a, l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
 
-	ld a, (@-base_line)			; A = line.
+	;
+	; Left extent.
+	;
+
+		; Stop if off-screen to right.
+		jr z, @+not_off
+		ret p
+		@not_off:
+
+		; Clamp if off-screen to left.
+		ld b, l
+		jr z, @+no_left_clamp
+		ld b, 0
+		@no_left_clamp:
+
+	;
+	; Right extent.
+	;
+		ld a, (@-object_width)
+		srl a
+		srl a
+		srl a
+		ret z
+
+		add a, l
+		ld l, a
+		adc h
+		sub l
+		ld h, a
+
+		; Stop if off-screen to left.
+		ret m
+
+		; Clamp if off-screen to right.
+		ld c, l
+		jr z, @+no_right_clamp
+		ld c, 0xff
+		@no_right_clamp:
+
+	;
+	; Draw. Just a single span for now.
+	;
+
+	ld a, (@-base_line)
 	add top_y
+	ld (@-base_line), a
+
+	ld a, (@-object_width)
+	srl a
+	;	ret z			; Not a real potential, I think.
+	ld e, a
+
+	ld d, 0x00			; Colour.
+
+@spanloop:
+	ld a, (@-base_line)			; A = line.
+	sub e
 	call spans.getaddress		; HL = pointer.
 
-	ld d, 0x00
-	jp spans.overprint
+	push de
+	call spans.overprint
+	pop de
 
-	;
-	; Something?
-	;
+	dec e
+	jr nz, @-spanloop
 
-		; A = screen line.
-		; 
-
-
-; 		B = start x.
-;		C = end x.
-;		D = colour.
-;		HL = pointer to beginning of span list.
-;
+	ret
