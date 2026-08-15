@@ -31,7 +31,6 @@ objects.draw:
 	; merge-sort-esque model of object placement.
 	;
 
-
 	ld hl, (object)
 	ld bc, (player.y + 1)
 	or a
@@ -113,12 +112,11 @@ objects.draw:
 	; arithmetic being sufficient for interpolation.
 
 
-	ex de, hl
-	ld hl, (@-segment_pointer)
+	; Got to here, so L is the ratio.
+	ld (@-ratio), hl
 
-	; Got to here, so E is the ratio, and HL points into the segments table.
-	; So work out interpolated road size first.
-	ld (@-ratio), de
+	; Work out interpolated size first.
+	ld hl, (@-segment_pointer)
 
 	dec l
 	ld b, (hl)		; Road width at further line.
