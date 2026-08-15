@@ -260,10 +260,6 @@ draw_object:
 	; Right extent.
 	;
 		ld a, (@-object_width)
-		srl a
-		srl a
-		srl a
-		ret z
 
 		add a, l
 		ld l, a
