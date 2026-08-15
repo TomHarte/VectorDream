@@ -106,11 +106,7 @@ objects.draw:
 	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
 	;
 
-	; TODO: special cases if HL = 0 or HL = 256.
-	;
-	; In either case, linear interpolation isn't necessary and would violate the assumption below about 8-bit
-	; arithmetic being sufficient for interpolation.
-
+	; Possible TODO: special case possible if HL = 0.
 
 	; Got to here, so L is the ratio.
 	ld (@-ratio), hl
