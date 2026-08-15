@@ -31,9 +31,6 @@ objects.draw:
 	; merge-sort-esque model of object placement.
 	;
 
-	ld a, 1					; Don't consider placement on the top line, due to
-							; need to have something to interpolate against.
-
 
 	ld hl, (object)
 	ld bc, (player.y + 1)
@@ -42,7 +39,9 @@ objects.draw:
 	ret m
 	ex de, hl				; DE = planar depth to object from camera.
 
-	ld hl, segments + 3 - 4		; HL = pointer into depths table.
+	ld a, 1					; Don't consider placement on the top line, due to
+							; need to have something to interpolate against.
+	ld hl, segments + 3		; HL = pointer into depths table (for A = 1).
 
 @test_depth:
 
