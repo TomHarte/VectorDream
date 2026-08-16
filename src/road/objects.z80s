@@ -279,7 +279,6 @@ draw_object:
 
 	ld a, (@-object_width)
 	srl a
-	;	ret z			; Not a real potential, I think.
 	ld e, a
 
 	ld d, 0x00			; Colour.
@@ -290,7 +289,7 @@ draw_object:
 	call spans.getaddress		; HL = pointer.
 
 	push de
-	call spans.overprint
+	call spans.overprint.checkextent
 	pop de
 
 	dec e
