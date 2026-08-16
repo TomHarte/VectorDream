@@ -95,6 +95,7 @@ ALIGN 256
 
 	; Seed pixels while display is off.
 	call road.draw
+	call objects.draw
 	call spans.swap
 
 	; Reenable display.

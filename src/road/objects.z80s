@@ -3,16 +3,22 @@
 ; I'm still playing with the concepts here, so a single one is a good start.
 ;
 
-object.size: EQU 2				; At present, only:
-								;
-								;		2 bytes for planar depth of the object.
-								;
-								; Clearly things like object type and more positioning information (if not implied by type)
-								; are TODO.
+; Offsets of various fields within an object:
+object.depth: EQU 0
+; TODO: object type, more positioning information (if not implied by type).
 
+; Hence, total size is:
+object.size: EQU 2
+
+;
+; Single-slot object [non]-'list'.
+;
 object:
 	dw max_object_depth
 
+;
+; Transient storage used by objects.draw.
+;
 @segment_pointer: dw 0
 @object_width: db 0
 @ratio:
@@ -31,12 +37,19 @@ objects.draw:
 	; merge-sort-esque model of object placement.
 	;
 
-	ld hl, (object)
+	ld hl, (object + object.depth)
 	ld bc, (player.y + 1)
 	or a
 	sbc hl, bc
-	ret m
-	ex de, hl				; DE = planar depth to object from camera.
+
+	ret m					; player.y > object.depth => object won't appear.
+
+	push hl
+	ld bc, max_object_depth + 1
+	sbc hl, bc
+	pop de					; DE = planar depth to object from camera.
+
+	ret p					; object.depth - player.y > max depth => object won't appear.
 
 	ld a, 1					; Don't consider placement on the top line, due to
 							; need to have something to interpolate against.
