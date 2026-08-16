@@ -292,14 +292,21 @@ draw_object:
 	ld (@-base_line), a
 
 	ld a, (@-object_width)
-	srl a
 	ld e, a
 
+	ld a, (@-base_line)
+	cp e
+	jr nc, @+no_top_clip
+
+	ld e, a
+
+@no_top_clip:
 	ld d, 0x00			; Colour.
 
 @spanloop:
 	ld a, (@-base_line)			; A = line.
 	sub e
+
 	call spans.getaddress		; HL = pointer.
 
 	push de
