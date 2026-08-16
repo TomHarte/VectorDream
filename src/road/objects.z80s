@@ -81,11 +81,11 @@ objects.draw:
 	; BC still equals depth of this line; recede and get the one before into DE.
 	; Then use that to get the difference between the two.
 
-	ex de, hl	; HL = pointer to depth table.
-				; DE = distance from line to object.
-				; BC = depth of current line.
+	push hl		; Save distance from line to object — quotient for upcoming ratio calculation.
+	ld (@-base_line), a
 
-	push de		; Save distance from line to object — quotient for upcoming ratio calculation.
+	ex de, hl	; HL = pointer to depth table.
+				; BC = depth of current line.
 
 	dec l
 	dec l
@@ -93,23 +93,23 @@ objects.draw:
 	dec hl
 	ld d, (hl)
 	dec l
-	ld e, (hl)
+	ld e, (hl)	; DE = depth of previous line.
 
 	; TODO: could dynamically reprogram here.
 	ld (@-segment_pointer), hl
-	ld (@-base_line), a
 
-	ex de, hl
+	ex de, hl				; HL = depth of previous line, BC = depth of current line.
 	or a
-	sbc hl, bc				; HL = distance between lines (positive — it was further minus closer).
-	pop bc					; BC  = distance from front line to object.
-	ex de, hl				; Now DE = distance between lines.
-	call divide.uf16.uf16	; HL = BC / DE, required ratio.
+	sbc hl, bc
+	ex de, hl				; DE = distance between lines (positive — it was further minus closer).
+	pop bc					; BC = distance from line to object.
+	call divide.uf16.uf16	; HL = BC / DE, required ratio. It's always in the range [0, 1) so it's guaranteed now that H = 0.
+							; [TODO: possibly suggesting an abbreviated divide routine?]
 
 	;
 	; Up to here:
 	;
-	;	A = first line with a depth closer than the object.
+	;	@base_line and @segment_pointer are populated.
 	;	HL = ratio (in 8:8 fixed point) of (object depth - closer line depth) / (further line depth - closer line depth).
 	;
 	; So from here:
@@ -119,12 +119,13 @@ objects.draw:
 	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
 	;
 
-	; Possible TODO: special case possible if HL = 0.
+	; Possible TODO: special case possible if L = 0.
 
-	; Got to here, so L is the ratio.
+	; Store ratio (along with redundant write of H).
 	ld (@-ratio), hl
+	ld e, l
 
-	; Work out interpolated size first.
+	; Work out interpolated size.
 	ld hl, (@-segment_pointer)
 
 	dec l
