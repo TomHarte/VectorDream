@@ -1,7 +1,9 @@
 ;
-; fixdiv
+; divide.f16.f16 and divide.uf16.uf16
 ;
-; Calculates HL = BC / DE, where all are in signed 8.8 fixed point.
+; Performs the fixed-point calculation HL = BC / DE.
+; .f16.f16 uses signed fixed point, at the cost of some sign comparisons.
+; .uf16.uf16 assumes positive arguments.
 ;
 ;	Input:
 ;		BC = dividend;
@@ -13,7 +15,7 @@
 ;	Clobbers:
 ;		A, BC, DE.
 ;
-fixdiv:
+divide.f16.f16:
 	; Check signs.
 	ld a, b
 	or a
@@ -40,7 +42,7 @@ fixdiv:
 	and a
 	jp m, @+divposneg
 
-fixdivpositive:
+divide.uf16.uf16:
 @divpospos:			; Both BC and DE are positive.
 	ld hl, 0
 
