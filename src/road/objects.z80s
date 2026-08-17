@@ -122,8 +122,8 @@ objects.draw:
 	; Possible TODO: special case possible if L = 0.
 
 	; Store ratio (along with redundant write of H).
-	ld (@-ratio), hl
-	ld e, l
+	ld (@-ratio), bc
+	ld e, b
 
 	; Work out interpolated size.
 	ld hl, (@-segment_pointer)
@@ -179,8 +179,8 @@ objects.draw:
 	; Perform BC += (ratio * l).
 	;
 
-	ld de, (@-ratio)	; E = ratio.
-	ld d, l
+	ld de, (@-ratio)	; D = ratio.
+	ld e, l
 	call multiply.u8.u8
 
 	ld c, h
@@ -195,11 +195,11 @@ objects.draw:
 	; Perform BC -= (ratio * -l).
 	;
 
-	ld de, (@-ratio)	; E = ratio.
+	ld de, (@-ratio)	; D = ratio.
 
 	ld a, l
 	neg
-	ld d, a				; D = -l
+	ld e, a				; D = -l
 
 	call multiply.u8.u8
 

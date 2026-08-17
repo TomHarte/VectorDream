@@ -9,10 +9,10 @@
 ;		Requires BC >= 0, DE >= 0, BC < DE.
 ;
 ;	Output:
-;		L = dividend / divisor, in 0:8 fixed point.
+;		B = dividend / divisor, in 0:8 fixed point.
 ;
 ;	Clobbers:
-;		A, BC, DE, HL.
+;		BC, HL.
 ;
 
 getratio.uf16.uf16:
@@ -30,7 +30,5 @@ getratio.uf16.uf16:
 	dec b			; Clear lowest bit.
 @noadd:
 	NEXT @divide_loop
-
-	ld l, b
 
 	ret
