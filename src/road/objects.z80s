@@ -103,14 +103,14 @@ objects.draw:
 	sbc hl, bc
 	ex de, hl				; DE = distance between lines (positive — it was further minus closer).
 	pop bc					; BC = distance from line to object.
-	call divide.uf16.uf16	; HL = BC / DE, required ratio. It's always in the range [0, 1) so it's guaranteed now that H = 0.
+	call getratio.uf16.uf16	; L = BC / DE, required ratio. It's always in the range [0, 1) so it's guaranteed now that H = 0.
 							; [TODO: possibly suggesting an abbreviated divide routine?]
 
 	;
 	; Up to here:
 	;
 	;	@base_line and @segment_pointer are populated.
-	;	HL = ratio (in 8:8 fixed point) of (object depth - closer line depth) / (further line depth - closer line depth).
+	;	L = ratio (in 0:8 fixed point) of (object depth - closer line depth) / (further line depth - closer line depth).
 	;
 	; So from here:
 	;
