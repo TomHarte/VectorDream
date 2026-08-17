@@ -106,7 +106,7 @@ objects.draw:
 	ld d, (iy + object.closer + 1)	; DE = pointer to closer object.
 	ld a, e
 	or d
-	jr z, @+dont_recede				; Don't recede if there is no closer object.
+	ret z							; If this object was beyond the horizon but there's nothing closer then there are no objects to draw.
 	ld iyl, e
 	ld iyh, d
 	jr @-test_move_closer
@@ -142,7 +142,6 @@ objects.draw:
 
 	; (3) Store back to firstobject.
 	ld (firstobject), iy
-
 
 	;
 	; From here: IY points to the first object that _might_ be visible.
