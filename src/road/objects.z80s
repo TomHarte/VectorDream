@@ -159,6 +159,10 @@ objects.draw:
 							; need to have something to interpolate against.
 	ld hl, segments + 3		; HL = pointer into depths table (for A = 1).
 
+
+	;
+	; BEGIN: main object loop.
+	;
 @next_object:
 	ex de, hl
 
@@ -193,7 +197,7 @@ objects.draw:
 	or a
 	sbc hl, bc
 
-	jr nc, @+object_found		; (depth of line) >= (depth of object), so it's not here.
+	jr nc, @+object_found		; (depth of line) <= (depth of object), so object is here.
 
 	ex de, hl		; Restore pointer into segments table into HL.
 	pop de			; Restore planar depth of object.
@@ -203,6 +207,11 @@ objects.draw:
 	jr nz, @-test_depth
 
 	ret
+	;
+	; END: main object loop.
+	;
+
+
 
 
 @object_found:
@@ -371,6 +380,9 @@ objects.draw:
 	ld h, b
 	ld l, c
 	jp @-draw_object
+
+
+
 
 
 @object_top: db 0
