@@ -18,13 +18,14 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 ; Program defines.
 ;
 
-VIDEOPAGE:	EQU 6 * 2			; The page on which the actual framebuffer lies.
+PAGE.VIDEO:			EQU 0	; The page on which the framebuffer lies.
+PAGE.FIRSTSPAN:		EQU 4	; The page on which the span buffer begins.
 
 ;
 ; Place this code just after where the frame buffer will be, in the upper half of memory.
 ;
 	ORG 0xe000
-	DUMP VIDEOPAGE + 1, 8192
+	DUMP PAGE.VIDEO + 1, 8192
 
 ;
 ; Install various tables first, because they're all at least 256-byte aligned and this
@@ -68,12 +69,12 @@ ALIGN 256
 	;
 	; ... and set the expected video page and mode while at it.
 	;
-	ld a, VIDEOPAGE
+	ld a, PAGE.VIDEO
 	out (LMPR), a
 	jp @low_target - 0x8000
 
 @low_target:
-	ld a, VIDEOPAGE
+	ld a, PAGE.VIDEO
 	out (HMPR), a
 	or %01100000
 	out (VMPR), a
@@ -373,7 +374,7 @@ include "span_buffers/bss.z80s"
 @interrupt: EQU 0xfefe
 
 ORG @interrupt
-DUMP VIDEOPAGE + 1, @interrupt & 16383
+DUMP PAGE.VIDEO + 1, @interrupt & 16383
 
 @interrupt:
 	push af
