@@ -33,21 +33,21 @@ object.sizeof: EQU 10
 ;
 object1:
 	dw max_object_depth
-	dw draw_black_rectangle
+	dw right_brown_rectangle
 	dw 0
 	dw 0			; Nothing is closer.
 	dw object2
 
 object2:
 	dw max_object_depth + (max_object_depth >> 1)
-	dw draw_black_rectangle
+	dw right_green_rectangle
 	dw 0
 	dw object1
 	dw object3
 
 object3:
 	dw max_object_depth * 2
-	dw draw_black_rectangle
+	dw right_brown_rectangle
 	dw 0
 	dw object2
 	dw 0			; Nothing is further.
@@ -377,7 +377,16 @@ objects.draw:
 ;
 ; HL = centre of object; other parameters are in memory.
 ;
-draw_black_rectangle:
+right_brown_rectangle:
+	ld d, wood_colour
+	jr @+big_rectangle
+
+
+right_green_rectangle:
+	ld d, leaf_colour
+	jr @+big_rectangle
+
+@big_rectangle:
 	; Locate object at right-hand side of road.
 	ld a, (@-object_width)
 	add a, l
@@ -439,8 +448,6 @@ draw_black_rectangle:
 	ld e, a
 
 @no_top_clip:
-	ld d, 0x00			; Colour.
-
 @spanloop:
 	ld a, (@-object_top)			; A = line.
 	sub e
