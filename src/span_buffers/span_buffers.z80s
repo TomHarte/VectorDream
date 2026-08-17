@@ -90,7 +90,7 @@ spans.clear:
 	ld a, (@current_spans)
 	ld h, a
 
-	ld a, %00100000
+	ld a, %00100000 + PAGE.FIRSTSPAN
 	add a, c
 	out (LMPR), a
 
@@ -154,7 +154,7 @@ spans.swap:
 @page: EQU @page_loop + @start_page
 
 	; Page in proper source and destination buffers.
-	ld a, %00100000 + (@page * 2)
+	ld a, %00100000 + PAGE.FIRSTSPAN + (@page * 2)
 	out (LMPR), a
 
 	; Reset B and H parts of BC and HL to start of page.
@@ -437,7 +437,7 @@ spans.getaddress:
 	rra
 	rra
 	and %00001110
-	or  %00100000
+	add %00100000 + PAGE.FIRSTSPAN
 	out (LMPR), A
 
 	ld a, h
