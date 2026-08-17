@@ -22,8 +22,8 @@ object:
 @segment_pointer: dw 0
 @object_width: db 0
 @ratio:
+	db 0	; Throwaway byte to allow 16-bit stores.
 	db 0	; Actual ratio.
-	db 0	; Throwaway top byte, to allow 16-bit stores.
 @base_line: 
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
@@ -103,8 +103,7 @@ objects.draw:
 	sbc hl, bc
 	ex de, hl				; DE = distance between lines (positive — it was further minus closer).
 	pop bc					; BC = distance from line to object.
-	call getratio.uf16.uf16	; L = BC / DE, required ratio. It's always in the range [0, 1) so it's guaranteed now that H = 0.
-							; [TODO: possibly suggesting an abbreviated divide routine?]
+	call getratio.uf16.uf16	; B = BC / DE, required ratio, in 0:8 fixed point.
 
 	;
 	; Up to here:
@@ -119,9 +118,9 @@ objects.draw:
 	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
 	;
 
-	; Possible TODO: special case possible if L = 0.
+	; Possible TODO: special case possible if B = 0.
 
-	; Store ratio (along with redundant write of H).
+	; Store ratio (along with redundant write of C).
 	ld (@-ratio), bc
 	ld e, b
 
