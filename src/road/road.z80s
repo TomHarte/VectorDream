@@ -222,8 +222,8 @@ road.draw:
 	; Draw road, per tables.
 	;
 	ld iy, road.centres
-	ld de, 0
-	ld a, e
+	xor a
+	ld e, a
 @road.fill:
 	add top_y
 	and %11111
@@ -243,15 +243,17 @@ road.draw:
 	; Establish B = half road width, C = half line width, A = offset.
 	push hl
 
-	ld hl, segments
-	add hl, de
-	add hl, de
-	add hl, de
+	; 'segments' is guaranteed 1024-aligned.
+	; So this is just a touch faster than doing four 16-bit adds.
+	ld h, segments >> 10
+	ld l, e
+	add hl, hl
+	add hl, hl
 
-	ld b, (hl)
-	inc hl
 	ld c, (hl)
-	inc hl
+	inc l
+	ld b, (hl)
+	inc l
 	ld a, (player.y + 1)
 	add (hl)
 

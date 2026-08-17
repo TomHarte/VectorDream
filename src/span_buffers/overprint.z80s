@@ -1,7 +1,10 @@
 ;
-;	spans.overprint
+;	spans.overprint and spans.overprint.checkextent
 ;
 ;	Adds a new span to the buffer, visually overwriting what was there before.
+;
+;	.checkextent confirms that B < C before proceeding.
+;	Non-.checkextent does not validation.
 ;
 ;	Input:
 ; 		B = start x.
@@ -18,6 +21,11 @@
 ;	Clobbers:
 ;		A, DE, L, IXl.
 ;
+spans.overprint.checkextent:
+	ld a, b
+	cp c
+	ret nc
+
 spans.overprint:
 
 	; Squirrel away D, due to register pressure.

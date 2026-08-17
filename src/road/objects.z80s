@@ -1,0 +1,319 @@
+;
+; TODO: this needs to be more like a list of objects.
+; I'm still playing with the concepts here, so a single one is a good start.
+;
+
+; Offsets of various fields within an object:
+object.depth: EQU 0
+; TODO: object type, more positioning information (if not implied by type).
+
+; Hence, total size is:
+object.size: EQU 2
+
+;
+; Single-slot object [non]-'list'.
+;
+object:
+	dw max_object_depth
+
+;
+; Transient storage used by objects.draw.
+;
+@segment_pointer: dw 0
+@object_width: db 0
+@ratio:
+	db 0	; Actual ratio.
+	db 0	; Throwaway top byte, to allow 16-bit stores.
+@base_line: 
+	db 0	; Actual value.
+	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
+
+
+objects.draw:
+
+	;
+	; I wasn't able to fit this into the span-drawing loop at the time of writing,
+	; though that's certainly an aspiration and part of which I've picked this
+	; merge-sort-esque model of object placement.
+	;
+
+	ld hl, (object + object.depth)
+	ld bc, (player.y + 1)
+	or a
+	sbc hl, bc
+
+	ret m					; player.y > object.depth => object won't appear.
+
+	push hl
+	ld bc, max_object_depth + 1
+	sbc hl, bc
+	pop de					; DE = planar depth to object from camera.
+
+	ret p					; object.depth - player.y > max depth => object won't appear.
+
+	ld a, 1					; Don't consider placement on the top line, due to
+							; need to have something to interpolate against.
+	ld hl, segments + 3		; HL = pointer into depths table (for A = 1).
+
+@test_depth:
+
+	inc hl	; Advance to next depth within table.
+	inc l
+	inc l
+
+	; Let BC = depth of this line.
+	ld c, (hl)
+	inc l
+	ld b, (hl)
+
+	push de			; Save planar depth of object on stack.
+	ex de, hl		; Preserve pointer into segments table in DE.
+
+	; Let HL = (depth of object) - (depth of line).
+	or a
+	sbc hl, bc
+
+	jr c, @+not_here		; (depth of line) >= (depth of object), so it's not here.
+
+	; HL = distance from this line to object. Will be positive — it's how far behind the front
+	; of this line the object lies.
+	;
+	; BC still equals depth of this line; recede and get the one before into DE.
+	; Then use that to get the difference between the two.
+
+	push hl		; Save distance from line to object — quotient for upcoming ratio calculation.
+	ld (@-base_line), a
+
+	ex de, hl	; HL = pointer to depth table.
+				; BC = depth of current line.
+
+	dec l
+	dec l
+	dec l
+	dec hl
+	ld d, (hl)
+	dec l
+	ld e, (hl)	; DE = depth of previous line.
+
+	; TODO: could dynamically reprogram here.
+	ld (@-segment_pointer), hl
+
+	ex de, hl				; HL = depth of previous line, BC = depth of current line.
+	or a
+	sbc hl, bc
+	ex de, hl				; DE = distance between lines (positive — it was further minus closer).
+	pop bc					; BC = distance from line to object.
+	call divide.uf16.uf16	; HL = BC / DE, required ratio. It's always in the range [0, 1) so it's guaranteed now that H = 0.
+							; [TODO: possibly suggesting an abbreviated divide routine?]
+
+	;
+	; Up to here:
+	;
+	;	@base_line and @segment_pointer are populated.
+	;	HL = ratio (in 8:8 fixed point) of (object depth - closer line depth) / (further line depth - closer line depth).
+	;
+	; So from here:
+	;
+	;	Index into road.centres at [a] and [a-1]. Apply ratio to get centre of road at object depth.
+	;	Index into segments at [a] and [a-1] to get road widths. Apply ratio to get width of road at object depth.
+	;	Draw object with width and x offset that is some multiple of segments-derived calculation, at x = offset + interpolated road centre; bottom y = top_y + A.
+	;
+
+	; Possible TODO: special case possible if L = 0.
+
+	; Store ratio (along with redundant write of H).
+	ld (@-ratio), hl
+	ld e, l
+
+	; Work out interpolated size.
+	ld hl, (@-segment_pointer)
+
+	dec l
+	ld b, (hl)		; Road width at further line.
+	inc l
+	inc l
+	inc hl
+	inc l
+	ld a, (hl)		; Road width at closer line.
+	push af
+
+	sub b			; Difference in road width.
+	ld d, a
+
+	call multiply.u8.u8
+
+	; H = amount to subtract from value that (hl) was pointing to.
+	pop af
+	sub h
+	ld (@-object_width), a		; Establish object width.
+
+	;
+	; Grab relevant values from curvature table.
+	;
+
+	ld hl, road.centres - 2
+	ld bc, (@-base_line)
+	add hl, bc
+	add hl, bc
+
+
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	inc hl
+	ld c, (hl)
+	inc hl
+	ld b, (hl)		; DE = centre at line above.
+					; BC = centre at line.
+
+	ex de, hl
+	or a
+	sbc hl, bc		; HL = (centre at line above) - (centre at line)
+					; Which is always less than a byte-sized quantity, per corner constraints.
+	jr z, @+no_interpolate
+
+	push bc
+	jp m, @+negative_interpolate
+
+	;
+	; Perform BC += (ratio * l).
+	;
+
+	ld de, (@-ratio)	; E = ratio.
+	ld d, l
+	call multiply.u8.u8
+
+	ld c, h
+	ld b, 0
+	pop hl
+	add hl, bc
+	jr @+draw_object
+
+@negative_interpolate:
+
+	;
+	; Perform BC -= (ratio * -l).
+	;
+
+	ld de, (@-ratio)	; E = ratio.
+
+	ld a, l
+	neg
+	ld d, a				; D = -l
+
+	call multiply.u8.u8
+
+	ld c, h
+	ld b, 0
+	pop hl
+	or a
+	sbc hl, bc
+
+@draw_object:
+	;
+	; Here: HL = centre to use.
+	;
+
+	pop af		; Throw away planar depth of object on stack.
+
+	call draw_object
+	ret	; TODO: this is to avoid hitting the same object more than once.
+		; Replace with an actual check of the object list
+
+@no_interpolate:
+	ld h, b
+	ld l, c
+	jr @-draw_object
+
+@not_here:
+	ex de, hl		; Restore pointer into segments table into HL.
+	pop de			; Restore planar depth of object.
+
+	inc a
+	cp 192 - top_y
+	jp nz, @-test_depth
+
+	ret
+
+
+;
+; HL = centre of object; other parameters are in memory.
+;
+draw_object:
+	; Locate object at right-hand side of road.
+	ld a, (@-object_width)
+	add a, l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+
+	;
+	; Left extent.
+	;
+
+		; Stop if off-screen to right.
+		jr z, @+not_off
+		ret p
+		@not_off:
+
+		; Clamp if off-screen to left.
+		ld b, l
+		jr z, @+no_left_clamp
+		ld b, 0
+		@no_left_clamp:
+
+	;
+	; Right extent.
+	;
+		ld a, (@-object_width)
+
+		add a, l
+		ld l, a
+		adc h
+		sub l
+		ld h, a
+
+		; Stop if off-screen to left.
+		ret m
+
+		; Clamp if off-screen to right.
+		ld c, l
+		jr z, @+no_right_clamp
+		ld c, 0xff
+		@no_right_clamp:
+
+	;
+	; Draw. Just a single span for now.
+	;
+
+	ld a, (@-base_line)
+	add top_y
+	ld (@-base_line), a
+
+	ld a, (@-object_width)
+	ld e, a
+
+	ld a, (@-base_line)
+	cp e
+	jr nc, @+no_top_clip
+
+	ld e, a
+
+@no_top_clip:
+	ld d, 0x00			; Colour.
+
+@spanloop:
+	ld a, (@-base_line)			; A = line.
+	sub e
+
+	call spans.getaddress		; HL = pointer.
+
+	push de
+	call spans.overprint.checkextent
+	pop de
+
+	dec e
+	jr nz, @-spanloop
+
+	ret
