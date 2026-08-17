@@ -1,29 +1,79 @@
 ;
-; TODO: this needs to be more like a list of objects.
-; I'm still playing with the concepts here, so a single one is a good start.
+; Offsets exist within a doubly-linked list.
+;
+; Fields (EQUd to their offsets):
 ;
 
-; Offsets of various fields within an object:
-object.depth: EQU 0
-; TODO: object type, more positioning information (if not implied by type).
+object.depth: EQU 0			; Planar depth, i.e. along the ground, of this object.
 
+object.draw: EQU 2			; Routine to draw an object. When called:
+							;
+							;	HL = centre of the road in 2d at the depth of the object;
+							;	(@object_width) = width of a piece of road at the object's depth;
+							;	(@base_line) = line on screen where the bottom of the object should appear.
+
+object.testcollision: EQU 4	; TODO: I haven't quite figured out the semantics here, but likely it'll be
+							; that this is called if the object is within the appropriate 'depth' of the
+							; player vehicle and it checks the left/right bounds and takes the appropriate
+							; collision action if hit.
+
+object.closer: EQU 6		; Pointer to the 'next' object in the list. List is expected to be circular,
+							; and longer than a single screen; 
+
+object.further: EQU 8		; Pointer to the 'next' object in the list. List is expected to be circular,
+							; and longer than a single screen; 
+
+;
 ; Hence, total size is:
-object.size: EQU 2
+;
+object.sizeof: EQU 10
 
 ;
-; Single-slot object [non]-'list'.
+; Object list (hard-coded for now).
 ;
-object:
+object1:
 	dw max_object_depth
+	dw draw_black_rectangle
+	dw 0
+	dw 0			; Nothing is closer.
+	dw object2
+
+object2:
+	dw max_object_depth + (max_object_depth >> 1)
+	dw draw_black_rectangle
+	dw 0
+	dw object1
+	dw object3
+
+object3:
+	dw max_object_depth * 2
+	dw draw_black_rectangle
+	dw 0
+	dw object2
+	dw 0			; Nothing is further.
+
+;
+; Pointer to current location within the object list, which
+; should be to the furthest object.
+;
+firstobject:
+	dw object1
+
 
 ;
 ; Transient storage used by objects.draw.
 ;
 @segment_pointer: dw 0
-@object_width: db 0
 @ratio:
 	db 0	; Throwaway byte to allow 16-bit stores.
 	db 0	; Actual ratio.
+@horizon_depth:
+	dw 0
+
+;
+; Per-object transient storage shared with the draw routines.
+;
+@object_width: db 0
 @base_line: 
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
@@ -31,29 +81,100 @@ object:
 
 objects.draw:
 
+	; `firstobject` is whichever was first last frame. It might need updating.
+	ld ix, (firstobject)
+
+	ld hl, (player.y + 1)
+	ld bc, max_object_depth
+	add hl, bc
+	ld (@-horizon_depth), hl				; Store current location of the horizon, the cutoff point for objects.
+
 	;
-	; I wasn't able to fit this into the span-drawing loop at the time of writing,
-	; though that's certainly an aspiration and part of which I've picked this
-	; merge-sort-esque model of object placement.
+	; (1) Follow object.closer for as long as object.depth is greater than maxdepth + player.y and closer objects exist.
+	; This will happen very rarely, since the player would need to be moving backwards.
 	;
 
-	ld hl, (object + object.depth)
-	ld bc, (player.y + 1)
+@test_move_closer:
+	ld c, (ix + object.depth)
+	ld b, (ix + object.depth + 1)
 	or a
+	ld hl, (@-horizon_depth)
 	sbc hl, bc
+	jr nc, @+dont_recede			; No carry => object depth was less than maximum depth. So it's in front of the horizon, not behind it.
 
-	ret m					; player.y > object.depth => object won't appear.
+	ld e, (ix + object.closer)
+	ld d, (ix + object.closer + 1)	; DE = pointer to closer object.
+	ld a, e
+	or d
+	jr z, @+dont_recede				; Don't recede if there is no closer object.
+	ld ixl, e
+	ld ixh, d
+	jr @-test_move_closer
 
-	push hl
-	ld bc, max_object_depth + 1
+@dont_recede:
+
+	;
+	; (2) Follow object.further for a long as a further object exists for which object.depth is less than or equal to maxdepth + player.y.
+	;
+
+@test_move_further:
+	ld e, (ix + object.further)
+	ld d, (ix + object.further + 1)	; DE = pointer to further object.
+	ld a, e
+	or d
+	jr z, @+dont_advance				; Don't recede if there is no closer object.
+
+	ld iyl, e		; Use IY as a temporary index register.
+	ld iyh, d
+	ld c, (iy + object.depth)
+	ld b, (iy + object.depth + 1)
+	or a
+	ld hl, (@-horizon_depth)
 	sbc hl, bc
-	pop de					; DE = planar depth to object from camera.
+	jr c, @+dont_advance			; Carry => object depth was greater than or equal to maximum depth. So it's behind the horizon.
 
-	ret p					; object.depth - player.y > max depth => object won't appear.
+	; Advance then, and keep testing.
+	ld ixl, e
+	ld ixh, d
+	jr @-test_move_further
+
+@dont_advance:
+
+	; (3) Store back to firstobject.
+	ld (firstobject), ix
+
+
+	;
+	; From here: IX points to the first object that _might_ be visible.
+	; Draw it, if visible, follow the closer link, repeat.
+	;
+
+	;
+	; As an aside: although this walks the per-line segments list, I wasn't
+	; able to fit this into the span-drawing loop at the time of writing,
+	; though that's certainly an aspiration.
+	;
+
 
 	ld a, 1					; Don't consider placement on the top line, due to
 							; need to have something to interpolate against.
 	ld hl, segments + 3		; HL = pointer into depths table (for A = 1).
+
+@next_object:
+	ex de, hl
+
+	; Get player-relative depth of current object into DE.
+	ld c, (ix + object.depth)
+	ld b, (ix + object.depth + 1)
+	ld hl, (player.y + 1)
+	or a
+	sbc hl, bc
+
+	; Check whether current visible object is behind camera.
+	; If so, drawing is done.
+	ret m
+
+	ex de, hl		; DE = object depth; HL = pointer into segments table.
 
 @test_depth:
 
@@ -73,7 +194,7 @@ objects.draw:
 	or a
 	sbc hl, bc
 
-	jr c, @+not_here		; (depth of line) >= (depth of object), so it's not here.
+	jp c, @+not_here		; (depth of line) >= (depth of object), so it's not here.
 
 	; HL = distance from this line to object. Will be positive — it's how far behind the front
 	; of this line the object lies.
@@ -95,7 +216,7 @@ objects.draw:
 	dec l
 	ld e, (hl)	; DE = depth of previous line.
 
-	; TODO: could dynamically reprogram here.
+	; TODO: could dynamically reprogram here, maybe?
 	ld (@-segment_pointer), hl
 
 	ex de, hl				; HL = depth of previous line, BC = depth of current line.
@@ -215,14 +336,31 @@ objects.draw:
 
 	pop af		; Throw away planar depth of object on stack.
 
-	call draw_object
-	ret	; TODO: this is to avoid hitting the same object more than once.
-		; Replace with an actual check of the object list
+	ld e, (ix + object.draw)
+	ld d, (ix + object.draw + 1)
+	ld (@+call_draw + 1), de
+@call_draw:
+	call 0
+
+	;
+	; Advance IX to closer object and continue if one exists.
+	;
+	ld e, (ix + object.closer)
+	ld d, (ix + object.closer + 1)
+	ld a, e
+	or d
+	ret z
+	ld ixl, e
+	ld ixh, d
+
+	ld a, (@-base_line)
+	ld hl, (@-segment_pointer)
+	jp @-next_object
 
 @no_interpolate:
 	ld h, b
 	ld l, c
-	jr @-draw_object
+	jp @-draw_object
 
 @not_here:
 	ex de, hl		; Restore pointer into segments table into HL.
@@ -238,7 +376,7 @@ objects.draw:
 ;
 ; HL = centre of object; other parameters are in memory.
 ;
-draw_object:
+draw_black_rectangle:
 	; Locate object at right-hand side of road.
 	ld a, (@-object_width)
 	add a, l
