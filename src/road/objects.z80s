@@ -82,7 +82,7 @@ firstobject:
 objects.draw:
 
 	; `firstobject` is whichever was first last frame. It might need updating.
-	ld ix, (firstobject)
+	ld iy, (firstobject)
 
 	ld hl, (player.y + 1)
 	ld bc, max_object_depth
@@ -95,20 +95,20 @@ objects.draw:
 	;
 
 @test_move_closer:
-	ld c, (ix + object.depth)
-	ld b, (ix + object.depth + 1)
+	ld c, (iy + object.depth)
+	ld b, (iy + object.depth + 1)
 	or a
 	ld hl, (@-horizon_depth)
 	sbc hl, bc
 	jr nc, @+dont_recede			; No carry => object depth was less than maximum depth. So it's in front of the horizon, not behind it.
 
-	ld e, (ix + object.closer)
-	ld d, (ix + object.closer + 1)	; DE = pointer to closer object.
+	ld e, (iy + object.closer)
+	ld d, (iy + object.closer + 1)	; DE = pointer to closer object.
 	ld a, e
 	or d
 	jr z, @+dont_recede				; Don't recede if there is no closer object.
-	ld ixl, e
-	ld ixh, d
+	ld iyl, e
+	ld iyh, d
 	jr @-test_move_closer
 
 @dont_recede:
@@ -118,34 +118,34 @@ objects.draw:
 	;
 
 @test_move_further:
-	ld e, (ix + object.further)
-	ld d, (ix + object.further + 1)	; DE = pointer to further object.
+	ld e, (iy + object.further)
+	ld d, (iy + object.further + 1)	; DE = pointer to further object.
 	ld a, e
 	or d
 	jr z, @+dont_advance				; Don't recede if there is no closer object.
 
-	ld iyl, e		; Use IY as a temporary index register.
-	ld iyh, d
-	ld c, (iy + object.depth)
-	ld b, (iy + object.depth + 1)
+	ld ixl, e		; Use IX as a temporary index register.
+	ld ixh, d
+	ld c, (ix + object.depth)
+	ld b, (ix + object.depth + 1)
 	or a
 	ld hl, (@-horizon_depth)
 	sbc hl, bc
 	jr c, @+dont_advance			; Carry => object depth was greater than or equal to maximum depth. So it's behind the horizon.
 
 	; Advance then, and keep testing.
-	ld ixl, e
-	ld ixh, d
+	ld iyl, e
+	ld iyh, d
 	jr @-test_move_further
 
 @dont_advance:
 
 	; (3) Store back to firstobject.
-	ld (firstobject), ix
+	ld (firstobject), iy
 
 
 	;
-	; From here: IX points to the first object that _might_ be visible.
+	; From here: IY points to the first object that _might_ be visible.
 	; Draw it, if visible, follow the closer link, repeat.
 	;
 
@@ -164,9 +164,9 @@ objects.draw:
 	ex de, hl
 
 	; Get player-relative depth of current object into DE.
-	ld c, (ix + object.depth)
-	ld b, (ix + object.depth + 1)
-	ld hl, (player.y + 1)
+	ld l, (iy + object.depth)
+	ld h, (iy + object.depth + 1)
+	ld bc, (player.y + 1)
 	or a
 	sbc hl, bc
 
@@ -216,7 +216,6 @@ objects.draw:
 	dec l
 	ld e, (hl)	; DE = depth of previous line.
 
-	; TODO: could dynamically reprogram here, maybe?
 	ld (@-segment_pointer), hl
 
 	ex de, hl				; HL = depth of previous line, BC = depth of current line.
@@ -336,25 +335,26 @@ objects.draw:
 
 	pop af		; Throw away planar depth of object on stack.
 
-	ld e, (ix + object.draw)
-	ld d, (ix + object.draw + 1)
+	ld e, (iy + object.draw)
+	ld d, (iy + object.draw + 1)
 	ld (@+call_draw + 1), de
 @call_draw:
 	call 0
 
 	;
-	; Advance IX to closer object and continue if one exists.
+	; Advance IY to closer object and continue if one exists.
 	;
-	ld e, (ix + object.closer)
-	ld d, (ix + object.closer + 1)
+	ld e, (iy + object.closer)
+	ld d, (iy + object.closer + 1)
 	ld a, e
 	or d
 	ret z
-	ld ixl, e
-	ld ixh, d
+	ld iyl, e
+	ld iyh, d
 
 	ld a, (@-base_line)
 	ld hl, (@-segment_pointer)
+	inc l
 	jp @-next_object
 
 @no_interpolate:
@@ -372,6 +372,8 @@ objects.draw:
 
 	ret
 
+
+@object_top: db 0
 
 ;
 ; HL = centre of object; other parameters are in memory.
@@ -426,12 +428,12 @@ draw_black_rectangle:
 
 	ld a, (@-base_line)
 	add top_y
-	ld (@-base_line), a
+	ld (@-object_top), a
 
 	ld a, (@-object_width)
 	ld e, a
 
-	ld a, (@-base_line)
+	ld a, (@-object_top)
 	cp e
 	jr nc, @+no_top_clip
 
@@ -441,7 +443,7 @@ draw_black_rectangle:
 	ld d, 0x00			; Colour.
 
 @spanloop:
-	ld a, (@-base_line)			; A = line.
+	ld a, (@-object_top)			; A = line.
 	sub e
 
 	call spans.getaddress		; HL = pointer.
