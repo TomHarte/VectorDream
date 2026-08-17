@@ -336,8 +336,9 @@ objects.draw:
 
 	ld e, (iy + object.draw)
 	ld d, (iy + object.draw + 1)
-	push de		;
-	ret			; i.e. call (de)
+	ld (@+call_draw + 1), de
+@call_draw:
+	call 0
 
 	;
 	; Advance IY to closer object and continue if one exists.
