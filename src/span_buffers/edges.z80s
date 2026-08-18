@@ -75,10 +75,11 @@ edge.fill:
 ;		C = number of lines to output.
 ;
 ;	Clobbers:
-;		A, C, DE, HL, IX.
+;		A, C, DE, HL, IX, IYl.
 ;
 edges.output:
 	ld ixh, d					; Stow colour.
+	ld iyl, c					; Preserve loop counter.
 
 	ld h, edge_list_left / 256
 	ld l, b						; HL = left list pointer.
@@ -106,7 +107,6 @@ edges.output:
 
 @output_line:
 	; Load B = left, C = right.
-	push bc
 	ld b, (hl)
 	inc h
 	ld c, (hl)
@@ -122,10 +122,9 @@ edges.output:
 
 	; Restore trashed values.
 	pop de
-	pop bc
 
 	; Test 1: has C been exhausted?
-	dec c
+	dec iyl
 	ret z
 
 	; Advance pointer into spans to start of next line.
