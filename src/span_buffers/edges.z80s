@@ -1,0 +1,184 @@
+;
+; trapezium
+;
+; Overprints a trapezium with x-axis-aligned top and bottom. This code draws bottom-up and
+; stops one line before the listed 'low' y; the 'initial' left and right coordinates are for
+; the _bottom_ of the trapezium and it is (high y - low y) lines tall.
+;
+;	Input:
+;		HL = position of left edge at high y (integral; 0–255 = on-screen, other values = off)
+;		BC = left edge delta — amount to add to the left edge per line (8.8 fixed point)
+;		HL' = position of right edge at high y;
+;		BC' = right edge delta;
+;		D = low y;
+;		E = high y;
+;		A = colour.
+;
+;	Requires:
+;		D < E.
+;		0 <= D, E < 192.
+;		Edges do not cross.
+;
+;	Output:
+;		Modifies the current span list to include the described trapezium.
+;
+;	Clobbers:
+;		BC, BC', DE, DE', HL, HL', IX, IY, A.
+;
+; trapezium:
+
+; 	; Due to register pressure, I've chickened out and decided to use an
+; 	; intermediate buffer for start and endpoints. On the plus side, having a
+; 	; single "draw what is in the buffers" call that automatically does smart
+; 	; paging will be a benefit for things like triangle rasterisation in the future.
+
+
+; 	; Dynamically reprogram to preserve colour, put initial y in IXl.
+; 	ld (@+load_colour + 1), a
+; 	ld ixl, e
+
+; 	; Store height into IYh.
+; 	ld a, e
+; 	sub d
+; 	ld iyh, a
+
+; 	; Scan edges.
+; 	ld iyl, a
+; 	ld de, edge_list_left
+; 	call @+output_edge
+
+; 	ld iyl, iyh
+; 	exx
+; 	ld de, edge_list_right
+; 	call @+output_edge
+
+; 	; Walk edges, overprinting where width is non-zero.
+; 	ld hl, edge_list_right
+; 	ld a, ixl
+; 	ld iyl, a			; IYl = current screen position.
+
+; @overprint_line:
+; 	ld a, (hl)
+; 	dec h
+; 	ld b, (hl)
+; 	inc h
+; 	inc l
+
+; 	cp b
+; 	jr z, @+no_line
+
+; 	ld c, a				; B = left, C = right.
+; 	ld a, iyl			; A = screen y.
+
+; 	; TODO: it's very dumb to call spans.getaddress every line.
+; 	; But to avoid that I'd need to be a lot more careful about dealing with alignment.
+
+; 	push hl
+
+; 	call spans.getaddress	; HL = pointer to start of spans.
+; @load_colour:
+; 	ld d, 0					; D = colour.
+; 	call spans.overprint
+
+; 	pop hl
+
+; @no_line:
+; 	dec iyl
+; 	dec iyh
+; 	jr nz, @-overprint_line
+
+; 	ret
+
+
+
+;
+; edge.fill
+;
+; Applies a per-line fractional delta to a 16-bit integral position,
+; clamps it into the range [0, 255] and writes out to an edge list.
+;
+; 	Input:
+;		DE = pointer to list.
+;		IYl = number of lines to write.
+;		A:HL = first position to write in 16:8 (A = highest byte, L = lowest).
+;		BC = per-line delta in 8:8.
+;
+;	Clobbers:
+;		A, IYl, IXh, HL, DE.
+;
+edge.fill:
+	; Set IXh:BC = delta.
+	ld a, b
+	rla				; carry = sign bit
+	sbc a, a		; a = a - a (- another bit, if sign was set)
+	ld ixh, a
+
+@output_line:
+	; Clamp and write HL to (DE), incrementing the pointer.
+	ex de, hl
+	or a
+	jr z, @+write_d		; top byte = 0; write integral part.
+	jp p, @+write_255	; top byte > 0; clamp to +255.
+
+	ld (hl), 0x00		; top byte < 0; clamp to 0.
+	inc l
+	jr @+increment
+
+@write_255:
+	ld (hl), 0xff
+	inc l
+	jr @+increment
+
+@write_d:
+	ld (hl), d
+	inc l
+
+@increment:
+	ex de, hl
+
+	; HL:A += BC:IXh.
+	add hl, bc
+	adc a, ixh
+
+	; Test for end of loop.
+	dec iyl
+	jr nz, @-output_line
+
+	ret
+
+
+;
+; edges.output
+;
+; Outputs spans between whatever position is in edge_list_left and the corresponding
+; position in edge_list_right.
+;
+; 	Input:
+;		D = colour.
+;		B = first line to output.
+;		C = last line to output.
+;
+;	Clobbers:
+;		???
+;
+; edges.output:
+; 	ld a, c
+; 	dec b
+; 	ld c, a						; C = number of lines to draw.
+
+; 	ld h, edge_list_left / 256
+; 	ld l, b
+; 	ld d, edge_list_right / 256
+; 	ld e, b						; HL = left list pointer; DE = right list pointer.
+
+; 	; ... and D still equals colour.
+
+; 	ld a, b
+; 	rlca
+; 	rlca
+; 	rlca
+; 	and 7		; Get first page touched.
+
+; @span_page: EQU FOR 6
+
+; 	ret

@@ -36,7 +36,7 @@ include "road/tables.z80s"
 include "maths/multiply_tables.z80s"
 include "span_buffers/span_buffers.z80s"
 include "span_buffers/overprint.z80s"
-; include "span_buffers/edges.z80s"
+include "span_buffers/edges.z80s"
 
 ;
 ; Although it is a shame that interrupt mode 2 has to be used, requiring this
