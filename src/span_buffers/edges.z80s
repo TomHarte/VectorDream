@@ -75,7 +75,7 @@ edge.fill:
 ;		C = number of lines to output.
 ;
 ;	Clobbers:
-;		???
+;		A, C, DE, HL, IX.
 ;
 edges.output:
 	ld ixh, d					; Stow colour.
