@@ -136,8 +136,8 @@ edges.output:
 	ex de, hl
 
 	; Test 2: is the page exhausted?
-	ld a, c
-	and %11111
+	ld a, d
+	and %111110
 	jr nz, @-output_line
 
 @next_page:
