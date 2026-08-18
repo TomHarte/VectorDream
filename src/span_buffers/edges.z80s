@@ -78,6 +78,10 @@ edge.fill:
 ;		A, C, DE, HL, IX, IYl.
 ;
 edges.output:
+	ld a, c			; Exit early if there are zero lines to draw.
+	or a
+	ret z
+
 	ld ixh, d					; Stow colour.
 	ld iyl, c					; Preserve loop counter.
 
