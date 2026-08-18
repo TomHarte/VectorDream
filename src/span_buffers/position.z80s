@@ -1,2 +1,2 @@
-spans.num_pages: EQU 5								; 6 * 32 = 192, so 192 lines are buffered.
+spans.num_pages: EQU 6								; 6 * 32 = 192, so 192 lines are buffered.
 spans.output_y: EQU 192 - spans.num_pages * 32		; bottom-align content.
