@@ -18,8 +18,9 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 ; Program defines.
 ;
 
-PAGE.VIDEO:			EQU 0	; The page on which the framebuffer lies.
-PAGE.FIRSTSPAN:		EQU 4	; The page on which the span buffer begins.
+include "span_buffers/position.z80s"
+PAGE.VIDEO:			EQU 0							; The page on which the framebuffer lies.
+PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffer begins.
 
 ;
 ; Place this code just after where the frame buffer will be, in the upper half of memory.
@@ -35,7 +36,7 @@ include "road/tables.z80s"
 include "maths/multiply_tables.z80s"
 include "span_buffers/span_buffers.z80s"
 include "span_buffers/overprint.z80s"
-include "span_buffers/trapezium.z80s"
+include "span_buffers/edges.z80s"
 
 ;
 ; Although it is a shame that interrupt mode 2 has to be used, requiring this
@@ -113,48 +114,35 @@ ALIGN 256
 	call road.draw
 	call objects.draw
 
-	; New experiment: draw a trapezium. Advanced voodoo!
-	; exx
-	; ld hl, 0xfe		; Right edge = from 0xfe, +512/256ths a line.
-	; ld bc, 18
-	; exx
+@bottom: EQU 37
 
-	; ld hl, 14		; Left edge = from 4, -63/256ths a line.
-	; ld bc, -63
+	; ; Experiment with some edges.
+	; ld de, edge_list_left + @bottom		; y1 = 37
+	; ld ixl, 19						; height = 19
+	; ld a, 0
+	; ld hl, 3 * 256					; x[y1] = 3
+	; ld bc, 163						; add 163/256 every line
+	; call edge.fill
 
-	; ld d, 100		; Start at y = 100.
-	; ld e, 129		; End at y = 170.
+	; ; Add a second segment with a sharper angle
+	; ld de, edge_list_left + @bottom - 19
+	; ld ixl, 10
+	; ld bc, -100						; add 100/256 every line
+	; call edge.fill
 
-	; ld a, 0x55		; Colour = 5.
-	; call trapezium	; Draw.
+	; ; Add a right-hand side in a single segment
+	; ld de, edge_list_right + @bottom		; y1 = 37
+	; ld ixl, 29						; height = 29
+	; ld a, 0
+	; ld hl, 29 * 256					; x[y1] = 19
+	; ld bc, -130						; draw vertical
+	; call edge.fill
 
-	; Trapezium #2.
-	; exx
-	; ld hl, 0x10		; Right edge = from 0x10, +2/256ths a line.
-	; ld bc, 2
-	; exx
-
-	; ld hl, 8		; Left edge = from 8, +67/256ths a line.
-	; ld bc, 67
-
-	; ld d, 10		; Start at y = 10.
-	; ld e, 17		; End at y = 17.
-
-	; ld a, 0x44		; Colour = 4.
-	; call trapezium	; Draw.
-
-	; Experiment: add a single black line across a low portion of the display.
-; 	ld iyl, 64
-; @rectangle_loop:
-; 	ld a, iyl
-; 	call spans.getaddress
-; 	ld b, 23
-; 	ld c, 0xfe
-; 	ld d, 0x22
-; 	call spans.overprint
-; 	inc iyl
-; 	jp po, @-rectangle_loop
-
+	; ; Fill area.
+	; ld d, wood_colour
+	; ld b, @bottom - 29 + 1
+	; ld c, 29
+	; call edges.output
 
 	call spans.swap
 

@@ -1,0 +1,149 @@
+;
+; edge.fill
+;
+; Applies a per-line fractional delta to a 16-bit integral position,
+; clamps it into the range [0, 255] and writes out to an edge list.
+;
+; Edges are filled from bottom to top — they're filled _upward_.
+;
+; 	Input:
+;		DE = pointer to list; this is the final entry that will be filled.
+;		IXl = number of lines to write.
+;		A:HL = first position to write in 16:8 (A = highest byte, L = lowest).
+;		BC = per-line delta in 8:8.
+;
+; 	Output:
+;		A:HL = position on the line above the final line written.
+;
+;	Clobbers:
+;		A, IXl, IXh, HL, DE.
+;
+edge.fill:
+	push af
+
+	; Sign extend BC so that IXh:BC = delta.
+	ld a, b
+	rla				; carry = sign bit
+	sbc a, a		; a = a - a (- another bit, if sign was set)
+	ld ixh, a
+
+	pop af
+
+@output_line:
+	; Clamp and write HL to (DE), decrementing the pointer.
+	ex de, hl
+	or a
+	jr z, @+write_d		; top byte = 0; write integral part.
+	jp p, @+write_255	; top byte > 0; clamp to +255.
+
+	ld (hl), 0x00		; top byte < 0; clamp to 0.
+	jr @+decrement
+
+@write_255:
+	ld (hl), 0xff
+	jr @+decrement
+
+@write_d:
+	ld (hl), d
+
+@decrement:
+	dec l
+	ex de, hl
+
+	; HL:A += BC:IXh.
+	add hl, bc
+	adc a, ixh
+
+	; Test for end of loop.
+	dec ixl
+	jr nz, @-output_line
+
+	ret
+
+
+;
+; edges.output
+;
+; Outputs spans between whatever position is in edge_list_left and the corresponding
+; position in edge_list_right.
+;
+; This fill proceeds _downward_.
+;
+; 	Input:
+;		D = colour.
+;		B = first line to output.
+;		C = number of lines to output.
+;
+;	Clobbers:
+;		A, C, DE, HL, IX, IYl.
+;
+edges.output:
+	ld a, c			; Exit early if there are zero lines to draw.
+	or a
+	ret z
+
+	ld ixh, d					; Stow colour.
+	ld iyl, c					; Preserve loop counter.
+
+	ld h, edge_list_left / 256
+	ld l, b						; HL = left list pointer.
+
+@page: EQU FOR spans.num_pages
+	; Skip this page if not drawing on it.
+	ld a, l
+	cp (@page + 1) * 32
+	jr nc, @+next_page		; First line of next page <= current drawing line,
+							; so skip this page.
+
+	; Install target span page.
+	ld a, %00100000 + PAGE.FIRSTSPAN + (@page * 2)
+	out (LMPR), a
+
+	; Calculate pointer into span page.
+	ld a, l
+	rla
+	and %00111110
+	ld d, a
+	ld a, (current_spans)
+	add d
+	ld d, a
+	ld e, 0						; DE = pointer into spans.
+
+@output_line:
+	; Load B = left, C = right.
+	ld b, (hl)
+	inc h
+	ld c, (hl)
+	dec h
+	inc l
+
+	; Set up HL = pointer into span list.
+	ex de, hl
+	push de
+
+	ld d, ixh
+	call spans.overprint.checkextent
+
+	; Restore trashed values.
+	pop de
+
+	; Test 1: has C been exhausted?
+	dec iyl
+	ret z
+
+	; Advance pointer into spans to start of next line.
+	; Not actually necessary if the next section fails,
+	; but hard to relocate.
+	inc h
+	ld l, 0
+	ex de, hl
+
+	; Test 2: is the page exhausted?
+	ld a, d
+	and %111110
+	jr nz, @-output_line
+
+@next_page:
+	NEXT @page
+
+ 	ret
