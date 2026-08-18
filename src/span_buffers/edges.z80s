@@ -86,9 +86,9 @@ edges.output:
 @page: EQU FOR spans.num_pages
 	; Skip this page if not drawing on it.
 	ld a, l
-	cp @page * 32
-	jr c, @+next_page		; First line of page > current drawing line,
-							; so skip.
+	cp (@page + 1) * 32
+	jr nc, @+next_page		; First line of next page <= current drawing line,
+							; so skip this page.
 
 	; Install target span page.
 	ld a, %00100000 + PAGE.FIRSTSPAN + (@page * 2)
