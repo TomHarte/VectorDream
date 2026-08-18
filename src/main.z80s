@@ -18,8 +18,9 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 ; Program defines.
 ;
 
-PAGE.VIDEO:			EQU 0	; The page on which the framebuffer lies.
-PAGE.FIRSTSPAN:		EQU 4	; The page on which the span buffer begins.
+include "span_buffers/position.z80s"
+PAGE.VIDEO:			EQU 0							; The page on which the framebuffer lies.
+PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffer begins.
 
 ;
 ; Place this code just after where the frame buffer will be, in the upper half of memory.
@@ -35,7 +36,7 @@ include "road/tables.z80s"
 include "maths/multiply_tables.z80s"
 include "span_buffers/span_buffers.z80s"
 include "span_buffers/overprint.z80s"
-include "span_buffers/trapezium.z80s"
+; include "span_buffers/edges.z80s"
 
 ;
 ; Although it is a shame that interrupt mode 2 has to be used, requiring this

@@ -126,10 +126,6 @@ spans.clear:
 ;		A, BC, DE, HL, IX, IYl.
 ;
 
-@end_page: EQU 5
-@start_page: EQU 0
-@output_y: EQU @start_page		; Multiplied by 32; tying this start_page bottom-aligns content.
-
 spans.swap:
 	;
 	; Overarching register assignment:
@@ -139,19 +135,13 @@ spans.swap:
 	;	BC = pointer to new spans.
 	;	HL = pointer to old spans.		[for benefit of cp (hl)]
 	;
-	ld de, @output_y * 256 * 32
+	ld de, spans.output_y * 256
 	ld l, e		; H and B will be loaded at the start of the per-page output.
 	ld c, e
 
 	; Output.
 
-	;
-	; Lazy: I've unrolled per page here to avoid having to bother writing an outer loop.
-	; Reevaluate this decision at some point.
-	;
-
-@page_loop: EQU for @end_page - @start_page + 1
-@page: EQU @page_loop + @start_page
+@page: EQU for spans.num_pages
 
 	; Page in proper source and destination buffers.
 	ld a, %00100000 + PAGE.FIRSTSPAN + (@page * 2)
@@ -163,7 +153,7 @@ spans.swap:
 	xor 0x40
 	ld h, a
 
-IF @page == @end_page
+IF @page == spans.num_pages - 1
 	ld (@current_spans), a
 ENDIF
 
@@ -324,15 +314,14 @@ ENDIF
 		ld a, d
 		and %11111
 
-IF @page == @end_page
+IF @page == spans.num_pages - 1
 		ret z
 		jr @-compare_spans
 ELSE
 		jr nz, @-compare_spans
 ENDIF
 
-NEXT @page_loop
-
+NEXT @page
 
 finish_painting: MACRO
 	rl e	; just to get the top bit into carry; low 7 don't really matter.
