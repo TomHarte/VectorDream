@@ -24,7 +24,10 @@
 spans.overprint.checkextent:
 	ld a, b
 	cp c
-	ret nc
+	jr c, spans.overprint
+
+	inc h
+	ret
 
 spans.overprint:
 

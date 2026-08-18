@@ -115,7 +115,7 @@ ALIGN 256
 	call objects.draw
 
 	; Experiment with some edges.
-	ld de, edge_list_left + 33		; y1 = 23
+	ld de, edge_list_left + 37		; y1 = 37
 	ld ixl, 19						; height = 19
 	ld a, 0
 	ld hl, 3 * 256					; x[y1] = 3
@@ -123,13 +123,13 @@ ALIGN 256
 	call edge.fill
 
 	; Add a second segment with a sharper angle
-	ld de, edge_list_left + 33 - 19
+	ld de, edge_list_left + 37 - 19
 	ld ixl, 10
 	ld bc, 100						; subtract 100/256 every line
 	call edge.fill
 
 	; Add a right-hand side in a single segment
-	ld de, edge_list_right + 33		; y1 = 23
+	ld de, edge_list_right + 37		; y1 = 37
 	ld ixl, 29						; height = 29
 	ld a, 0
 	ld hl, 19 * 256					; x[y1] = 19
@@ -138,7 +138,7 @@ ALIGN 256
 
 	; Fill area.
 	ld d, 0x55
-	ld b, 33 - 29 + 1
+	ld b, 37 - 29 + 1
 	ld c, 29
 	call edges.output
 
