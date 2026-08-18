@@ -30,23 +30,23 @@ edge.fill:
 	pop af
 
 @output_line:
-	; Clamp and write HL to (DE), incrementing the pointer.
+	; Clamp and write HL to (DE), decrementing the pointer.
 	ex de, hl
 	or a
 	jr z, @+write_d		; top byte = 0; write integral part.
 	jp p, @+write_255	; top byte > 0; clamp to +255.
 
 	ld (hl), 0x00		; top byte < 0; clamp to 0.
-	jr @+increment
+	jr @+decrement
 
 @write_255:
 	ld (hl), 0xff
-	jr @+increment
+	jr @+decrement
 
 @write_d:
 	ld (hl), d
 
-@increment:
+@decrement:
 	dec l
 	ex de, hl
 
