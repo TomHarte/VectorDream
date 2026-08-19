@@ -328,11 +328,13 @@ road_colour: EQU 0x44
 line_colour: EQU 0x55
 wood_colour: EQU 0x66
 leaf_colour: EQU 0x77
+warning_colour: EQU 0x88
 
 ; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
 ; This list is OTIRd elsewhere, so is in reverse order.
 palette:
-	db 0, 0, 0, 0, 0, 0, 0, 0
+	db 0, 0, 0, 0, 0, 0, 0
+	db %0101010		; bright red, for warning signage
 	db %1101100		; yet another green, for trees
 	db %1100010		; brown, for wood
 	db %1110111		; line
