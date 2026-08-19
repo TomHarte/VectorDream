@@ -1,26 +1,45 @@
 ;
-; edge.fill
+; edge.fill.xx
 ;
 ; Applies a per-line fractional delta to a 16-bit integral position,
 ; clamps it into the range [0, 255] and writes out to an edge list.
 ;
-; Edges are filled from bottom to top — they're filled _upward_.
+; .upward fills from bottom to top — DE points to the lowest entry in the list,
+; drawing proceeds upwards.
+;
+; .downward fills in the opposite direction — DE points to the highest entry in
+; the list, drawing proceeds downwards.
 ;
 ; 	Input:
-;		DE = pointer to list; this is the final entry that will be filled.
+;		DE = pointer to list; this is the first entry that will be filled.
 ;		IXl = number of lines to write.
 ;		A:HL = first position to write in 16:8 (A = highest byte, L = lowest).
 ;		BC = per-line delta in 8:8.
 ;
 ; 	Output:
 ;		A:HL = position on the line above the final line written.
+;		DE = pointer to first list entry that wasn't filled.
 ;
 ;	Clobbers:
 ;		A, IXl, IXh, HL, DE.
 ;
-edge.fill:
+INC.L: EQU 0x2c
+DEC.L: EQU 0x2d
+
+edge.fill.downward:
 	push af
 
+	ld a, INC.L				; Opcode for DEC L.
+	ld (@+decrement), a
+	jr @+edge.fill
+
+edge.fill.upward:
+	push af
+
+	ld a, DEC.L				; Opcode for DEC L.
+	ld (@+decrement), a
+
+@edge.fill:
 	; Sign extend BC so that IXh:BC = delta.
 	ld a, b
 	rla				; carry = sign bit
