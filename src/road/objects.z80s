@@ -412,12 +412,21 @@ draw.leftward_arrow:
 	; Locate object at right-hand side of road.
 	locate_at_right
 
-	; Size as 1/2th the width of the road.
+	; Size as one-quarter the width of the road.
 	ld a, (object_width)
 	rra
-;	rra
-;	rra
-	and %00011111
+	rra
+	and %00111111
+	ret z
+
+	; Move further rightward, to get the point off the track.
+	push af
+	add_hl_a
+	pop af
+;	add_hl_a
+
+	; NB: the size of this particular object means it can never overlap the top of the viewport.
+	; So that simplifies some of the flow below.
 
 	; Set up for drawing left edge.
 	push af
@@ -433,14 +442,14 @@ draw.leftward_arrow:
 	ld a, h
 	ld h, l
 	ld l, 0								; initial x position = as in HL
-	ld bc, -163							; this arrow points leftward: subtract 163/256 every line
+	ld bc, -300							; this arrow points leftward: subtract 163/256 every line
 	call edge.fill.upward
 
 	; Continue from current position, so don't touch HL:A.
 	pop bc
 	push bc
 	ld ixl, b							; same height
-	ld bc, 163							; now head to the right
+	ld bc, 300							; now head to the right
 	call edge.fill.upward
 
 	; Jump over to the right-hand-side.
@@ -451,21 +460,17 @@ draw.leftward_arrow:
 	push bc
 	ld ixl, b							; same height
 
-;	pop bc
-;	add
-;	ld bc, 3 * 256						; TODO: don't hard-code width here.
-
 	add hl, bc
 	adc 0
 
-	ld bc, -163							; now head to the left again
+	ld bc, -96							; now head to the left again
 	call edge.fill.downward
 
 	; Do the second right-hand segment.
 	pop bc
 	push bc
 	ld ixl, b							; same height
-	ld bc, 163							; now head to the left again
+	ld bc, 96							; now head to the left again
 	call edge.fill.downward
 
 	; Output the actual spans.

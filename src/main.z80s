@@ -313,8 +313,7 @@ player.x: dw 16 * 256
 player.xvelocity: dw 0
 
 player.y:
-	dw 0
-	db 0		; This is three bytes in 16:8 fixed form.
+	db 0, 0, 0		; 16:8 fixed form.
 player.yvelocity: dw 0
 
 ;
