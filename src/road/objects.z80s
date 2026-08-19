@@ -33,7 +33,7 @@ object.sizeof: EQU 10
 ;
 object1:
 	dw max_object_depth
-	dw right_brown_rectangle
+	dw draw.leftward_arrow
 	dw 0
 	dw 0			; Nothing is closer.
 	dw object2
@@ -73,7 +73,7 @@ firstobject:
 ;
 ; Per-object transient storage shared with the draw routines.
 ;
-@object_width: db 0
+object_width: db 0
 @base_line: 
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
@@ -283,7 +283,7 @@ objects.draw:
 	; H = amount to subtract from value that (hl) was pointing to.
 	pop af
 	sub h
-	ld (@-object_width), a		; Establish object width.
+	ld (object_width), a		; Establish object width.
 
 	;
 	; Grab relevant values from curvature table.
@@ -383,13 +383,110 @@ objects.draw:
 
 
 
+;
+; Drawing routines:
+;
+; HL = centre of object; other parameters are in memory.
+; Must preserve IY.
+;
 
 
 @object_top: db 0
 
-;
-; HL = centre of object; other parameters are in memory.
-;
+add_hl_a: MACRO
+	add a, l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ENDM
+
+locate_at_right: MACRO
+	; Add the 8-bit value (object_width) to HL.
+	ld a, (object_width)
+	add_hl_a
+	ENDM
+
+
+draw.leftward_arrow:
+	; Locate object at right-hand side of road.
+	locate_at_right
+
+	; Size as 1/2th the width of the road.
+	ld a, (object_width)
+	rra
+;	rra
+;	rra
+	and %00011111
+
+	; Set up for drawing left edge.
+	push af
+
+	; Draw left edge.
+	ld ixl, a							; height = scaled height
+
+	ld d, edge_list_left / 256
+	ld a, (@-base_line)
+	add top_y
+	ld e, a								; Start drawing at base_line.
+
+	ld a, h
+	ld h, l
+	ld l, 0								; initial x position = as in HL
+	ld bc, -163							; this arrow points leftward: subtract 163/256 every line
+	call edge.fill.upward
+
+	; Continue from current position, so don't touch HL:A.
+	pop bc
+	push bc
+	ld ixl, b							; same height
+	ld bc, 163							; now head to the right
+	call edge.fill.upward
+
+	; Jump over to the right-hand-side.
+	inc e
+	inc d
+
+	pop bc
+	push bc
+	ld ixl, b							; same height
+
+;	pop bc
+;	add
+;	ld bc, 3 * 256						; TODO: don't hard-code width here.
+
+	add hl, bc
+	adc 0
+
+	ld bc, -163							; now head to the left again
+	call edge.fill.downward
+
+	; Do the second right-hand segment.
+	pop bc
+	push bc
+	ld ixl, b							; same height
+	ld bc, 163							; now head to the left again
+	call edge.fill.downward
+
+	; Output the actual spans.
+	pop bc
+	ld a, b
+	add a, a
+	ld c, a								; Height = double the height of those two segments.
+
+	ld a, (@-base_line)
+	sub c
+	add top_y + 1
+	ld b, a								; Start position = base - height + top_y + 1.
+
+	ld d, warning_colour				; This is a warning sign.
+	push iy								; TODO: can edges.output avoid IY, somehow?
+	call edges.output
+	pop iy
+
+	ret
+
+
 right_brown_rectangle:
 	ld d, wood_colour
 	jr @+big_rectangle
@@ -401,12 +498,7 @@ right_green_rectangle:
 
 @big_rectangle:
 	; Locate object at right-hand side of road.
-	ld a, (@-object_width)
-	add a, l
-	ld l, a
-	adc h
-	sub l
-	ld h, a
+	locate_at_right
 
 	;
 	; Left extent.
@@ -426,7 +518,7 @@ right_green_rectangle:
 	;
 	; Right extent.
 	;
-		ld a, (@-object_width)
+		ld a, (object_width)
 
 		add a, l
 		ld l, a
@@ -451,7 +543,7 @@ right_green_rectangle:
 	add top_y
 	ld (@-object_top), a
 
-	ld a, (@-object_width)
+	ld a, (object_width)
 	ld e, a
 
 	ld a, (@-object_top)
