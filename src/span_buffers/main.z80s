@@ -49,7 +49,7 @@ frame_counter: db 0
 
 	; Seed display.
 	call spans.setup
-	call road.setup
+	call setup
 
 	; Establish palette.
 	ld c, CLUT

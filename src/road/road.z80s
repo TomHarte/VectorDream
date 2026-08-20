@@ -290,7 +290,7 @@ road.setup:
 	ld hl, road.curvature
 	ld (hl), 0
 	ld de, road.curvature + 1
-	ld bc, (bottom_y - top_y) * 2
+	ld bc, (bottom_y - top_y - 1) * 2		; - 1 as the first entry was written just above.
 	ldir
 
 	ret
