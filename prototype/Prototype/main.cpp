@@ -126,8 +126,8 @@ private:
 
 	static constexpr float DepthCurvatureDivider = 20.0f;
 
-	static constexpr float height = 0.415f;
-	static constexpr float x_rotation = -0.15f;
+	static constexpr float x_rotation = -0.3f;
+	float height;
 	static constexpr float field_of_view = 60.0f;	// In degrees.
 
 	void setup_tables() {
@@ -149,6 +149,20 @@ private:
 			const float cast_angle = cast_angle_at(y);
 			return height * cos(screen_angle) / cos(cast_angle);
 		};
+
+		// Binary search for minimum height.
+		float bounds[] = {0.0f, 10.0f};
+		while(bounds[1] - bounds[0] > 0.001f) {
+			height = (bounds[0] + bounds[1]) * 0.5f;
+			const float depth = depth_at(192);
+			const int width = int(0.5f + (131.0f / depth));
+
+			if(width > 255) {
+				bounds[0] = (bounds[0] + bounds[1]) * 0.5f;
+			} else {
+				bounds[1] = (bounds[0] + bounds[1]) * 0.5f;
+			}
+		}
 
 		float max_depth = std::numeric_limits<float>::min();
 		float min_depth = std::numeric_limits<float>::max();
