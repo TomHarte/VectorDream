@@ -1,0 +1,93 @@
+;
+; Although it is a shame that interrupt mode 2 has to be used, requiring this
+; 257-byte table of palindromic interrupt vectors, I don't see a way to avoid
+; that. Both the span buffers and the frame buffer need to be pageable at once.
+; I cannot use address 0x38 on a frame-buffer page. If I were to use address 0x38
+; on a span buffer page I'd need to use it on _all_ span buffer pages, which
+; would necessitate a one-line gap every 32 lines.
+;
+; So the interrupt handler lives here, within the top 8kb of the frame-buffer page,
+; and necessitates interrupt mode 2 and this table.
+;
+ALIGN 256
+@interrupt_vector:
+	@interrupt_table: EQU FOR 257
+		db interrupt / 256
+		NEXT @interrupt_table
+
+frame_counter: db 0
+
+	AUTOEXEC
+
+	; Disable interrupts and display.
+	di
+	ld a, %10000000
+	out (BORDER), a
+
+	;
+	; Perform a paging dance to get this code into the right place by:
+	;
+	;	(1) paging this same code into the low page, and jumping to it; then
+	;	(2) paging this code into its proper place in the upper quartile of the map, and jumping back to it.
+	;
+	; ... and set the expected video page and mode while at it.
+	;
+	ld a, PAGE.VIDEO
+	out (LMPR), a
+	jp @low_target - 0x8000
+
+@low_target:
+	ld a, PAGE.VIDEO
+	out (HMPR), a
+	or %01100000
+	out (VMPR), a
+	jp @finish_paging
+
+@finish_paging:
+	; Set stack high.
+	ld sp, 0
+
+	; Seed display.
+	call spans.setup
+	call road.setup
+
+	; Establish palette.
+	ld c, CLUT
+	ld b, 0x10
+	ld hl, palette
+	otir
+
+	; Seed pixels while display is off.
+	call draw
+	call spans.swap
+
+	; Reenable display.
+	ld a, 0
+	out (BORDER), a
+
+	; Enable frame-counting interrupts.
+	ld a, @interrupt_vector / 256
+	ld i, a
+	im 2
+	ei
+
+@game_loop:
+	call draw
+	call spans.swap
+
+	; Get B = number of frames since last did updates.
+@get_frame_counter:
+	di
+	ld a, (frame_counter)
+	ld b, a
+	xor a
+	ld (frame_counter), a
+	ei
+
+	; Spin until at least one frame has passed (this is optimistic!).
+	ld a, b
+	or a
+	jr z, @-get_frame_counter
+
+	call update
+	jr @-game_loop

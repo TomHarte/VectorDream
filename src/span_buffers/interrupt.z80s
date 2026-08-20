@@ -1,0 +1,24 @@
+;
+; Interrupt handler. Just counts frames, for frame-rate compensation.
+; Probably TODO: add music player from here.
+;
+
+interrupt: EQU 0xfefe
+
+ORG interrupt
+DUMP PAGE.VIDEO + 1, interrupt & 16383
+
+interrupt:
+	push af
+	in a, (STATUS)
+	and 8
+	jr nz, @+not_end_of_frame
+
+	ld a, (frame_counter)
+	inc a
+	ld (frame_counter), a
+
+@not_end_of_frame:
+	pop af
+	ei
+	reti
