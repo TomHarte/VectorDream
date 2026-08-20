@@ -50,6 +50,11 @@ include "road/road.z80s"
 include "road/objects.z80s"
 include "road/bss.z80s"
 
+
+setup:
+	jp road.setup
+
+
 draw:
 	call road.draw
 	jp objects.draw
