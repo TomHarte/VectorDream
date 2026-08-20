@@ -64,11 +64,11 @@ road.span:
 
 	; Consider whether to draw a centre line.
 	rla
-	jp nc, @+draw_without_line		; No line; this is a gap.
+	jp nc, @+draw_without_line_phase	; No line; this is a gap.
 
 	ld a, c
 	or a
-	jp z, @+draw_without_line		; No line; it is too small to register.
+	jp z, @+draw_without_line_distant	; No line; it is too small to register.
 
 @draw_with_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
@@ -164,6 +164,14 @@ road.span:
 	jr c, @-complete_with_road
 	fill_to a, road_colour
 	complete_with_grass
+
+@draw_without_line_phase:
+	ld a, c
+	or a
+	jp nz, @+draw_without_line
+
+@draw_without_line_distant:
+	ld ixl, grass_colour_mix
 
 @draw_without_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
