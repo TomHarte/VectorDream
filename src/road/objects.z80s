@@ -203,7 +203,7 @@ objects.draw:
 	pop de			; Restore planar depth of object.
 
 	inc a
-	cp 192 - top_y
+	cp bottom_y - top_y
 	jr nz, @-test_depth
 
 	ret

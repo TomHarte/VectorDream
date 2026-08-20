@@ -126,8 +126,8 @@ private:
 
 	static constexpr float DepthCurvatureDivider = 20.0f;
 
-	static constexpr float height = 0.475f;
-	static constexpr float x_rotation = -0.3f;
+	static constexpr float height = 0.415f;
+	static constexpr float x_rotation = -0.15f;
 	static constexpr float field_of_view = 60.0f;	// In degrees.
 
 	void setup_tables() {
@@ -144,6 +144,12 @@ private:
 			return tan(cast_angle) * height;
 		};
 
+		const auto depth_at = [&](const int y) -> float {
+			const float screen_angle = screen_angle_at(y);
+			const float cast_angle = cast_angle_at(y);
+			return height * cos(screen_angle) / cos(cast_angle);
+		};
+
 		float max_depth = std::numeric_limits<float>::min();
 		float min_depth = std::numeric_limits<float>::max();
 		for(int y = 0; y < 192; y++) {
@@ -156,7 +162,6 @@ private:
 			// => depth = height / cos(angle)
 			// .. and that needs to be multiplied by cos(screen_angle) to get distance from view plane.
 
-			const float cos_screen_angle = cos(screen_angle);
 			const float cast_angle = cast_angle_at(y);
 
 			if(cast_angle > M_PI_2 - 0.01f) {
@@ -164,7 +169,7 @@ private:
 				continue;
 			}
 
-			const float depth = height * cos_screen_angle / cos(cast_angle);
+			const float depth = height * cos(screen_angle) / cos(cast_angle);
 			road_widths[y] = int(0.5f + (131.0f / depth));
 			line_widths[y] = int(0.5f + (4.0f / depth));
 			curve_offset[y] = sin(depth / DepthCurvatureDivider) * 128.0f;
@@ -239,8 +244,8 @@ private:
 		dump_table("segments", combo_table.begin(), combo_table.end());
 		dump_table("curve_offsets", std::begin(curve_offset) + top_y, std::end(curve_offset));
 
-		printf("one_over_z_0: EQU %d\n", one_over_distances[top_y]);
-		printf("one_over_z_127: EQU %d\n", one_over_distances[top_y+128]);
+		printf("one_over_z_0: EQU %d\n", int(127.0f / depth_at(top_y)));
+		printf("one_over_z_64: EQU %d\n", int(127.0f / depth_at(top_y + 64)));
 		printf("max_object_depth: EQU %d\n", int(max_depth * DepthUnitConversion));
 	}
 

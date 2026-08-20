@@ -18,9 +18,10 @@ calculate_offset: MACRO
 
 calculate_interpolator: MACRO
 	or a
-	sbc hl, de				; HL = adder * 128; DE = start.
+	sbc hl, de				; HL = adder * 64; DE = start.
 
 	xor a
+	add hl, hl
 	add hl, hl
 	adc 0					; A:HL = adder * 256.
 
@@ -34,7 +35,7 @@ calculate_interpolator: MACRO
 	ENDM
 
 screen_centre: EQU 127
-final_line: EQU 192
+final_line: EQU bottom_y
 
 ;
 ; road.draw
@@ -67,7 +68,7 @@ road.draw:
 
 	ld a, (player.x + 1)
 	neg
-	calculate_offset one_over_z_127
+	calculate_offset one_over_z_64
 	pop de					; HL = horizontal screen position at line 128;
 							; DE = horizontal screen position at line 0.
 							; It's guaranteed that HL >= DE
@@ -107,7 +108,7 @@ road.draw:
 	push hl					; top of stack = horizontal screen position of line 0.
 
 	ld a, (player.x + 1)
-	calculate_offset one_over_z_127
+	calculate_offset one_over_z_64
 
 	pop de					; HL = horizontal screen position at line 128;
 							; DE = horizontal screen position at line 0.
