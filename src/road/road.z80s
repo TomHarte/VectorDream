@@ -18,9 +18,10 @@ calculate_offset: MACRO
 
 calculate_interpolator: MACRO
 	or a
-	sbc hl, de				; HL = adder * 128; DE = start.
+	sbc hl, de				; HL = adder * 64; DE = start.
 
 	xor a
+	add hl, hl
 	add hl, hl
 	adc 0					; A:HL = adder * 256.
 
@@ -34,7 +35,6 @@ calculate_interpolator: MACRO
 	ENDM
 
 screen_centre: EQU 127
-final_line: EQU 192
 
 ;
 ; road.draw
@@ -67,7 +67,7 @@ road.draw:
 
 	ld a, (player.x + 1)
 	neg
-	calculate_offset one_over_z_127
+	calculate_offset one_over_z_64
 	pop de					; HL = horizontal screen position at line 128;
 							; DE = horizontal screen position at line 0.
 							; It's guaranteed that HL >= DE
@@ -82,7 +82,7 @@ road.draw:
 	; HL:A = starting span coordinate in 16:8 form.
 	; BC:IXl = per-line delta.
 	ld de, road.centres				; DE = write pointer.
-	ld ixh, final_line - top_y		; IYl = loop counter.
+	ld ixh, bottom_y - top_y		; IYl = loop counter.
 
 @write_centre:
 	ex de, hl
@@ -107,7 +107,7 @@ road.draw:
 	push hl					; top of stack = horizontal screen position of line 0.
 
 	ld a, (player.x + 1)
-	calculate_offset one_over_z_127
+	calculate_offset one_over_z_64
 
 	pop de					; HL = horizontal screen position at line 128;
 							; DE = horizontal screen position at line 0.
@@ -122,7 +122,7 @@ road.draw:
 	; HL:A = starting span coordinate in 16:8 form.
 	; BC:IXl = per-line delta.
 	ld de, road.centres				; DE = write pointer.
-	ld ixh, final_line - top_y		; IYl = loop counter.
+	ld ixh, bottom_y - top_y		; IYl = loop counter.
 
 @write_centre:
 	ex de, hl
@@ -142,7 +142,7 @@ road.draw:
 @apply_curvature:
 	ld hl, road.centres
 	ld de, road.curvature
-	ld b, final_line - top_y
+	ld b, bottom_y - top_y
 
 	; Below currently assumes all curvature is positive.
 
@@ -275,7 +275,7 @@ road.draw:
 	pop de
 	inc e
 	ld a, e
-	cp final_line - top_y
+	cp bottom_y - top_y
 	jr nz, @-road.fill
 
 	ret
@@ -289,7 +289,7 @@ road.setup:
 	ld hl, road.curvature
 	ld (hl), 0
 	ld de, road.curvature + 1
-	ld bc, (final_line - top_y) * 2
+	ld bc, (bottom_y - top_y) * 2
 	ldir
 
 	ret
@@ -300,7 +300,7 @@ road.setup:
 road.curve_right:
 	ld ix, curve_offsets
 	ld hl, road.curvature
-	ld a, final_line - top_y
+	ld a, bottom_y - top_y
 	ld b, 0
 
 @apply:
@@ -339,7 +339,7 @@ road.curve_right:
 road.curve_left:
 	ld ix, curve_offsets
 	ld hl, road.curvature
-	ld a, final_line - top_y
+	ld a, bottom_y - top_y
 	ld b, 0
 
 @apply:
