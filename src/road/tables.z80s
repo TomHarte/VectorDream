@@ -1,5 +1,6 @@
 top_y: EQU 54
 bottom_y: EQU 192
+; NB: bottom_y shouldn't exceed spans.height
 
 ;
 ; Segments is a set of triples, each being: (half road width, half line width, y offset).
