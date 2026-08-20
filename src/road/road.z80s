@@ -23,6 +23,7 @@ calculate_interpolator: MACRO
 	xor a
 	add hl, hl
 	add hl, hl
+	add hl, hl
 	adc 0					; A:HL = adder * 256.
 
 	ex de, hl				; HL = start; A:DE = adder * 256.

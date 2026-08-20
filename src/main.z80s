@@ -195,14 +195,14 @@ ALIGN 256
 	rra 
 	jr c, @+no_right
 
-	ld bc, -512
+	ld bc, -256
 	ld (player.xvelocity), bc
 
 	@no_right:
 	rra
 	jr c, @+no_left
 
-	ld bc, 512
+	ld bc, 256
 	ld (player.xvelocity), bc
 
 	@no_left:
