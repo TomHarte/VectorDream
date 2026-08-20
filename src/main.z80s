@@ -32,142 +32,34 @@ PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffe
 ; Install various tables first, because they're all at least 256-byte aligned and this
 ; causes them to be tightly-packed.
 ;
-include "road/tables.z80s"
+include "road/aligned_tables.z80s"
 include "maths/multiply_tables.z80s"
-include "span_buffers/span_buffers.z80s"
+include "span_buffers/bss.z80s"
+include "span_buffers/main.z80s"			; This breaks 256-byte alignment.
+include "road/unaligned_tables.z80s"
+
+;
+; Code from here on:
+;
+include "span_buffers/span_buffers.z80s"	; Aligns to 256 bytes but doesn't maintain it.
 include "span_buffers/overprint.z80s"
 include "span_buffers/edges.z80s"
+include "maths/multiply.z80s"
+include "maths/divide.z80s"
+include "road/road.z80s"
+include "road/objects.z80s"
+include "road/bss.z80s"
 
-;
-; Although it is a shame that interrupt mode 2 has to be used, requiring this
-; 257-byte table of palindromic interrupt vectors, I don't see a way to avoid
-; that. Both the span buffers and the frame buffer need to be pageable at once.
-; I cannot use address 0x38 on a frame-buffer page. If I were to use address 0x38
-; on a span buffer page I'd need to use it on _all_ span buffer pages, which
-; would necessitate a one-line gap every 32 lines.
-;
-; So the interrupt handler lives here, within the top 8kb of the frame-buffer page,
-; and necessitates interrupt mode 2 and this table.
-;
-ALIGN 256
-@interrupt_vector:
-	@interrupt_table: EQU FOR 257
-		db @interrupt / 256
-		NEXT @interrupt_table
-
-	AUTOEXEC
-
-	; Disable interrupts and display.
-	di
-	ld a, %10000000
-	out (BORDER), a
-
-	;
-	; Perform a paging dance to get this code into the right place by:
-	;
-	;	(1) paging this same code into the low page, and jumping to it; then
-	;	(2) paging this code into its proper place in the upper quartile of the map, and jumping back to it.
-	;
-	; ... and set the expected video page and mode while at it.
-	;
-	ld a, PAGE.VIDEO
-	out (LMPR), a
-	jp @low_target - 0x8000
-
-@low_target:
-	ld a, PAGE.VIDEO
-	out (HMPR), a
-	or %01100000
-	out (VMPR), a
-	jp @finish_paging
-
-@finish_paging:
-	; Set stack high.
-	ld sp, 0
-
-	; Seed display.
-	call spans.setup
-	call road.setup
-
-	; Establish palette.
-	ld c, CLUT
-	ld b, 0x10
-	ld hl, palette
-	otir
-
-	; Seed pixels while display is off.
+draw:
 	call road.draw
-	call objects.draw
-	call spans.swap
+	jp objects.draw
 
-	; Reenable display.
-	ld a, 0
-	out (BORDER), a
 
-	; Enable frame-counting interrupts.
-	ld a, @interrupt_vector / 256
-	ld i, a
-	im 2
-	ei
-
-@game_loop:
-	call road.draw
-	call objects.draw
-
-@bottom: EQU 37
-
-	; ; Experiment with some edges.
-	; ld de, edge_list_left + @bottom		; y1 = 37
-	; ld ixl, 19						; height = 19
-	; ld a, 0
-	; ld hl, 3 * 256					; x[y1] = 3
-	; ld bc, 163						; add 163/256 every line
-	; call edge.fill
-
-	; ; Add a second segment with a sharper angle
-	; ld de, edge_list_left + @bottom - 19
-	; ld ixl, 10
-	; ld bc, -100						; add 100/256 every line
-	; call edge.fill
-
-	; ; Add a right-hand side in a single segment
-	; ld de, edge_list_right + @bottom		; y1 = 37
-	; ld ixl, 29						; height = 29
-	; ld a, 0
-	; ld hl, 29 * 256					; x[y1] = 19
-	; ld bc, -130						; draw vertical
-	; call edge.fill
-
-	; ; Fill area.
-	; ld d, wood_colour
-	; ld b, @bottom - 29 + 1
-	; ld c, 29
-	; call edges.output
-
-	call spans.swap
-
-	; Get B = number of frames since last did updates.
-@get_frame_counter:
-	di
-	ld a, (@+frame_counter)
-	ld b, a
-	xor a
-	ld (@+frame_counter), a
-	ei
-
-	; Spin until at least one frame has passed (this is optimistic!).
-	ld a, b
-	or a
-	jr z, @-get_frame_counter
-
-@update_loop:
+update:
 	push bc
-	call @update
+	call @+update
 	pop bc
-	djnz @-update_loop
-
-	jr @-game_loop
-
+	djnz update
 
 @update:
 	; Read joystick/67890.
@@ -303,10 +195,6 @@ ALIGN 256
 
 	ret
 
-include "maths/multiply.z80s"
-include "maths/divide.z80s"
-include "road/road.z80s"
-include "road/objects.z80s"
 
 curvature: dw 0
 player.x: dw 16 * 256
@@ -345,44 +233,7 @@ palette:
 	db %0011000		; sky
 	db %0000000		; screen border
 
-include "road/bss.z80s"
-include "span_buffers/bss.z80s"
-
-@frame_counter: db 0
-
 ;
-; Occasional updates on this: frame_counter is the last thing in memory and is currently at F5C0.
-; So at the time of writing there's a bit more than 2.25kb left for objects, for an actual track
-; and ideally for a better curve algorithm to complete a hypothetical main gameplay loop.
+; Interrupt routine sits at 0xfefe, so always include this last.
 ;
-; Then there's currently a spare 32kb, for having more than one track, menus, etc. It can even
-; host any audio elements if they don't fit in the 2.25kb.
-;
-; There are also a bunch of holes between aligned tables, plus currently 241 bytes after the
-; interrupt handler below, which is much more stack than I need.
-;
-
-;
-; Interrupt handler. Just counts frames, for frame-rate compensation.
-; Probably TODO: add music player here.
-;
-
-@interrupt: EQU 0xfefe
-
-ORG @interrupt
-DUMP PAGE.VIDEO + 1, @interrupt & 16383
-
-@interrupt:
-	push af
-	in a, (STATUS)
-	and 8
-	jr nz, @+not_end_of_frame
-
-	ld a, (@-frame_counter)
-	inc a
-	ld (@-frame_counter), a
-
-@not_end_of_frame:
-	pop af
-	ei
-	reti
+include "span_buffers/interrupt.z80s"
