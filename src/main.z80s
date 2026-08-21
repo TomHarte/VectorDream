@@ -52,6 +52,10 @@ include "road/bss.z80s"
 
 
 setup:
+	ld a, %00100000 + PAGE.VIDEO + 2
+	out (LMPR), a
+	call player_setup
+
 	jp road.setup
 
 
@@ -200,6 +204,23 @@ update:
 
 	ret
 
+audio:
+	in a, (LMPR)
+	push af
+	ld a, %00100000 + PAGE.VIDEO + 2
+	out (LMPR), a
+
+	push bc
+	push de
+	push hl
+	call player_play
+	pop hl
+	pop de
+	pop bc
+
+	pop af
+	out (LMPR), a
+	ret
 
 curvature: dw 0
 player.x: dw 16 * 256
@@ -242,3 +263,15 @@ palette:
 ; Interrupt routine sits at 0xfefe, so always include this last.
 ;
 include "span_buffers/interrupt.z80s"
+
+;
+; Add music.
+;
+
+	ORG 0x0000
+	DUMP PAGE.VIDEO + 2, 0
+
+	MDAT "../binary/music.bin"
+
+	player_setup: EQU 0
+	player_play: EQU 7
