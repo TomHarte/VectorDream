@@ -47,7 +47,7 @@ object2:
 
 object3:
 	dw max_object_depth + 600
-	dw right_brown_rectangle
+	dw draw.car
 	dw 0
 	dw object2
 	dw 0			; Nothing is further.
@@ -491,6 +491,20 @@ draw.leftward_arrow:
 
 	ret
 
+
+draw.car:
+
+	; How I'm imagining a car should look:
+	;
+	;          --------
+	;             ||
+	;   |----|   /  \   |----|
+	;   |    |----------|    |
+	;   |----|          |----|
+	;
+	; Maybe colour the top bar to indicate car behaviour?
+
+	ret
 
 right_brown_rectangle:
 	ld d, wood_colour
