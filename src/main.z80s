@@ -210,16 +210,17 @@ audio:
 	ld a, %00100000 + PAGE.VIDEO + 2
 	out (LMPR), a
 
-	push bc
-	push de
-	push hl
+	; I've found no use for the alternate registers elsewhere in this code,
+	; and player_play seems empirically to trash all of BC, DE and HL.
+	;
+	; So for now let it have the other register bank to itself.
+	exx
 	call player_play
-	pop hl
-	pop de
-	pop bc
+	exx
 
 	pop af
 	out (LMPR), a
+
 	ret
 
 curvature: dw 0
