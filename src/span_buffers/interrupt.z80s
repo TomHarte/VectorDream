@@ -2,14 +2,19 @@
 ; Interrupt handler. Just counts frames, for frame-rate compensation.
 ; Probably TODO: add music player from here.
 ;
+; TODO: is this really part of 'span_buffers'?
+;
 
 interrupt: EQU 0xfefe
 
 ORG interrupt
 DUMP PAGE.VIDEO + 1, interrupt & 16383
 
+;
+; This assumes AF' is unused elsewhere. Which it currently is.
+;
 interrupt:
-	push af
+	ex af, af'
 	in a, (STATUS)
 	and 8
 	jr nz, @+not_end_of_frame
@@ -18,7 +23,9 @@ interrupt:
 	inc a
 	ld (frame_counter), a
 
+	call audio
+
 @not_end_of_frame:
-	pop af
+	ex af, af'
 	ei
 	reti
