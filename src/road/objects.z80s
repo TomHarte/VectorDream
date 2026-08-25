@@ -559,6 +559,7 @@ draw.car:
 	;
 	ld a, (object_width)
 	pop hl
+	push hl
 	sub_hl_a
 
 	ld a, (@-screen_line)
@@ -569,6 +570,28 @@ draw.car:
 	srl b							; B = width of tyre
 
 	ld c, tyre_colour				; C = colour of tyre.
+	call rectangle
+
+	;
+	; Spoiler.
+	;
+
+	pop hl							; HL = centre of object.
+
+	ld a, (object_width)
+	ld e, a
+	ld a, (@-screen_line)
+	sub e
+	ld e, a							; E = base line = object base - one tyre height.
+
+	ld a, (object_width)
+	ld b, a							; B = width.
+
+	ld a, (object_width)
+	srl a
+	srl a
+
+	ld c, racing_blue_colour
 	call rectangle
 
 @no_tyres:
@@ -582,7 +605,7 @@ draw.car:
 ; This is currently implemented going through the edge lists because
 ;
 ;	Input:
-;		HL = bottom left of rectangle.
+;		HL = bottom centre of rectangle.
 ;		E = on-screen line of base.
 ;		A = height.
 ;		B = width.
@@ -596,6 +619,10 @@ rectangle:
 
 	ld a, b
 	ld (@+load_width + 1), a		; Store width.
+
+	; Move halfway left to retain 'centre' part of contract
+	srl a
+	sub_hl_a
 
 	ld a, c
 	ld (@+load_colour+1), a			; Store colour.
