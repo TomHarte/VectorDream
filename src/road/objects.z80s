@@ -32,8 +32,8 @@ object.sizeof: EQU 10
 ; Object list (hard-coded for now).
 ;
 object1:
-	dw max_object_depth
-	dw draw.leftward_arrow
+	dw 50
+	dw draw.car;draw.leftward_arrow
 	dw 0
 	dw 0			; Nothing is closer.
 	dw object2
@@ -517,8 +517,6 @@ draw.leftward_arrow:
 draw.car:
 	; HL = centre of base.
 
-	; TODO: "output a rectangle" would be faster than edge filling as below.
-
 	; Adopt total object width of one half of the size of the road.
 	; Which means scaling width down to a quarter because it'll be
 	; added and subtracted.
@@ -531,56 +529,79 @@ draw.car:
 	ld (object_width), a
 	add_hl_a
 
-	ld a, (object_width)
-	srl a
-	jr z, @+no_tyres
-	ld (@-tyre_size), a
-
-	ld d, edge_list_left / 256
 	ld a, (@-screen_line)
-	ld e, a
-	ld a, (object_width)
+	ld e, a							; E = base line.
+
+	ld a, (object_width)			; A = height of tyre.
+	ld b, a
+	srl b							; B = width of tyre
 	jr z, @+no_tyres
-	ld ixl, a					; IXl = lines to paint
-	sub e
-	neg
-	ld e, a						; DE = pointer to top of type.
+
+	ld c, tyre_colour				; C = colour of tyre.
+	call rectangle
+
+@no_tyres:
+	ret
+
+;
+; rectangle
+;
+; Draws a solid rectangle; clamps left/right but not top/bottom.
+;
+; This is currently implemented going through the edge lists because
+;
+;	Input:
+;		HL = bottom left of rectangle.
+;		E = on-screen line of base.
+;		A = height.
+;		B = width.
+;		C = colour.
+;
+;	Clobbers:
+;		A, IX, DE, HL.
+;
+rectangle:
+	ld ixl, a						; IXl = lines to paint, throughout.
+
+	ld a, b
+	ld (@+load_width + 1), a		; Store width.
+
+	ld a, c
+	ld (@+load_colour+1), a			; Store colour.
+
+	; Get pointer into left edge list.
+	ld d, edge_list_left / 256
+	ld a, ixl
+	sub e							; A = height - base
+	neg								; A = base - height
+	ld e, a							; DE = correct pointer.
+
+	ld (@+load_top + 1), a
+	ld (@+reload_top + 1), a		; Store top for restoration later.
 
 	call edge.fill.vertical.downward
 
-	ld a, (@-tyre_size)
+	; Write to right edge list.
+	inc d
+@load_top:
+	ld e, 0							; DE = correct pointer.
+
+@load_width:
+	ld a, 0
 	add_hl_a
 
-	ld d, edge_list_right / 256
-	ld a, (@-screen_line)
-	ld e, a
-	ld a, (object_width)
-	ld ixl, a					; IXl = lines to paint
-	sub e
-	neg
-	ld e, a						; DE = pointer to top of type.
-
 	call edge.fill.vertical.downward
 
-	;
-	; Fill first tyre.
-	;
-
-	ld d, tyre_colour
-
-	ld a, (@-screen_line)
-	ld b, a
-	ld a, (object_width)
-	ld c, a
-	sub b
-	neg
-	ld b, a
+	; Fill.
+@load_colour:
+	ld d, 0							; D = colour
+@reload_top:
+	ld b, 0
+	ld c, ixl
 
 	push iy
 	call edges.output
 	pop iy
-
-@no_tyres:
 	ret
 
 right_brown_rectangle:

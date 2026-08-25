@@ -90,6 +90,9 @@ edge.fill.upward:
 ;		IXl = number of lines to write.
 ;		HL = position to write in 8:8.
 ;
+;	Clobbers:
+;		IXh, A.
+;
 edge.fill.vertical.downward:
 	; TODO: act appropriately when IXl > 128.
 
