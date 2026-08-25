@@ -535,7 +535,12 @@ draw.car:
 	and %00111111
 	ret z
 
-	ld (object_width), a
+	ld (object_width), a			; Update object width to being offset of a tyre.
+
+	;
+	; Right-hand tyre
+	;
+	push hl
 	add_hl_a
 
 	ld a, (@-screen_line)
@@ -545,6 +550,23 @@ draw.car:
 	ld b, a
 	srl b							; B = width of tyre
 	jr z, @+no_tyres
+
+	ld c, tyre_colour				; C = colour of tyre.
+	call rectangle
+
+	;
+	; Left-hand tyre
+	;
+	ld a, (object_width)
+	pop hl
+	sub_hl_a
+
+	ld a, (@-screen_line)
+	ld e, a							; E = base line.
+
+	ld a, (object_width)			; A = height of tyre.
+	ld b, a
+	srl b							; B = width of tyre
 
 	ld c, tyre_colour				; C = colour of tyre.
 	call rectangle
