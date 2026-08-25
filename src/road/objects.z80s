@@ -404,10 +404,19 @@ add_hl_a: MACRO
 	ld h, a
 	ENDM
 
+sub_hl_a: MACRO
+	neg
+	add l
+	ld l, a
+	ld a, 0xff
+	adc h
+	ld h, a
+	ENDM
+
 locate_at_right: MACRO
 	; Add the 8-bit value (object_width) to HL.
 	ld a, (object_width)
-	add_hl_a
+	sub_hl_a
 	ENDM
 
 
