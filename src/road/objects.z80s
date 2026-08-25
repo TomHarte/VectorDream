@@ -77,7 +77,8 @@ object_width: db 0
 @base_line: 
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
-
+@screen_line:
+	db 0
 
 objects.draw:
 
@@ -354,6 +355,10 @@ objects.draw:
 
 	pop af		; Throw away planar depth of object on stack.
 
+	ld a, (@-base_line)
+	add top_y
+	ld (@-screen_line), a
+
 	ld e, (iy + object.draw)
 	ld d, (iy + object.draw + 1)
 	ld (@+call_draw + 1), de
@@ -391,8 +396,6 @@ objects.draw:
 ;
 
 
-@object_top: db 0
-
 add_hl_a: MACRO
 	add a, l
 	ld l, a
@@ -409,6 +412,15 @@ locate_at_right: MACRO
 
 
 draw.leftward_arrow:
+	;
+	;    /-----/
+	;   /     /
+	;  /     /
+	;  \     \
+	;   \     \
+	;    \-----\
+	;
+
 	; Locate object at right-hand side of road.
 	locate_at_right
 
@@ -423,7 +435,6 @@ draw.leftward_arrow:
 	push af
 	add_hl_a
 	pop af
-;	add_hl_a
 
 	; NB: the size of this particular object means it can never overlap the top of the viewport.
 	; So that simplifies some of the flow below.
@@ -435,9 +446,8 @@ draw.leftward_arrow:
 	ld ixl, a							; height = scaled height
 
 	ld d, edge_list_left / 256
-	ld a, (@-base_line)
-	add top_y
-	ld e, a								; Start drawing at base_line.
+	ld a, (@-screen_line)
+	ld e, a								; Start drawing at screen_line.
 
 	ld a, h
 	ld h, l
@@ -479,9 +489,9 @@ draw.leftward_arrow:
 	add a, a
 	ld c, a								; Height = double the height of those two segments.
 
-	ld a, (@-base_line)
+	ld a, (@-screen_line)
 	sub c
-	add top_y + 1
+	inc a
 	ld b, a								; Start position = base - height + top_y + 1.
 
 	ld d, warning_colour				; This is a warning sign.
@@ -491,8 +501,6 @@ draw.leftward_arrow:
 
 	ret
 
-
-draw.car:
 
 	; How I'm imagining a car should look:
 	;
@@ -504,6 +512,75 @@ draw.car:
 	;
 	; Maybe colour the top bar to indicate car behaviour?
 
+@tyre_size: db 0
+
+draw.car:
+	; HL = centre of base.
+
+	; TODO: "output a rectangle" would be faster than edge filling as below.
+
+	; Adopt total object width of one half of the size of the road.
+	; Which means scaling width down to a quarter because it'll be
+	; added and subtracted.
+	ld a, (object_width)
+	rra
+	rra
+	and %00111111
+	ret z
+
+	ld (object_width), a
+	add_hl_a
+
+	ld a, (object_width)
+	srl a
+	jr z, @+no_tyres
+	ld (@-tyre_size), a
+
+	ld d, edge_list_left / 256
+	ld a, (@-screen_line)
+	ld e, a
+	ld a, (object_width)
+	jr z, @+no_tyres
+	ld ixl, a					; IXl = lines to paint
+	sub e
+	neg
+	ld e, a						; DE = pointer to top of type.
+
+	call edge.fill.vertical.downward
+
+	ld a, (@-tyre_size)
+	add_hl_a
+
+	ld d, edge_list_right / 256
+	ld a, (@-screen_line)
+	ld e, a
+	ld a, (object_width)
+	ld ixl, a					; IXl = lines to paint
+	sub e
+	neg
+	ld e, a						; DE = pointer to top of type.
+
+	call edge.fill.vertical.downward
+
+	;
+	; Fill first tyre.
+	;
+
+	ld d, tyre_colour
+
+	ld a, (@-screen_line)
+	ld b, a
+	ld a, (object_width)
+	ld c, a
+	sub b
+	neg
+	ld b, a
+
+	push iy
+	call edges.output
+	pop iy
+
+@no_tyres:
 	ret
 
 right_brown_rectangle:
@@ -528,7 +605,6 @@ right_green_rectangle:
 		ret p
 		@not_off:
 
-		; Clamp if off-screen to left.
 		ld b, l
 		jr z, @+no_left_clamp
 		ld b, 0
@@ -555,17 +631,13 @@ right_green_rectangle:
 		@no_right_clamp:
 
 	;
-	; Draw. Just a single span for now.
+	; Draw.
 	;
-
-	ld a, (@-base_line)
-	add top_y
-	ld (@-object_top), a
 
 	ld a, (object_width)
 	ld e, a
 
-	ld a, (@-object_top)
+	ld a, (@-screen_line)
 	cp e
 	jr nc, @+no_top_clip
 
@@ -573,7 +645,7 @@ right_green_rectangle:
 
 @no_top_clip:
 @spanloop:
-	ld a, (@-object_top)			; A = line.
+	ld a, (@-screen_line)		; A = line.
 	sub e
 
 	call spans.getaddress		; HL = pointer.

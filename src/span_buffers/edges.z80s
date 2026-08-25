@@ -80,6 +80,39 @@ edge.fill.upward:
 	ret
 
 
+; edge.fill.vertical.downward:
+;
+; A specialised edge filler that clamps A:H to the range [0, 255], then fills the pointed-to edge list
+; downwards with IXl copies of that clamped value.
+;
+; 	Input:
+;		DE = pointer to list; this is the first entry that will be filled.
+;		IXl = number of lines to write.
+;		HL = position to write in 8:8.
+;
+edge.fill.vertical.downward:
+	; TODO: act appropriately when IXl > 128.
+
+	ld a, h
+	or a
+	jr z, @+write_l
+	jp p, @+write_255
+
+	ld ixh, 0
+	ld a, ixl
+	jp fill_bytes.max128
+
+@write_255:
+	ld ixh, 0xff
+	ld a, ixl
+	jp fill_bytes.max128
+
+@write_l:
+	ld a, l
+	ld ixh, a
+	ld a, ixl
+	jp fill_bytes.max128
+
 ;
 ; edges.output
 ;
