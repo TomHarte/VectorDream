@@ -32,22 +32,22 @@ object.sizeof: EQU 10
 ; Object list (hard-coded for now).
 ;
 object1:
-	dw max_object_depth
-	dw draw.leftward_arrow
+	dw 50
+	dw draw.car;draw.leftward_arrow
 	dw 0
 	dw 0			; Nothing is closer.
 	dw object2
 
 object2:
-	dw max_object_depth + 200
-	dw draw.leftward_arrow
+	dw 250
+	dw draw.car
 	dw 0
 	dw object1
 	dw object3
 
 object3:
-	dw max_object_depth + 600
-	dw right_brown_rectangle
+	dw 1000
+	dw draw.car
 	dw 0
 	dw object2
 	dw 0			; Nothing is further.
@@ -77,7 +77,8 @@ object_width: db 0
 @base_line: 
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
-
+screen_line:
+	db 0
 
 objects.draw:
 
@@ -354,6 +355,10 @@ objects.draw:
 
 	pop af		; Throw away planar depth of object on stack.
 
+	ld a, (@-base_line)
+	add top_y
+	ld (screen_line), a
+
 	ld e, (iy + object.draw)
 	ld d, (iy + object.draw + 1)
 	ld (@+call_draw + 1), de
@@ -391,8 +396,6 @@ objects.draw:
 ;
 
 
-@object_top: db 0
-
 add_hl_a: MACRO
 	add a, l
 	ld l, a
@@ -401,14 +404,32 @@ add_hl_a: MACRO
 	ld h, a
 	ENDM
 
+sub_hl_a: MACRO
+	neg					; Assumed: A is non-zero.
+	add l
+	ld l, a
+	ld a, 0xff
+	adc h
+	ld h, a
+	ENDM
+
 locate_at_right: MACRO
 	; Add the 8-bit value (object_width) to HL.
 	ld a, (object_width)
-	add_hl_a
+	sub_hl_a
 	ENDM
 
 
 draw.leftward_arrow:
+	;
+	;    /-----/
+	;   /     /
+	;  /     /
+	;  \     \
+	;   \     \
+	;    \-----\
+	;
+
 	; Locate object at right-hand side of road.
 	locate_at_right
 
@@ -423,7 +444,6 @@ draw.leftward_arrow:
 	push af
 	add_hl_a
 	pop af
-;	add_hl_a
 
 	; NB: the size of this particular object means it can never overlap the top of the viewport.
 	; So that simplifies some of the flow below.
@@ -435,9 +455,8 @@ draw.leftward_arrow:
 	ld ixl, a							; height = scaled height
 
 	ld d, edge_list_left / 256
-	ld a, (@-base_line)
-	add top_y
-	ld e, a								; Start drawing at base_line.
+	ld a, (screen_line)
+	ld e, a								; Start drawing at screen_line.
 
 	ld a, h
 	ld h, l
@@ -479,9 +498,9 @@ draw.leftward_arrow:
 	add a, a
 	ld c, a								; Height = double the height of those two segments.
 
-	ld a, (@-base_line)
+	ld a, (screen_line)
 	sub c
-	add top_y + 1
+	inc a
 	ld b, a								; Start position = base - height + top_y + 1.
 
 	ld d, warning_colour				; This is a warning sign.
@@ -492,83 +511,238 @@ draw.leftward_arrow:
 	ret
 
 
-right_brown_rectangle:
-	ld d, wood_colour
-	jr @+big_rectangle
-
-
-right_green_rectangle:
-	ld d, leaf_colour
-	jr @+big_rectangle
-
-@big_rectangle:
-	; Locate object at right-hand side of road.
-	locate_at_right
-
+	; How I'm imagining a car should look:
 	;
-	; Left extent.
+	;          --------
+	;             ||
+	;   |----|   /  \   |----|
+	;   |    |----------|    |
+	;   |----|          |----|
 	;
+	; Maybe colour the top bar to indicate car behaviour?
 
-		; Stop if off-screen to right.
-		jr z, @+not_off
-		ret p
-		@not_off:
+@tyre_width: db 0
+@spoiler_base: db 0
+@spoiler_top: db 0
 
-		; Clamp if off-screen to left.
-		ld b, l
-		jr z, @+no_left_clamp
-		ld b, 0
-		@no_left_clamp:
+draw_tyre: MACRO
+	ld a, (screen_line)
+	ld e, a							; E = base line.
 
-	;
-	; Right extent.
-	;
-		ld a, (object_width)
+	ld a, (object_width)			; A = height of tyre.
+	ld b, a
+	srl b							; B = width of tyre
 
-		add a, l
-		ld l, a
-		adc h
-		sub l
-		ld h, a
+	ld c, tyre_colour				; C = colour of tyre.
+	call rectangle
+	ENDM
 
-		; Stop if off-screen to left.
-		ret m
+upper_slope: EQU 63
+lower_slope: EQU 600
 
-		; Clamp if off-screen to right.
-		ld c, l
-		jr z, @+no_right_clamp
-		ld c, 0xff
-		@no_right_clamp:
+draw.car:
+	; HL = centre of base.
+	push iy
 
-	;
-	; Draw. Just a single span for now.
-	;
+	; Adopt total object width of one half of the size of the road.
+	; Which means scaling width down to a quarter because it'll be
+	; added and subtracted.
+	ld a, (object_width)
+	rra
+	rra
+	and %00111111
+	ret z
 
-	ld a, (@-base_line)
-	add top_y
-	ld (@-object_top), a
+	ld (object_width), a			; Update object width to being offset of a tyre.
+
+	ld a, (object_width)			; A = height of tyre.
+	srl a
+	ld (@-tyre_width), a			; Tyre width = half height (in pixels).
 
 	ld a, (object_width)
 	ld e, a
-
-	ld a, (@-object_top)
-	cp e
-	jr nc, @+no_top_clip
-
-	ld e, a
-
-@no_top_clip:
-@spanloop:
-	ld a, (@-object_top)			; A = line.
+	ld a, (screen_line)
 	sub e
+	ld (@-spoiler_base), a		; Base of spoiler = object base - one tyre height.
+								; This will also be the top of the neck.
 
-	call spans.getaddress		; HL = pointer.
+	ld a, (object_width)
+	srl a
+	srl a
+	ld e, a
+	ld a, (@-spoiler_base)
+	sub e
+	ld (@-spoiler_top), a
 
-	push de
-	call spans.overprint.checkextent
-	pop de
+	;
+	; Draw neck leading to spoiler.
+	;
+	push hl
 
-	dec e
-	jr nz, @-spanloop
+		; Left edge.
+		ld e, a
+		ld d, edge_list_left / 256	; DE = pointer to left list at bottom of spoiler.
+
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+
+		ld bc, -upper_slope
+
+		ld a, h
+		ld h, l
+		ld l, 0						; Rotate HL into A:HL.
+
+		call edge.fill.downward
+
+		ld bc, -lower_slope
+		push af
+		ld a, (@-tyre_width)
+;		srl a
+		ld ixl, a					; Draw down by half a tyre.
+		pop af
+
+		call edge.fill.downward
+
+		; Right edge.
+		inc d
+		ld a, (@-spoiler_top)
+		ld e, a						; DE = pointer to right list at bottom of spoiler.
+
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+
+		ld bc, upper_slope
+
+		pop hl
+		push hl						; HL = start position.
+		ld a, h
+		ld h, l
+		ld l, 0						; Rotate HL into A:HL.
+
+		call edge.fill.downward
+
+		ld bc, lower_slope
+		push af
+		ld a, (@-tyre_width)
+;		srl a
+		ld ixl, a					; Draw down by half a tyre.
+		pop af
+
+		call edge.fill.downward
+
+		; Fill.
+
+		ld d, racing_blue_colour
+		ld a, (@-spoiler_top)
+		ld b, a
+		ld a, (@-tyre_width)
+		ld c, a
+;		srl a
+		add a, c
+		ld c, a
+
+		call edges.output
+
+	pop hl
+
+	;
+	; Right-hand tyre.
+	;
+	ld a, (object_width)
+	push hl
+	add_hl_a
+	draw_tyre
+
+	;
+	; Left-hand tyre.
+	;
+	ld a, (object_width)
+	pop hl
+	push hl
+	sub_hl_a
+	draw_tyre
+
+	;
+	; Spoiler.
+	;
+
+	pop hl							; HL = centre of object.
+
+	ld a, (@-spoiler_base)
+	ld e, a							; E = base line of spoiler.
+
+	ld a, (object_width)
+	ld b, a							; B = width.
+
+	ld a, (object_width)
+	srl a
+	srl a							; A = height = object_width / 4
+
+	ld c, racing_blue_colour
+	call rectangle
+
+	pop iy
 
 	ret
+
+;
+; rectangle
+;
+; Draws a solid rectangle; clamps left/right but not top/bottom.
+;
+; This is currently implemented going through the edge lists because
+;
+;	Input:
+;		HL = bottom centre of rectangle.
+;		E = on-screen line of base.
+;		A = height.
+;		B = width.
+;		C = colour.
+;
+;	Clobbers:
+;		A, IX, DE, HL, IY.
+;
+rectangle:
+	ld ixl, a						; IXl = lines to paint, throughout.
+
+	ld a, b
+	ld (@+load_width + 1), a		; Store width.
+
+	; Move halfway left to retain 'centre' part of contract
+	srl a
+	sub_hl_a
+
+	ld a, c
+	ld (@+load_colour+1), a			; Store colour.
+
+	; Get pointer into left edge list.
+	ld d, edge_list_left / 256
+	ld a, ixl
+	sub e							; A = height - base
+	neg								; A = base - height
+	ld e, a							; DE = correct pointer.
+
+	ld (@+load_top + 1), a
+	ld (@+reload_top + 1), a		; Store top for restoration later.
+
+	call edge.fill.vertical.downward
+
+	; Write to right edge list.
+	inc d
+@load_top:
+	ld e, 0							; DE = correct pointer.
+
+@load_width:
+	ld a, 0
+	add_hl_a
+
+	call edge.fill.vertical.downward
+
+	; Fill.
+@load_colour:
+	ld d, 0							; D = colour
+@reload_top:
+	ld b, 0
+	ld c, ixl
+
+	jp edges.output

@@ -23,7 +23,7 @@ interrupt:
 	inc a
 	ld (frame_counter), a
 
-	call audio
+;	call audio
 
 @not_end_of_frame:
 	ex af, af'

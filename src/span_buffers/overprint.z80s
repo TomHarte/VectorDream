@@ -10,7 +10,7 @@
 ; 		B = start x.
 ;		C = end x.
 ;		D = colour.
-;		HL = pointer to beginning of span list.
+;		HL = pointer within span list, to any span that starts at or before the new one.
 ;
 ;	Requires:
 ;		B < C.
@@ -31,7 +31,7 @@ spans.overprint.checkextent:
 
 spans.overprint:
 
-	; Squirrel away D, due to register pressure.
+	; Squirrel away colour, due to register pressure.
 	ld ixl, d
 
 	; Find first span that includes the start point.

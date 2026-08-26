@@ -363,12 +363,12 @@ finish_painting: MACRO
 		srl a
 		jr c, @+with_final_left
 
-		call @+fill_bytes
+		call fill_bytes.max128
 		finish_painting
 
 	@with_final_left:
 		jr z, @+no_fill_bytes
-		call @+fill_bytes
+		call fill_bytes.max128
 
 	@no_fill_bytes:
 		ld a, ixh
@@ -384,8 +384,25 @@ finish_painting: MACRO
 	@finish_painting:
 	finish_painting
 
-@fill_bytes:
-	; (HL) = aligned target address, A = number of bytes to paint; IXh = colour to paint.
+;
+; fill_bytes.max128
+;
+; Does the equivalent of a C memset, for buffers between 1 and 128 bytes in size.
+; Increments only the low byte of the pointer after each byte, so requires buffer alignment.
+;
+;
+;	Input:
+; 		DE = address of first byte to write.
+;		A = number of bytes to write.
+;		IXh = value to write.
+;
+;	Output:
+;		DE = (address of final written byte) + 1.
+;
+;	Clobbers:
+;		A.
+;
+fill_bytes.max128:
 	add a
 	neg
 	ld (@destination + 1), a
