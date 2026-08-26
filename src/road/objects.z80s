@@ -522,6 +522,7 @@ draw.leftward_arrow:
 	; Maybe colour the top bar to indicate car behaviour?
 
 @tyre_width: db 0
+@spoiler_base: db 0
 
 draw_tyre: MACRO
 	ld a, (screen_line)
@@ -556,6 +557,61 @@ draw.car:
 	;
 	; Draw neck leading to spoiler.
 	;
+	push hl
+
+		; Left edge.
+		ld a, (object_width)
+		ld e, a
+		ld a, (screen_line)
+		sub e
+		ld (@-spoiler_base), a		; Base of spoiler = object base - one tyre height.
+									; This will also be the top of the neck.
+
+		ld e, a
+		ld d, edge_list_left / 256	; DE = pointer to left list at bottom of spoiler.
+
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+
+		ld bc, -663					; Arbitrary slope.
+
+		ld a, h
+		ld h, l
+		ld l, 0						; Rotate HL into A:HL.
+
+		call edge.fill.downward
+
+		; Right edge.
+		inc d
+		ld a, (@-spoiler_base)
+		ld e, a						; DE = pointer to right list at bottom of spoiler.
+
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+
+		ld bc, 663					; Arbitrary slope.
+
+		pop hl
+		push hl						; HL = start position.
+		ld a, h
+		ld h, l
+		ld l, 0						; Rotate HL into A:HL.
+
+		call edge.fill.downward
+
+		; Fill.
+
+		ld d, racing_blue_colour
+		ld a, (@-spoiler_base)
+		ld b, a
+		ld a, (@-tyre_width)
+		ld c, a
+
+		push iy
+		call edges.output
+		pop iy
+
+	pop hl
 
 	;
 	; Right-hand tyre.
@@ -580,11 +636,8 @@ draw.car:
 
 	pop hl							; HL = centre of object.
 
-	ld a, (object_width)
-	ld e, a
-	ld a, (screen_line)
-	sub e
-	ld e, a							; E = base line = object base - one tyre height.
+	ld a, (@-spoiler_base)
+	ld e, a							; E = base line of spoiler.
 
 	ld a, (object_width)
 	ld b, a							; B = width.
@@ -596,7 +649,7 @@ draw.car:
 	ld c, racing_blue_colour
 	call rectangle
 
-@no_tyres:
+;@no_tyres:
 	ret
 
 ;
