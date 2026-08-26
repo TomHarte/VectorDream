@@ -538,6 +538,7 @@ draw_tyre: MACRO
 
 draw.car:
 	; HL = centre of base.
+	push iy
 
 	; Adopt total object width of one half of the size of the road.
 	; Which means scaling width down to a quarter because it'll be
@@ -607,9 +608,7 @@ draw.car:
 		ld a, (@-tyre_width)
 		ld c, a
 
-		push iy
 		call edges.output
-		pop iy
 
 	pop hl
 
@@ -649,7 +648,8 @@ draw.car:
 	ld c, racing_blue_colour
 	call rectangle
 
-;@no_tyres:
+	pop iy
+
 	ret
 
 ;
@@ -667,7 +667,7 @@ draw.car:
 ;		C = colour.
 ;
 ;	Clobbers:
-;		A, IX, DE, HL.
+;		A, IX, DE, HL, IY.
 ;
 rectangle:
 	ld ixl, a						; IXl = lines to paint, throughout.
@@ -712,7 +712,4 @@ rectangle:
 	ld b, 0
 	ld c, ixl
 
-	push iy
-	call edges.output
-	pop iy
-	ret
+	jp edges.output
