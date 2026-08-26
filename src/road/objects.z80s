@@ -77,7 +77,7 @@ object_width: db 0
 @base_line: 
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
-@screen_line:
+screen_line:
 	db 0
 
 objects.draw:
@@ -357,7 +357,7 @@ objects.draw:
 
 	ld a, (@-base_line)
 	add top_y
-	ld (@-screen_line), a
+	ld (screen_line), a
 
 	ld e, (iy + object.draw)
 	ld d, (iy + object.draw + 1)
@@ -455,7 +455,7 @@ draw.leftward_arrow:
 	ld ixl, a							; height = scaled height
 
 	ld d, edge_list_left / 256
-	ld a, (@-screen_line)
+	ld a, (screen_line)
 	ld e, a								; Start drawing at screen_line.
 
 	ld a, h
@@ -498,7 +498,7 @@ draw.leftward_arrow:
 	add a, a
 	ld c, a								; Height = double the height of those two segments.
 
-	ld a, (@-screen_line)
+	ld a, (screen_line)
 	sub c
 	inc a
 	ld b, a								; Start position = base - height + top_y + 1.
@@ -521,7 +521,19 @@ draw.leftward_arrow:
 	;
 	; Maybe colour the top bar to indicate car behaviour?
 
-@tyre_size: db 0
+@tyre_width: db 0
+
+draw_tyre: MACRO
+	ld a, (screen_line)
+	ld e, a							; E = base line.
+
+	ld a, (object_width)			; A = height of tyre.
+	ld b, a
+	srl b							; B = width of tyre
+
+	ld c, tyre_colour				; C = colour of tyre.
+	call rectangle
+	ENDM
 
 draw.car:
 	; HL = centre of base.
@@ -537,40 +549,30 @@ draw.car:
 
 	ld (object_width), a			; Update object width to being offset of a tyre.
 
+	ld a, (object_width)			; A = height of tyre.
+	srl a
+	ld (@-tyre_width), a			; Tyre width = half height (in pixels).
+
 	;
-	; Right-hand tyre
+	; Draw neck leading to spoiler.
 	;
+
+	;
+	; Right-hand tyre.
+	;
+	ld a, (object_width)
 	push hl
 	add_hl_a
-
-	ld a, (@-screen_line)
-	ld e, a							; E = base line.
-
-	ld a, (object_width)			; A = height of tyre.
-	ld b, a
-	srl b							; B = width of tyre
-	jr z, @+no_tyres
-
-	ld c, tyre_colour				; C = colour of tyre.
-	call rectangle
+	draw_tyre
 
 	;
-	; Left-hand tyre
+	; Left-hand tyre.
 	;
 	ld a, (object_width)
 	pop hl
 	push hl
 	sub_hl_a
-
-	ld a, (@-screen_line)
-	ld e, a							; E = base line.
-
-	ld a, (object_width)			; A = height of tyre.
-	ld b, a
-	srl b							; B = width of tyre
-
-	ld c, tyre_colour				; C = colour of tyre.
-	call rectangle
+	draw_tyre
 
 	;
 	; Spoiler.
@@ -580,7 +582,7 @@ draw.car:
 
 	ld a, (object_width)
 	ld e, a
-	ld a, (@-screen_line)
+	ld a, (screen_line)
 	sub e
 	ld e, a							; E = base line = object base - one tyre height.
 
@@ -716,7 +718,7 @@ right_green_rectangle:
 	ld a, (object_width)
 	ld e, a
 
-	ld a, (@-screen_line)
+	ld a, (screen_line)
 	cp e
 	jr nc, @+no_top_clip
 
@@ -724,7 +726,7 @@ right_green_rectangle:
 
 @no_top_clip:
 @spanloop:
-	ld a, (@-screen_line)		; A = line.
+	ld a, (screen_line)			; A = line.
 	sub e
 
 	call spans.getaddress		; HL = pointer.
