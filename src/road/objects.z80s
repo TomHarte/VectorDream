@@ -523,6 +523,7 @@ draw.leftward_arrow:
 
 @tyre_width: db 0
 @spoiler_base: db 0
+@spoiler_top: db 0
 
 draw_tyre: MACRO
 	ld a, (screen_line)
@@ -535,6 +536,9 @@ draw_tyre: MACRO
 	ld c, tyre_colour				; C = colour of tyre.
 	call rectangle
 	ENDM
+
+upper_slope: EQU 63
+lower_slope: EQU 600
 
 draw.car:
 	; HL = centre of base.
@@ -555,26 +559,34 @@ draw.car:
 	srl a
 	ld (@-tyre_width), a			; Tyre width = half height (in pixels).
 
+	ld a, (object_width)
+	ld e, a
+	ld a, (screen_line)
+	sub e
+	ld (@-spoiler_base), a		; Base of spoiler = object base - one tyre height.
+								; This will also be the top of the neck.
+
+	ld a, (object_width)
+	srl a
+	srl a
+	ld e, a
+	ld a, (@-spoiler_base)
+	sub e
+	ld (@-spoiler_top), a
+
 	;
 	; Draw neck leading to spoiler.
 	;
 	push hl
 
 		; Left edge.
-		ld a, (object_width)
-		ld e, a
-		ld a, (screen_line)
-		sub e
-		ld (@-spoiler_base), a		; Base of spoiler = object base - one tyre height.
-									; This will also be the top of the neck.
-
 		ld e, a
 		ld d, edge_list_left / 256	; DE = pointer to left list at bottom of spoiler.
 
 		ld a, (@-tyre_width)
 		ld ixl, a					; Draw down by half a tyre.
 
-		ld bc, -663					; Arbitrary slope.
+		ld bc, -upper_slope
 
 		ld a, h
 		ld h, l
@@ -582,15 +594,24 @@ draw.car:
 
 		call edge.fill.downward
 
+		ld bc, -lower_slope
+		push af
+		ld a, (@-tyre_width)
+;		srl a
+		ld ixl, a					; Draw down by half a tyre.
+		pop af
+
+		call edge.fill.downward
+
 		; Right edge.
 		inc d
-		ld a, (@-spoiler_base)
+		ld a, (@-spoiler_top)
 		ld e, a						; DE = pointer to right list at bottom of spoiler.
 
 		ld a, (@-tyre_width)
 		ld ixl, a					; Draw down by half a tyre.
 
-		ld bc, 663					; Arbitrary slope.
+		ld bc, upper_slope
 
 		pop hl
 		push hl						; HL = start position.
@@ -600,12 +621,24 @@ draw.car:
 
 		call edge.fill.downward
 
+		ld bc, lower_slope
+		push af
+		ld a, (@-tyre_width)
+;		srl a
+		ld ixl, a					; Draw down by half a tyre.
+		pop af
+
+		call edge.fill.downward
+
 		; Fill.
 
 		ld d, racing_blue_colour
-		ld a, (@-spoiler_base)
+		ld a, (@-spoiler_top)
 		ld b, a
 		ld a, (@-tyre_width)
+		ld c, a
+;		srl a
+		add a, c
 		ld c, a
 
 		call edges.output
@@ -643,7 +676,7 @@ draw.car:
 
 	ld a, (object_width)
 	srl a
-	srl a
+	srl a							; A = height = object_width / 4
 
 	ld c, racing_blue_colour
 	call rectangle
