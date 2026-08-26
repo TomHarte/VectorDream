@@ -405,7 +405,7 @@ add_hl_a: MACRO
 	ENDM
 
 sub_hl_a: MACRO
-	neg
+	neg					; Assumed: A is non-zero.
 	add l
 	ld l, a
 	ld a, 0xff
@@ -662,80 +662,4 @@ rectangle:
 	push iy
 	call edges.output
 	pop iy
-	ret
-
-right_brown_rectangle:
-	ld d, wood_colour
-	jr @+big_rectangle
-
-
-right_green_rectangle:
-	ld d, leaf_colour
-	jr @+big_rectangle
-
-@big_rectangle:
-	; Locate object at right-hand side of road.
-	locate_at_right
-
-	;
-	; Left extent.
-	;
-
-		; Stop if off-screen to right.
-		jr z, @+not_off
-		ret p
-		@not_off:
-
-		ld b, l
-		jr z, @+no_left_clamp
-		ld b, 0
-		@no_left_clamp:
-
-	;
-	; Right extent.
-	;
-		ld a, (object_width)
-
-		add a, l
-		ld l, a
-		adc h
-		sub l
-		ld h, a
-
-		; Stop if off-screen to left.
-		ret m
-
-		; Clamp if off-screen to right.
-		ld c, l
-		jr z, @+no_right_clamp
-		ld c, 0xff
-		@no_right_clamp:
-
-	;
-	; Draw.
-	;
-
-	ld a, (object_width)
-	ld e, a
-
-	ld a, (screen_line)
-	cp e
-	jr nc, @+no_top_clip
-
-	ld e, a
-
-@no_top_clip:
-@spanloop:
-	ld a, (screen_line)			; A = line.
-	sub e
-
-	call spans.getaddress		; HL = pointer.
-
-	push de
-	call spans.overprint.checkextent
-	pop de
-
-	dec e
-	jr nz, @-spanloop
-
 	ret
