@@ -39,14 +39,14 @@ object1:
 	dw object2
 
 object2:
-	dw max_object_depth + 200
-	dw draw.leftward_arrow
+	dw 250
+	dw draw.car
 	dw 0
 	dw object1
 	dw object3
 
 object3:
-	dw max_object_depth + 600
+	dw 1000
 	dw draw.car
 	dw 0
 	dw object2
