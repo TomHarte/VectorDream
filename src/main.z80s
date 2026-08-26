@@ -11,11 +11,55 @@ HMPR:		EQU 251		; b0–b4: page control; b5-b6: bits 4 & 8 of the Mode 3 CLUT ad
 VMPR:		EQU 252		; b0–b4: displayed page; b5-b6: graphics mode; b7: MIDI IN/OUT.
 BORDER:		EQU 254		; output: b0–b2, b5: border colour; b3: MIC output; b4: BEEP output; b7: set to disable display in Modes 3 & 4.
 KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen strobe; b6: EAR input; b7: external memory status bit.
+	; Keyboard reading is otherwise similar to the ZX Spectrum; use the high 8 bits of the port address to indicate which lines are active.
 
 HPEN:		EQU 504		; input: if no light-pen connected, current vertical scan position. Otherwise light-pen position.
 LPEN:		EQU 504		; input: if no light-pen connected, current horizontal scan position. Otherwise light-pen position.
 
-	; Keyboard reading is otherwise similar to the ZX Spectrum; use the high 8 bits of the port address to indicate which lines are active.
+
+
+;
+; Notes to future self on SP and interrupts:
+;
+;	It might actually be helpful to reuse SP as the pixel pointer when outputting spans.
+;
+;	In that case a new interrupt scheme might be: interrupt on line 191 of the display.
+;
+;	Upon interrupt, set last-observed HPEN as 192, and make sure it reaches that before
+;	exiting.
+;
+;	Elsewhere, in span drawing, disable interrupts at the start and poll HPEN throughout.
+;	If at any point HPEN is 192 and the last-observed HPEN isn't, manually call the interrupt
+;	routine. Otherwise update the last-observed value as per observations.
+;
+;	I think that should leave the interrupt routine being a response to the actual interrupt
+;	for most of the code, with the span code doing a manual call via polling only if it
+;	has interrupts disabled when an interrupt should have been serviced.
+;
+;	Relevant observation is that HPEN seems to get to 192 and then stay there until it is
+;	reset to 0 again at the top of the next frame. So it retains a value of 192 for a prolonged
+;	120 lines, which should be spottable by periodic polling.
+;
+;	Annoyingly line interrupts can be scheduled only up to line 191, but hence why the interrupt
+;	routine (at least if called from a real interrupt) either needs to be at least one line
+;	long, which it probably is anyway, or else spin-poll on HPEN at the end to make sure it reads
+;	192 before it exits.
+;
+
+
+;
+; Notes to future self on memory map:
+;
+;	I think it would be valuable to switch this code around so that span buffers are accessed in
+;	the high 32kb and code and screen sit in the low 32kb.
+;
+;	The main reason is that if I also switch to most code being on the spare 32kb bank and the only
+;	thing sharing with the screen buffer being the span-update routine (in that case possibly severely
+;	unrolled) then I can relocate the interrupt handler to 0x38 and dispense with the 257 byte
+;	palindrome table.
+;
+;	A secondary is that it would save an SCF when span drawing. Which barely matters, but there it is.
+;
 
 ;
 ; Program defines.
