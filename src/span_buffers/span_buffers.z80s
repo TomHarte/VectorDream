@@ -442,7 +442,7 @@ spans.getaddress:
 	rra
 	and %00001110
 	add PAGE.FIRSTSPAN
-	out (HMPR), A
+	out (HMPR), a
 
 	ld a, h
 	rla
