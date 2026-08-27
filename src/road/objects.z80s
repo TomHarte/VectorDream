@@ -23,6 +23,11 @@ object.closer: EQU 6		; Pointer to the 'next' object in the list. List is expect
 object.further: EQU 8		; Pointer to the 'next' object in the list. List is expected to be circular,
 							; and longer than a single screen; 
 
+moveable.x: EQU 10			; Objects that move may also have an x position. At the time of writing this
+							; affects vehicles only. It'll probably always affect vehicles only.
+
+car.colour: EQU 11			; Colour; specific to cars.
+
 ;
 ; Hence, total size is:
 ;
@@ -38,6 +43,9 @@ object1:
 	dw 0			; Nothing is closer.
 	dw object2
 
+	db -10
+	db racing_red_colour
+
 object2:
 	dw 250
 	dw draw.car
@@ -45,12 +53,18 @@ object2:
 	dw object1
 	dw object3
 
+	db -128
+	db racing_blue_colour
+
 object3:
 	dw 1000
 	dw draw.car
 	dw 0
 	dw object2
 	dw 0			; Nothing is further.
+
+	db 67
+	db racing_blue_colour
 
 ;
 ; Pointer to current location within the object list, which
@@ -541,8 +555,49 @@ upper_slope: EQU 63
 lower_slope: EQU 600
 
 draw.car:
-	; HL = centre of base.
 	push iy
+
+	; HL = centre of base.
+
+	push hl
+
+	ld a, (object_width)
+	ld e, a
+	ld a, (iy + moveable.x)
+	or a
+	jp p, @+move_right
+
+@move_left:
+	neg
+	add a, a
+	jr z, @+move_left_128		; Number was initially negative, so non-zero. Therefore add a, a should be non-zero.
+								; Hence if the result was zero then A = 128, which is the only value that won't fit
+								; in 8-bit arithmetic. So treat it as a special case.
+	ld d, a
+	call multiply.u8.u8
+	ld a, h
+	pop hl
+	sub_hl_a
+	jr @+get_colour
+
+@move_left_128:
+	pop hl
+	ld a, e
+	sub_hl_a
+	jr @+get_colour
+
+@move_right:
+	add a, a
+	ld d, a
+	call multiply.u8.u8
+	ld a, h
+	pop hl
+	add_hl_a
+
+@get_colour:
+	; Get colour.
+	ld a, (iy + car.colour)
+	ld iyl, a
 
 	; Adopt total object width of one half of the size of the road.
 	; Which means scaling width down to a quarter because it'll be
@@ -632,12 +687,11 @@ draw.car:
 
 		; Fill.
 
-		ld d, racing_blue_colour
+		ld d, iyl
 		ld a, (@-spoiler_top)
 		ld b, a
 		ld a, (@-tyre_width)
 		ld c, a
-;		srl a
 		add a, c
 		ld c, a
 
@@ -665,7 +719,6 @@ draw.car:
 	;
 	; Spoiler.
 	;
-
 	pop hl							; HL = centre of object.
 
 	ld a, (@-spoiler_base)
@@ -678,7 +731,7 @@ draw.car:
 	srl a
 	srl a							; A = height = object_width / 4
 
-	ld c, racing_blue_colour
+	ld c, iyl
 	call rectangle
 
 	pop iy
