@@ -50,15 +50,13 @@ LPEN:		EQU 504		; input: if no light-pen connected, current horizontal scan posi
 ;
 ; Notes to future self on memory map:
 ;
-;	I think it would be valuable to switch this code around so that span buffers are accessed in
-;	the high 32kb and code and screen sit in the low 32kb.
+;	It would likely be beneficial to keep only spans.swap in the 8kb above the video page, and do
+;	everything else via a separate 32kb bank. There are probably some gains to be made from greater
+;	unrolling of spans.swap but the big win would be having an easy 32kb for game code and assets
+;	and therefore minimising constraints there.
 ;
-;	The main reason is that if I also switch to most code being on the spare 32kb bank and the only
-;	thing sharing with the screen buffer being the span-update routine (in that case possibly severely
-;	unrolled) then I can relocate the interrupt handler to 0x38 and dispense with the 257 byte
-;	palindrome table.
-;
-;	A secondary is that it would save an SCF when span drawing. Which barely matters, but there it is.
+;	(I could also relocate the interrupt handler to 0x38 and dispense with the 257 byte
+;	palindrome table, which would be a saving but mainly would feel neat).
 ;
 
 ;
