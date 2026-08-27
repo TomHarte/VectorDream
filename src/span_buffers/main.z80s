@@ -19,7 +19,7 @@ frame_counter: db 0
 
 	AUTOEXEC
 
-	; Disable interrupts and display.
+	; Disable both interrupts and display.
 	di
 	ld a, %10000000
 	out (BORDER), a
