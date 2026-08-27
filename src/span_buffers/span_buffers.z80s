@@ -18,11 +18,11 @@ spans.setup:
 	;
 	; Make the visible screen black.
 	;
-	ld hl, 0x0000
-	ld de, 0x0001
-	ld bc, 128 * 192 - 1
-	ld (hl), 0x00
-	ldir
+;	ld hl, 0x0000
+;	ld de, 0x0001
+;	ld bc, 128 * 192 - 1
+;	ld (hl), 0x00
+;	ldir
 
 	;
 	; Fill both span buffers with blackness.

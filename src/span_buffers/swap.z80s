@@ -47,6 +47,8 @@ ALIGN 256
 ;		A, BC, DE, HL, IX, IYl.
 ;
 
+current_spans_swap: db 0
+
 spans.swap:
 	;
 	; Overarching register assignment:
@@ -69,13 +71,13 @@ spans.swap:
 	out (HMPR), a
 
 	; Reset B and H parts of BC and HL to start of page.
-	ld a, (current_spans)
+	ld a, (current_spans_swap)
 	ld b, a
 	xor 0x40
 	ld h, a
 
 IF @page == spans.num_pages - 1
-	ld (current_spans), a
+	ld (current_spans_swap), a
 ENDIF
 
 @compare_spans:

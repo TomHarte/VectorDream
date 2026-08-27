@@ -65,14 +65,14 @@ LPEN:		EQU 504		; input: if no light-pen connected, current horizontal scan posi
 
 include "span_buffers/position.z80s"
 PAGE.VIDEO:			EQU 0							; The page on which the framebuffer lies.
-PAGE.CODE:			EQU 0							; The main code page.
+PAGE.CODE:			EQU 2							; The main code page.
 PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffer begins.
 
 ;
 ; Place this code just after where the frame buffer will be, in the upper half of memory.
 ;
-	ORG 0x6000
-	DUMP PAGE.VIDEO + 1, 8192
+	ORG 0x0000
+	DUMP PAGE.CODE, 0
 
 ;
 ; Install various tables first, because they're all at least 256-byte aligned and this
@@ -87,7 +87,6 @@ include "road/unaligned_tables.z80s"
 ;
 ; Code from here on:
 ;
-include "span_buffers/swap.z80s"			; Aligns to 256 bytes but doesn't maintain it.
 include "span_buffers/span_buffers.z80s"
 include "span_buffers/overprint.z80s"
 include "span_buffers/edges.z80s"
@@ -323,18 +322,44 @@ include "span_buffers/interrupt.z80s"
 ;
 ; Cross-page dispatcher. Duplicated on every page.
 ;
-DUMP PAGE.CODE, 0x7ff4
-ORG 0x7ff4
-spans.swap.dispatch:
+spans.swap.dispatch: EQU 0x7fe2
+
+dispatch: MACRO
+	di										; TODO: find alternative interrupt dispatch path.
+	ld a, (current_spans)
+	ld b, a
+
 	ld a, PAGE.VIDEO + %00100000
 	out (LMPR), a
+
+	ld a, b
+	ld (current_spans_swap), a
 	call spans.swap
 
 	ld a, PAGE.CODE + %00100000
 	out (LMPR), a
-	ret
 
+	ld a, (current_spans)
+	xor 0x40
+	ld (current_spans), a
+
+	ei
+	ret
+	ENDM
+
+DUMP PAGE.CODE, spans.swap.dispatch
+ORG spans.swap.dispatch
+	dispatch
 @here: ASSERT @here == 0x8000
+
+
+DUMP PAGE.VIDEO, 0x6000
+ORG 0x6000
+include "span_buffers/swap.z80s"
+
+DUMP PAGE.VIDEO, spans.swap.dispatch
+ORG spans.swap.dispatch
+	dispatch
 
 ;
 ; Add music.
