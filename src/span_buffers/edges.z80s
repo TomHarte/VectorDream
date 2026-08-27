@@ -94,27 +94,30 @@ edge.fill.upward:
 ;		IXh, A.
 ;
 edge.fill.vertical.downward:
-	; TODO: act appropriately when IXl > 128.
-
 	ld a, h
 	or a
 	jr z, @+write_l
 	jp p, @+write_255
 
-	ld ixh, 0
-	ld a, ixl
-	jp fill_bytes.max128
+	ld a, 0
+	ld b, ixl
+	jr @+write_byte
 
 @write_255:
-	ld ixh, 0xff
-	ld a, ixl
-	jp fill_bytes.max128
+	ld a, 0xff
+	ld b, ixl
+	jr @+write_byte
 
 @write_l:
 	ld a, l
-	ld ixh, a
-	ld a, ixl
-	jp fill_bytes.max128
+	ld b, ixl
+
+@write_byte:
+	ld (de), a
+	inc e
+	djnz @-write_byte
+
+	ret
 
 ;
 ; edges.output

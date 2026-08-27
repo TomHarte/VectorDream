@@ -95,9 +95,6 @@ screen_line:
 	db 0
 
 objects.draw:
-	ret		; TODO: use of vertical edge fills below leads to attempting to use the sort-of memset that is now on the video page.
-			; Fix this.
-
 	; `firstobject` is whichever was first last frame. It might need updating.
 	ld iy, (firstobject)
 
