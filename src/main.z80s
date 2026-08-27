@@ -19,44 +19,33 @@ LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan posi
 
 
 ;
-; Notes to future self on SP and interrupts:
+; Memory map and interrupts.
 ;
-;	It might actually be helpful to reuse SP as the pixel pointer when outputting spans.
+;	There is a single page of video, housing both the actual pixel data and the routine
+;	to update it from one span buffer to another.
 ;
-;	In that case a new interrupt scheme might be: interrupt on line 191 of the display.
+;	There is a separate page of code.
 ;
-;	Upon interrupt, set last-observed HPEN as 192, and make sure it reaches that before
-;	exiting.
+;	There are a couple of dispatch routines duplicated at the end of both pages; they're not
+;	long so duplicating them keeps the code simple in terms of being able to change the
+;	page but still having a linear top-to-bottom routine.
 ;
-;	Elsewhere, in span drawing, disable interrupts at the start and poll HPEN throughout.
-;	If at any point HPEN is 192 and the last-observed HPEN isn't, manually call the interrupt
-;	routine. Otherwise update the last-observed value as per observations.
+;	While in the code page, where the interrupt handler lives, interrupts are enabled and
+;	occur on line 191 of the display.
 ;
-;	I think that should leave the interrupt routine being a response to the actual interrupt
-;	for most of the code, with the span code doing a manual call via polling only if it
-;	has interrupts disabled when an interrupt should have been serviced.
+;	While in the video page, interrupts are disabled because neither the interrupt handler not
+;	the in-memory state it relies on are present. The span updating code instead polls HPEN
+;	periodically and performs a manual call to the inner part of the interrupt handler if
+;	HPEN becomes 192 after not having been 192 previously.
 ;
-;	Relevant observation is that HPEN seems to get to 192 and then stay there until it is
-;	reset to 0 again at the top of the next frame. So it retains a value of 192 for a prolonged
-;	120 lines, which should be spottable by periodic polling.
+;	Relevant facts affecting these choices:
 ;
-;	Annoyingly line interrupts can be scheduled only up to line 191, but hence why the interrupt
-;	routine (at least if called from a real interrupt) either needs to be at least one line
-;	long, which it probably is anyway, or else spin-poll on HPEN at the end to make sure it reads
-;	192 before it exits.
+;		(1) line 191 is the final one on which an interrupt can be placed and is very close to 192;
+;		(2) line 192 is the final one that HPEN will count to; it will then sit at that value for
+;			the next 120 lines, making it the value that is easiest not to miss via polling.
 ;
-
-
-;
-; Notes to future self on memory map:
-;
-;	It would likely be beneficial to keep only spans.swap in the 8kb above the video page, and do
-;	everything else via a separate 32kb bank. There are probably some gains to be made from greater
-;	unrolling of spans.swap but the big win would be having an easy 32kb for game code and assets
-;	and therefore minimising constraints there.
-;
-;	(I could also relocate the interrupt handler to 0x38 and dispense with the 257 byte
-;	palindrome table, which would be a saving but mainly would feel neat).
+;	Net effect though: the 'interrupt' routine isn't at precisely 50Hz. This may cause audio oddities
+;	if/when I have audio.
 ;
 
 ;
