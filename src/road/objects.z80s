@@ -43,7 +43,7 @@ object1:
 	dw 0			; Nothing is closer.
 	dw object2
 
-	db -128
+	db -10
 	db racing_red_colour
 
 object2:
@@ -63,7 +63,7 @@ object3:
 	dw object2
 	dw 0			; Nothing is further.
 
-	db -128
+	db 67
 	db racing_blue_colour
 
 ;
@@ -570,10 +570,19 @@ draw.car:
 @move_left:
 	neg
 	add a, a
+	jr z, @+move_left_128		; Number was initially negative, so non-zero. Therefore add a, a should be non-zero.
+								; Hence if the result was zero then A = 128, which is the only value that won't fit
+								; in 8-bit arithmetic. So treat it as a special case.
 	ld d, a
 	call multiply.u8.u8
 	ld a, h
 	pop hl
+	sub_hl_a
+	jr @+get_colour
+
+@move_left_128:
+	pop hl
+	ld a, e
 	sub_hl_a
 	jr @+get_colour
 
