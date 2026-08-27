@@ -15,17 +15,20 @@ DUMP PAGE.CODE + 1, interrupt & 16383
 ;
 interrupt:
 	ex af, af'
-	in a, (STATUS)
-	and 8
-	jr nz, @+not_end_of_frame
 
+	in a, (STATUS)
+	rra
+	call nc, do_interrupt
+
+	ex af, af'
+	ei
+	reti
+
+do_interrupt:
 	ld a, (frame_counter)
 	inc a
 	ld (frame_counter), a
 
 ;	call audio
 
-@not_end_of_frame:
-	ex af, af'
-	ei
-	reti
+	ret

@@ -14,7 +14,7 @@ KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen stro
 	; Keyboard reading is otherwise similar to the ZX Spectrum; use the high 8 bits of the port address to indicate which lines are active.
 
 HPEN:		EQU 504		; input: if no light-pen connected, current vertical scan position. Otherwise light-pen position.
-LPEN:		EQU 504		; input: if no light-pen connected, current horizontal scan position. Otherwise light-pen position.
+LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan position. Otherwise light-pen position.
 
 
 

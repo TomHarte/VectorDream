@@ -57,7 +57,9 @@ frame_counter: db 0
 	ld a, 0
 	out (BORDER), a
 
-	; Enable frame-counting interrupts.
+	; Enable frame-counting interrupts, on line 191.
+	ld a, 191
+	out (LINE), a
 	ld a, @interrupt_vector / 256
 	ld i, a
 	im 2
