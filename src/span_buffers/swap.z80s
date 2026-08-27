@@ -48,8 +48,16 @@ ALIGN 256
 ;
 
 current_spans_swap: db 0
+@previous_hpen: db 0
 
 spans.swap:
+	; Store current line.
+	exx
+	ld bc, HPEN
+	in a, (c)
+	ld (@-previous_hpen), a
+	exx
+
 	;
 	; Overarching register assignment:
 	;
@@ -65,6 +73,23 @@ spans.swap:
 	; Output.
 
 @page: EQU for spans.num_pages
+
+	; Check for potential missed interrupt.
+	exx
+	ld a, (@-previous_hpen)
+	ld d, a
+	in a, (c)
+	ld (@-previous_hpen), a
+
+	cp 192
+	jr nz, @+not_new_192
+
+	cp d
+	call nz, count_time.dispatch
+
+@not_new_192:
+	exx
+
 
 	; Page in proper source and destination buffers.
 	ld a, PAGE.FIRSTSPAN + (@page * 2)

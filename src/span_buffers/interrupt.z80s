@@ -18,13 +18,13 @@ interrupt:
 
 	in a, (STATUS)
 	rra
-	call nc, do_interrupt
+	call nc, count_time
 
 	ex af, af'
 	ei
 	reti
 
-do_interrupt:
+count_time:
 	ld a, (frame_counter)
 	inc a
 	ld (frame_counter), a
