@@ -43,7 +43,7 @@ object1:
 	dw 0			; Nothing is closer.
 	dw object2
 
-	db 64
+	db -128
 	db racing_red_colour
 
 object2:
@@ -53,7 +53,7 @@ object2:
 	dw object1
 	dw object3
 
-	db -32
+	db -128
 	db racing_blue_colour
 
 object3:
@@ -63,7 +63,7 @@ object3:
 	dw object2
 	dw 0			; Nothing is further.
 
-	db 0
+	db -128
 	db racing_blue_colour
 
 ;
@@ -563,14 +563,29 @@ draw.car:
 
 	ld a, (object_width)
 	ld e, a
-	ld d, (iy + moveable.x)
+	ld a, (iy + moveable.x)
+	or a
+	jp p, @+move_right
 
-	; TODO: make d unsigned, decide whether this is going to be additive or subtractive.
-	; Call multiply.u8.u8 to get HL = offset due to x position.
-	; Add or subtract that offset from the current HL to get real car position.
-
+@move_left:
+	neg
+	add a, a
+	ld d, a
+	call multiply.u8.u8
+	ld a, h
 	pop hl
+	sub_hl_a
+	jr @+get_colour
 
+@move_right:
+	add a, a
+	ld d, a
+	call multiply.u8.u8
+	ld a, h
+	pop hl
+	add_hl_a
+
+@get_colour:
 	; Get colour.
 	ld a, (iy + car.colour)
 	ld iyl, a
