@@ -65,6 +65,7 @@ LPEN:		EQU 504		; input: if no light-pen connected, current horizontal scan posi
 
 include "span_buffers/position.z80s"
 PAGE.VIDEO:			EQU 0							; The page on which the framebuffer lies.
+PAGE.CODE:			EQU 0							; The main code page.
 PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffer begins.
 
 ;
@@ -314,9 +315,26 @@ palette:
 	db %0000000		; screen border
 
 ;
-; Interrupt routine sits at 0xfefe, so always include this last.
+; Interrupt routine sits almost at the end of the available space, so always include this last.
 ;
 include "span_buffers/interrupt.z80s"
+
+
+;
+; Cross-page dispatcher. Duplicated on every page.
+;
+DUMP PAGE.CODE, 0x7ff4
+ORG 0x7ff4
+spans.swap.dispatch:
+	ld a, PAGE.VIDEO + %00100000
+	out (LMPR), a
+	call spans.swap
+
+	ld a, PAGE.CODE + %00100000
+	out (LMPR), a
+	ret
+
+@here: ASSERT @here == 0x8000
 
 ;
 ; Add music.

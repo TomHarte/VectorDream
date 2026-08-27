@@ -28,7 +28,7 @@ frame_counter: db 0
 	; Get this code into the right place by paging it into the low page and jumping to it.
 	; ... and set the expected video page and mode while at it.
 	;
-	ld a, PAGE.VIDEO + %00100000
+	ld a, PAGE.CODE + %00100000
 	out (LMPR), a
 	jp @low_target
 
@@ -36,8 +36,8 @@ frame_counter: db 0
 	ld a, PAGE.VIDEO + %01100000
 	out (VMPR), a
 
-	; Set stack to top of page.
-	ld sp, 0x8000
+	; Set stack below dispatcher.
+	ld sp, spans.swap.dispatch
 
 	; Seed display.
 	call spans.setup
@@ -51,7 +51,7 @@ frame_counter: db 0
 
 	; Seed pixels while display is off.
 	call draw
-	call spans.swap
+	call spans.swap.dispatch
 
 	; Reenable display.
 	ld a, 0
@@ -65,7 +65,7 @@ frame_counter: db 0
 
 @game_loop:
 	call draw
-	call spans.swap
+	call spans.swap.dispatch
 
 	; Get B = number of frames since last did updates.
 @get_frame_counter:

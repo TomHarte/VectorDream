@@ -8,7 +8,7 @@
 interrupt: EQU 0x7f7f
 
 ORG interrupt
-DUMP PAGE.VIDEO + 1, interrupt & 16383
+DUMP PAGE.CODE + 1, interrupt & 16383
 
 ;
 ; This assumes AF' is unused elsewhere. Which it currently is.
