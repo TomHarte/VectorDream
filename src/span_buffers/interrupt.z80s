@@ -5,7 +5,7 @@
 ; TODO: is this really part of 'span_buffers'?
 ;
 
-interrupt: EQU 0xfefe
+interrupt: EQU 0x7f7f
 
 ORG interrupt
 DUMP PAGE.VIDEO + 1, interrupt & 16383

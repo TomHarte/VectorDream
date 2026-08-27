@@ -1,5 +1,5 @@
 ALIGN 256
 edge_list_left:		ds spans.height
-current_spans:	db 0
+current_spans:		db 0x80
 ALIGN 256
 edge_list_right:	ds spans.height

@@ -151,8 +151,8 @@ edges.output:
 							; so skip this page.
 
 	; Install target span page.
-	ld a, %00100000 + PAGE.FIRSTSPAN + (@page * 2)
-	out (LMPR), a
+	ld a, PAGE.FIRSTSPAN + (@page * 2)
+	out (HMPR), a
 
 	; Calculate pointer into span page.
 	ld a, l

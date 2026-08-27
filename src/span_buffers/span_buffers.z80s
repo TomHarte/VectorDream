@@ -47,8 +47,8 @@ spans.setup:
 	;
 	; Make the visible screen black.
 	;
-	ld hl, 0x8000
-	ld de, 0x8001
+	ld hl, 0x0000
+	ld de, 0x0001
 	ld bc, 128 * 192 - 1
 	ld (hl), 0x00
 	ldir
@@ -58,7 +58,8 @@ spans.setup:
 	;
 	call spans.clear
 
-	ld a, 0x40
+	ld a, (current_spans)
+	xor 0x40
 	ld (current_spans), a
 
 	; Fallthrough to spans.clear. Eliminating:
@@ -88,9 +89,9 @@ spans.clear:
 	ld a, (current_spans)
 	ld h, a
 
-	ld a, %00100000 + PAGE.FIRSTSPAN
+	ld a, PAGE.FIRSTSPAN
 	add a, c
-	out (LMPR), a
+	out (HMPR), a
 
 	ld b, 32
 	@write_loop:
@@ -142,8 +143,8 @@ spans.swap:
 @page: EQU for spans.num_pages
 
 	; Page in proper source and destination buffers.
-	ld a, %00100000 + PAGE.FIRSTSPAN + (@page * 2)
-	out (LMPR), a
+	ld a, PAGE.FIRSTSPAN + (@page * 2)
+	out (HMPR), a
 
 	; Reset B and H parts of BC and HL to start of page.
 	ld a, (current_spans)
@@ -334,8 +335,7 @@ finish_painting: MACRO
 	;
 @fill_span:
 	; Compute frame buffer address.
-	scf
-	rr d
+	srl d
 	rr e
 
 	jr nc, @+no_initial_right
@@ -429,7 +429,7 @@ fill_bytes.max128:
 spans.getaddress:
 	; For line with bit pattern abcdefgh:
 	;
-	;	* the required LMPR value is: 0010abc0;
+	;	* the required HMPR value is: 0000abc0;
 	;	* L is 0; and
 	;	* H is current_spans + defgh * 2.
 
@@ -441,8 +441,8 @@ spans.getaddress:
 	rra
 	rra
 	and %00001110
-	add %00100000 + PAGE.FIRSTSPAN
-	out (LMPR), A
+	add PAGE.FIRSTSPAN
+	out (HMPR), A
 
 	ld a, h
 	rla
