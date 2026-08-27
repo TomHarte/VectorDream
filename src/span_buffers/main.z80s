@@ -25,27 +25,19 @@ frame_counter: db 0
 	out (BORDER), a
 
 	;
-	; Perform a paging dance to get this code into the right place by:
-	;
-	;	(1) paging this same code into the low page, and jumping to it; then
-	;	(2) paging this code into its proper place in the upper quartile of the map, and jumping back to it.
-	;
+	; Get this code into the right place by paging it into the low page and jumping to it.
 	; ... and set the expected video page and mode while at it.
 	;
-	ld a, PAGE.VIDEO
+	ld a, PAGE.VIDEO + %00100000
 	out (LMPR), a
-	jp @low_target - 0x8000
+	jp @low_target
 
 @low_target:
-	ld a, PAGE.VIDEO
-	out (HMPR), a
-	or %01100000
+	ld a, PAGE.VIDEO + %01100000
 	out (VMPR), a
-	jp @finish_paging
 
-@finish_paging:
-	; Set stack high.
-	ld sp, 0
+	; Set stack to top of page.
+	ld sp, 0x8000
 
 	; Seed display.
 	call spans.setup

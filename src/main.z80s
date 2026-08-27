@@ -72,7 +72,7 @@ PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffe
 ;
 ; Place this code just after where the frame buffer will be, in the upper half of memory.
 ;
-	ORG 0xe000
+	ORG 0x6000
 	DUMP PAGE.VIDEO + 1, 8192
 
 ;
@@ -99,10 +99,9 @@ include "road/bss.z80s"
 
 
 setup:
-	ld a, %00100000 + PAGE.VIDEO + 2
-	out (LMPR), a
-	call player_setup
-
+;	ld a, PAGE.VIDEO + 2
+;	out (HMPR), a
+;	call audio_setup
 	jp road.setup
 
 
@@ -252,23 +251,25 @@ update:
 	ret
 
 audio:
-	in a, (LMPR)
-	push af
-	ld a, %00100000 + PAGE.VIDEO + 2
-	out (LMPR), a
+	ret
+
+;	in a, (LMPR)
+;	push af
+;	ld a, %00100000 + PAGE.VIDEO + 2
+;	out (LMPR), a
 
 	; I've found no use for the alternate registers elsewhere in this code,
-	; and player_play seems empirically to trash all of BC, DE and HL.
+	; and audio_play seems empirically to trash all of BC, DE and HL.
 	;
 	; So for now let it have the other register bank to itself.
-	exx
-	call player_play
-	exx
+;	exx
+;	call audio_play
+;	exx
 
-	pop af
-	out (LMPR), a
+;	pop af
+;	out (LMPR), a
 
-	ret
+;	ret
 
 curvature: dw 0
 player.x: dw 16 * 256
@@ -322,10 +323,10 @@ include "span_buffers/interrupt.z80s"
 ; Add music.
 ;
 
-	ORG 0x0000
-	DUMP PAGE.VIDEO + 2, 0
+;	ORG 0x0000
+;	DUMP PAGE.VIDEO + 2, 0
 
-	MDAT "../binary/music.bin"
+;	MDAT "../binary/music.bin"
 
-	player_setup: EQU 0
-	player_play: EQU 7
+;	audio_setup: EQU 0
+;	audio_play: EQU 7
