@@ -94,6 +94,10 @@ edge.fill.upward:
 ;		IXh, A.
 ;
 edge.fill.vertical.downward:
+	ld a, ixl
+	or a
+	ret z
+
 	ld a, h
 	or a
 	jr z, @+write_l

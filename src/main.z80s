@@ -264,7 +264,7 @@ player.x: dw 16 * 256
 player.xvelocity: dw 0
 
 player.y:
-	db 0, 0, 0		; 16:8 fixed form.
+	db 0x00, 0x00, 0x00		; 16:8 fixed form; little-endian.
 player.yvelocity: dw 0
 
 ;

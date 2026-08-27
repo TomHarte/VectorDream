@@ -551,7 +551,7 @@ draw_tyre: MACRO
 	ENDM
 
 upper_slope: EQU 63
-lower_slope: EQU 600
+lower_slope: EQU 400
 
 draw.car:
 	push iy
@@ -602,6 +602,7 @@ draw.car:
 	; Which means scaling width down to a quarter because it'll be
 	; added and subtracted.
 	ld a, (object_width)
+	add 2
 	rra
 	rra
 	and %00111111
@@ -609,7 +610,7 @@ draw.car:
 
 	ld (object_width), a			; Update object width to being offset of a tyre.
 
-	ld a, (object_width)			; A = height of tyre.
+	inc a
 	srl a
 	ld (@-tyre_width), a			; Tyre width = half height (in pixels).
 
@@ -621,6 +622,7 @@ draw.car:
 								; This will also be the top of the neck.
 
 	ld a, (object_width)
+	add 2
 	srl a
 	srl a
 	ld e, a
@@ -651,7 +653,6 @@ draw.car:
 		ld bc, -lower_slope
 		push af
 		ld a, (@-tyre_width)
-;		srl a
 		ld ixl, a					; Draw down by half a tyre.
 		pop af
 
@@ -678,7 +679,6 @@ draw.car:
 		ld bc, lower_slope
 		push af
 		ld a, (@-tyre_width)
-;		srl a
 		ld ixl, a					; Draw down by half a tyre.
 		pop af
 

@@ -3,7 +3,7 @@ bottom_y: EQU 192
 ; NB: bottom_y shouldn't exceed spans.height
 
 ;
-; Segments is a set of triples, each being: (half road width, half line width, y offset).
+; Segments is a set of triples, each being: (half line width, half road width, y offset).
 ;
 align 1024
 segments:
