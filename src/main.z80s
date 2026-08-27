@@ -86,7 +86,8 @@ include "road/unaligned_tables.z80s"
 ;
 ; Code from here on:
 ;
-include "span_buffers/span_buffers.z80s"	; Aligns to 256 bytes but doesn't maintain it.
+include "span_buffers/swap.z80s"			; Aligns to 256 bytes but doesn't maintain it.
+include "span_buffers/span_buffers.z80s"
 include "span_buffers/overprint.z80s"
 include "span_buffers/edges.z80s"
 include "maths/multiply.z80s"
