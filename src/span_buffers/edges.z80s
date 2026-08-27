@@ -119,8 +119,8 @@ edge.fill.vertical.downward:
 ;
 ; edges.output
 ;
-; Outputs spans between whatever position is in edge_list_left and the corresponding
-; position in edge_list_right.
+; Outputs spans between whatever position is in edge.left and the corresponding
+; position in edge.right.
 ;
 ; This fill proceeds _downward_.
 ;
@@ -140,7 +140,7 @@ edges.output:
 	ld ixh, d					; Stow colour.
 	ld iyl, c					; Preserve loop counter.
 
-	ld h, edge_list_left / 256
+	ld h, edge.left / 256
 	ld l, b						; HL = left list pointer.
 
 @page: EQU FOR spans.num_pages

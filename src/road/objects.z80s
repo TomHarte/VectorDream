@@ -468,7 +468,7 @@ draw.leftward_arrow:
 	; Draw left edge.
 	ld ixl, a							; height = scaled height
 
-	ld d, edge_list_left / 256
+	ld d, edge.left / 256
 	ld a, (screen_line)
 	ld e, a								; Start drawing at screen_line.
 
@@ -636,7 +636,7 @@ draw.car:
 
 		; Left edge.
 		ld e, a
-		ld d, edge_list_left / 256	; DE = pointer to left list at bottom of spoiler.
+		ld d, edge.left / 256	; DE = pointer to left list at bottom of spoiler.
 
 		ld a, (@-tyre_width)
 		ld ixl, a					; Draw down by half a tyre.
@@ -769,7 +769,7 @@ rectangle:
 	ld (@+load_colour+1), a			; Store colour.
 
 	; Get pointer into left edge list.
-	ld d, edge_list_left / 256
+	ld d, edge.left / 256
 	ld a, ixl
 	sub e							; A = height - base
 	neg								; A = base - height
