@@ -77,8 +77,8 @@ DUMP PAGE.CODE, 0
 	;
 	; 1kb things, one of which needs to be 1kb-aligned.
 	;
-		include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
 		include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
+		include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
 
 	;
 	; From here: things without alignment concerns, so no need to pack manually.
