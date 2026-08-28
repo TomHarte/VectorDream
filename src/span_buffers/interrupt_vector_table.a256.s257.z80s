@@ -1,0 +1,10 @@
+;
+; At present this code is using an IM 2 interrupt handler, with this being its vector table.
+; This was the only option in the past. IM 1 is also now an option.
+;
+
+ALIGN 256
+interrupt_vector:
+	@interrupt_table: EQU FOR 257
+		db interrupt / 256
+		NEXT @interrupt_table

@@ -1,20 +1,3 @@
-;
-; Although it is a shame that interrupt mode 2 has to be used, requiring this
-; 257-byte table of palindromic interrupt vectors, I don't see a way to avoid
-; that. Both the span buffers and the frame buffer need to be pageable at once.
-; I cannot use address 0x38 on a frame-buffer page. If I were to use address 0x38
-; on a span buffer page I'd need to use it on _all_ span buffer pages, which
-; would necessitate a one-line gap every 32 lines.
-;
-; So the interrupt handler lives here, within the top 8kb of the frame-buffer page,
-; and necessitates interrupt mode 2 and this table.
-;
-ALIGN 256
-@interrupt_vector:
-	@interrupt_table: EQU FOR 257
-		db interrupt / 256
-		NEXT @interrupt_table
-
 frame_counter: db 0
 
 	AUTOEXEC
@@ -60,7 +43,7 @@ frame_counter: db 0
 	; Enable frame-counting interrupts, on line 191.
 	ld a, 191
 	out (LINE), a
-	ld a, @interrupt_vector / 256
+	ld a, interrupt_vector / 256
 	ld i, a
 	im 2
 	ei

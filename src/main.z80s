@@ -1,24 +1,4 @@
 ;
-; Hardware register locations.
-;
-
-CLUT:		EQU 248		; high byte of port address selects CLUT entry
-LINE:		EQU 249		; output: line to enable a CPU interrupt on, in range 0–191, or any other value to disable.
-STATUS:		EQU 249		; input: b0: active low line interrupt pending; b1: mouse interrupt; b2: MIDI IN; b3: frame; b4: MIDI OUT; b5-b7: keyboard matrix lines 6-8.
-
-LMPR:		EQU 250		; b0–b4: page control; b5: set to enable RAM in section A; b6: clear to enable RAM in section B; b7: write protect for section A.
-HMPR:		EQU 251		; b0–b4: page control; b5-b6: bits 4 & 8 of the Mode 3 CLUT address; b7: use external memory.
-VMPR:		EQU 252		; b0–b4: displayed page; b5-b6: graphics mode; b7: MIDI IN/OUT.
-BORDER:		EQU 254		; output: b0–b2, b5: border colour; b3: MIC output; b4: BEEP output; b7: set to disable display in Modes 3 & 4.
-KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen strobe; b6: EAR input; b7: external memory status bit.
-	; Keyboard reading is otherwise similar to the ZX Spectrum; use the high 8 bits of the port address to indicate which lines are active.
-
-HPEN:		EQU 504		; input: if no light-pen connected, current vertical scan position. Otherwise light-pen position.
-LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan position. Otherwise light-pen position.
-
-
-
-;
 ; Memory map and interrupts.
 ;
 ;	There is a single page of video, housing both the actual pixel data and the routine
@@ -52,329 +32,75 @@ LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan posi
 ; Program defines.
 ;
 
+include "hardware.z80s"
 include "span_buffers/position.z80s"
 PAGE.VIDEO:			EQU 0							; The page on which the framebuffer lies.
 PAGE.CODE:			EQU 2							; The main code page.
 PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffer begins.
 
 ;
-; Place this code just after where the frame buffer will be, in the upper half of memory.
+; Code page: an entire 32kb area just for code, that will sit in the low 32kb of the memory map.
 ;
-	ORG 0x0000
-	DUMP PAGE.CODE, 0
-
-;
-; Install various tables first, because they're all at least 256-byte aligned and this
-; causes them to be tightly-packed.
-;
-include "road/aligned_tables.z80s"
-include "maths/multiply_tables.z80s"
-include "span_buffers/bss.z80s"
-include "span_buffers/main.z80s"			; This breaks 256-byte alignment.
-include "road/unaligned_tables.z80s"
-
-;
-; Code from here on:
-;
-include "span_buffers/span_buffers.z80s"
-include "span_buffers/overprint.z80s"
-include "span_buffers/edges.z80s"
-include "maths/multiply.z80s"
-include "maths/divide.z80s"
-include "road/road.z80s"
-include "road/objects.z80s"
-include "road/bss.z80s"
-
-
-setup:
-;	ld a, PAGE.VIDEO + 2
-;	out (HMPR), a
-;	call audio_setup
-	jp road.setup
-
-
-draw:
-	call road.draw
-	jp objects.draw
-
-
-update:
-	push bc
-	call @+update
-	pop bc
-	djnz update
-
-@update:
-	; Read joystick/67890.
-	ld bc, 0xeffe
-	in a, (c)
-	rra
-	rra
-	jr c, @+no_up
-
-	ld hl, (player.yvelocity)
-	ld de, 8
-	add hl, de
-	ld (player.yvelocity), hl
-
-	@no_up:
-	rra
-	jr c, @+no_down
-
-	ld hl, (player.yvelocity)
-	ld de, -8
-	add hl, de
-	ld (player.yvelocity), hl
-
-	@no_down:
-	rra 
-	jr c, @+no_right
-
-	ld bc, -256
-	ld (player.xvelocity), bc
-
-	@no_right:
-	rra
-	jr c, @+no_left
-
-	ld bc, 256
-	ld (player.xvelocity), bc
-
-	@no_left:
-
-	; Read QW.
-	ld bc, 0xfbfe
-	in a, (c)
-	rra
-	jr c, @+no_q
-
-	call road.curve_left
-
-	ld hl, (curvature)
-	ld bc, -7
-	add hl, bc
-	ld (curvature), hl
-
-	jr @+no_w
-
-	@no_q:
-	rra
-	jr c, @+no_w
-	call road.curve_right
-
-	ld hl, (curvature)
-	ld bc, 7
-	add hl, bc
-	ld (curvature), hl
-
-	@no_w:
+ORG 0x0000
+DUMP PAGE.CODE, 0
 
 	;
-	; Y velocity.
+	; Install various tables first, because they're all at least 256-byte aligned and this
+	; causes them to be tightly-packed.
 	;
-
-		; Apply.
-		ld a, (player.y + 2)
-		ld d, a
-		ld hl, (player.y)					; D:HL = player,y
-
-		ld a, (player.yvelocity + 1)
-		rla
-		sbc a
-		ld bc, (player.yvelocity)			; A:BC = velocity, sign extended.
-
-		add hl, bc
-		adc d
-
-		ld (player.y), hl
-		ld (player.y + 2), a
-
-		ld a, (player.yvelocity + 1)
-		sra a
-
-		; Dampen a little.
-		ld b, 0x00
-		ld c, a
-		or a
-		jp p, @+positive
-		ld b, 0xff
-		@positive:
-
-		ld c, a
-		ld hl, (player.yvelocity)
-		or a
-		sbc hl, bc
-		ld (player.yvelocity), hl
+	include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
+	include "road/curve_tables.s130.z80s"							; 552 + 130 = 682; there are 86 spare bytes until 256 alignment.
+	include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
+	include "span_buffers/bss.a256.s448.z80s"						; Ends 64 bytes short of 256 alignment.
+	include "span_buffers/interrupt_vector_table.a256.s257.z80s"	; Ends one byte after 256 aligned.
+																	;
+																	; Net exterior wastage: 64 + 86 = 150 bytes.
+																	; There are another 63 internally wasted in span_buffers/bss, so that's 213 total.
 
 	;
-	; X velocity.
+	; Call main setup and execution engine; this will call out to game-specific routines.
 	;
-		; Apply. With 8-bit arithmetic in order to catch overflow.
-		ld bc, (player.xvelocity)
-		ld hl, (player.x)
-		ld a, c
-		add l
-		ld l, a
-		ld a, b
-		adc h
-		ld h, a
-		jp po, @+no_overflow
+	include "span_buffers/game_loop.z80s"
 
-		or a
-		sbc hl, bc
-
-	@no_overflow:
-		ld (player.x), hl
-
-		; Dampen harshly.
-		ld hl, (player.xvelocity)
-		sra b
-		rr c
-		sra b
-		rr c
-		or a
-		sbc hl, bc
-		ld (player.xvelocity), hl
-
-	ret
-
-audio:
-	ret
-
-;	in a, (LMPR)
-;	push af
-;	ld a, %00100000 + PAGE.VIDEO + 2
-;	out (LMPR), a
-
-	; I've found no use for the alternate registers elsewhere in this code,
-	; and audio_play seems empirically to trash all of BC, DE and HL.
 	;
-	; So for now let it have the other register bank to itself.
-;	exx
-;	call audio_play
-;	exx
+	; Other code in use.
+	;
+	include "span_buffers/setup_and_clear.z80s"
+	include "span_buffers/overprint.z80s"
+	include "span_buffers/edges.z80s"
+	include "span_buffers/get_address.z80s"
 
-;	pop af
-;	out (LMPR), a
+	include "maths/multiply.z80s"
+	include "maths/divide.z80s"
 
-;	ret
+	include "road/road.z80s"
+	include "road/objects.z80s"
+	include "road/bss.z80s"
 
-curvature: dw 0
-player.x: dw 16 * 256
-player.xvelocity: dw 0
-
-player.y:
-	db 0x00, 0x00, 0x00		; 16:8 fixed form; little-endian.
-player.yvelocity: dw 0
-
-;
-; Colour selections and palette.
-;
-border_colour:		EQU 0
-tyre_colour:		EQU 0x00
-sky_colour:			EQU 0x11
-grass_colour1:		EQU 0x22
-grass_colour2:		EQU 0x33
-road_colour:		EQU 0x44
-line_colour:		EQU 0x55
-wood_colour:		EQU 0x66
-leaf_colour:		EQU 0x77
-warning_colour:		EQU 0x88
-grass_colour_mix: 	EQU 0x99
-
-racing_blue_colour:	EQU 0xaa
-racing_red_colour:	EQU 0xbb
-
-; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
-; This list is OTIRd elsewhere, so is in reverse order.
-palette:
-	db 0, 0, 0, 0
-	db 34			; racing car red
-	db 16			; racing car blue
-	db 65			; mixed-grass colour
-	db %0101010		; bright red, for warning signage
-	db %1101100		; yet another green, for trees
-	db %1100010		; brown, for wood
-	db %1110111		; line
-	db %0000111		; road
-	db 64			; grass 2 (the dimmer one, by convention)
-	db 67			; grass 1
-	db %0011000		; sky
-	db %0000000		; screen border
+	include "palette.z80s"
+	include "setup.z80s"
+	include "draw.z80s"
+	include "update.z80s"
+	include "audio.z80s"
+	include "state.z80s"
 
 ;
-; Interrupt routine sits almost at the end of the available space, so always include this last.
+; Video page: 24kb of the actual frame buffer, then the span swap routine
+; (and some stack, and the cross-page dispatcher).
 ;
-include "span_buffers/interrupt.z80s"
-
-
-;
-; Cross-page dispatcher. Duplicated on every page.
-;
-;spans.swap.dispatch: EQU 0x7fd6
-;count_time.dispatch: EQU 0x7fee
-
-dispatch_spans_swap: MACRO
-	ld a, (current_spans)
-	ld b, a
-
-	ld a, PAGE.VIDEO + %00100000
-	di
-	out (LMPR), a
-
-	ld a, b
-	ld (current_spans_swap), a
-	call spans.swap
-
-	ld a, PAGE.CODE + %00100000
-	out (LMPR), a
-	ei
-
-	ld a, (current_spans)
-	xor 0x40
-	ld (current_spans), a
-
-	ret
-	ENDM
-
-dispatch_count_time: MACRO
-	ld a, PAGE.CODE + %00100000
-	out (LMPR), a
-	call count_time
-
-	ld a, PAGE.VIDEO + %00100000
-	out (LMPR), a
-	ret
-	ENDM
-
-dispatch_low: EQU 0x7fd6
-
-DUMP PAGE.CODE, dispatch_low
-ORG dispatch_low
-spans.swap.dispatch:
-	dispatch_spans_swap
-count_time.dispatch:
-	dispatch_count_time
-@here: ASSERT @here == 0x8000
-
-
 DUMP PAGE.VIDEO, 0x6000
 ORG 0x6000
-include "span_buffers/swap.z80s"
 
-DUMP PAGE.VIDEO, spans.swap.dispatch
-ORG spans.swap.dispatch
-	dispatch_spans_swap
-	dispatch_count_time
+	include "span_buffers/swap.a256.z80s"
 
 ;
-; Add music.
+; Stuff that places itself is below.
 ;
-
-;	ORG 0x0000
-;	DUMP PAGE.VIDEO + 2, 0
-
-;	MDAT "../binary/music.bin"
-
-;	audio_setup: EQU 0
-;	audio_play: EQU 7
+; At the end of the code page, currently:
+;
+;	starting 7f7f: interrupt routine;
+;	ending 8000: cross-page dispatcher;			[also on the video page]
+;	in between: the stack.
+;
+include "span_buffers/interrupt.z80s"					; Puts itself on the code page.
+include "span_buffers/cross_page_dispatcher.z80s"		; Puts itself on both code and video pages.

@@ -1,0 +1,8 @@
+;
+; Called once per frame by by span_buffers/game_loop.z80s.
+;
+; Should not call spans.swap or similar; span buffer swapping is handled by the game loop.
+;
+draw:
+	call road.draw
+	jp objects.draw

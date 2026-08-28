@@ -1,0 +1,13 @@
+;
+; It is assumed by code elsewhere that edge.left and edge.right are both 256 aligned,
+; and that they begin 256 bytes apart.
+;
+
+ALIGN 256
+edge.left:			ds spans.height
+current_spans:		ds 0
+
+ALIGN 256
+edge.right:			ds spans.height
+
+ASSERT edge.right - edge.left == 256

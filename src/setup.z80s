@@ -1,0 +1,8 @@
+;
+; Called exactly once, at program startup, by span_buffers/game_loop.z80s.
+;
+setup:
+;	ld a, PAGE.VIDEO + 2
+;	out (HMPR), a
+;	call audio_setup
+	jp road.setup

@@ -1,0 +1,53 @@
+;
+; Cross-page dispatcher, sits absolutely at the end of the page, because that interferes
+; least with normal top-to-bottom code generation.
+;
+
+dispatch_spans_swap: MACRO
+	ld a, (current_spans)
+	ld b, a
+
+	ld a, PAGE.VIDEO + %00100000
+	di
+	out (LMPR), a
+
+	ld a, b
+	ld (current_spans_swap), a
+	call spans.swap
+
+	ld a, PAGE.CODE + %00100000
+	out (LMPR), a
+	ei
+
+	ld a, (current_spans)
+	xor 0x40
+	ld (current_spans), a
+
+	ret
+	ENDM
+
+dispatch_count_time: MACRO
+	ld a, PAGE.CODE + %00100000
+	out (LMPR), a
+	call count_time
+
+	ld a, PAGE.VIDEO + %00100000
+	out (LMPR), a
+	ret
+	ENDM
+
+dispatch_low: EQU 0x7fd6
+
+DUMP PAGE.CODE, dispatch_low
+ORG dispatch_low
+spans.swap.dispatch:
+	dispatch_spans_swap
+count_time.dispatch:
+	dispatch_count_time
+@here: ASSERT @here == 0x8000
+
+
+DUMP PAGE.VIDEO, spans.swap.dispatch
+ORG spans.swap.dispatch
+	dispatch_spans_swap
+	dispatch_count_time

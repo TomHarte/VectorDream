@@ -1,0 +1,34 @@
+;
+; Colour selections and palette.
+;
+border_colour:		EQU 0
+tyre_colour:		EQU 0x00
+sky_colour:			EQU 0x11
+grass_colour1:		EQU 0x22
+grass_colour2:		EQU 0x33
+road_colour:		EQU 0x44
+line_colour:		EQU 0x55
+wood_colour:		EQU 0x66
+leaf_colour:		EQU 0x77
+warning_colour:		EQU 0x88
+grass_colour_mix: 	EQU 0x99
+
+racing_blue_colour:	EQU 0xaa
+racing_red_colour:	EQU 0xbb
+
+; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
+; This list is OTIRd elsewhere, so is in reverse order.
+palette:
+	db 0, 0, 0, 0
+	db 34			; racing car red
+	db 16			; racing car blue
+	db 65			; mixed-grass colour
+	db %0101010		; bright red, for warning signage
+	db %1101100		; yet another green, for trees
+	db %1100010		; brown, for wood
+	db %1110111		; line
+	db %0000111		; road
+	db 64			; grass 2 (the dimmer one, by convention)
+	db 67			; grass 1
+	db %0011000		; sky
+	db %0000000		; screen border
