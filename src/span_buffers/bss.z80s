@@ -1,6 +1,0 @@
-ALIGN 256
-edge.left:			ds spans.height
-current_spans:		db 0x80
-
-ALIGN 256
-edge.right:			ds spans.height

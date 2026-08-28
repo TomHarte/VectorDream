@@ -67,20 +67,31 @@ PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffe
 ; Install various tables first, because they're all at least 256-byte aligned and this
 ; causes them to be tightly-packed.
 ;
-include "road/aligned_tables.z80s"
-include "maths/multiply_tables.z80s"
-include "span_buffers/bss.z80s"
-include "span_buffers/main.z80s"			; This breaks 256-byte alignment.
-include "road/unaligned_tables.z80s"
+include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
+include "road/curve_tables.s130.z80s"							; 552 + 130 = 682; there are 86 spare bytes until 256 alignment.
+include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
+include "span_buffers/bss.a256.s448.z80s"						; Ends 64 bytes short of 256 alignment.
+include "span_buffers/interrupt_vector_table.a256.s257.z80s"	; Ends one byte after 256 aligned.
+																;
+																; Net exterior wastage: 64 + 86 = 150 bytes.
+																; There are another 63 internally wasted in span_buffers/bss, so that's 213 total.
 
 ;
-; Code from here on:
+; Call main setup and execution engine; this will call out to game-specific routines.
 ;
-include "span_buffers/span_buffers.z80s"
+include "span_buffers/game_loop.z80s"
+
+;
+; Other code in use.
+;
+include "span_buffers/setup_and_clear.z80s"
 include "span_buffers/overprint.z80s"
 include "span_buffers/edges.z80s"
+include "span_buffers/get_address.z80s"
+
 include "maths/multiply.z80s"
 include "maths/divide.z80s"
+
 include "road/road.z80s"
 include "road/objects.z80s"
 include "road/bss.z80s"
@@ -360,7 +371,7 @@ count_time.dispatch:
 
 DUMP PAGE.VIDEO, 0x6000
 ORG 0x6000
-include "span_buffers/swap.z80s"
+include "span_buffers/swap.a256.z80s"
 
 DUMP PAGE.VIDEO, spans.swap.dispatch
 ORG spans.swap.dispatch

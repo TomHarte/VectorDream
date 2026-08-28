@@ -27,6 +27,12 @@ spans.setup:
 	ldir
 
 	;
+	; Seed initial span location.
+	;
+	ld a, 0x80
+	ld (current_spans), a
+
+	;
 	; Fill both span buffers with blackness.
 	;
 	call spans.clear
@@ -78,46 +84,3 @@ spans.clear:
 	dec c
 	ret m
 	jr @-per_page
-
-;
-;	spans.getaddress
-;
-;	Obtains a pointer to the start of a line in the current span back buffer.
-;
-;	Input:
-; 		A = line to prepare.
-;
-;	Output:
-;		proper block of lines has been paged; HL = pointer to start of line.
-;
-;	Clobbers:
-;		A.
-;
-spans.getaddress:
-	; For line with bit pattern abcdefgh:
-	;
-	;	* the required HMPR value is: 0000abc0;
-	;	* L is 0; and
-	;	* H is current_spans + defgh * 2.
-
-	; Keep all of A in H to mask off the low portion shortly...
-	ld h, a
-
-	rra
-	rra
-	rra
-	rra
-	and %00001110
-	add PAGE.FIRSTSPAN
-	out (HMPR), a
-
-	ld a, h
-	rla
-	and %00111110
-	ld h, a
-	ld a, (current_spans)
-	add h
-	ld h, a
-	ld l, 0
-
-	ret
