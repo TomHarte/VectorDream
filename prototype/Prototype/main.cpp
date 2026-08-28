@@ -151,13 +151,14 @@ private:
 		};
 
 		// Binary search for minimum height.
+		static constexpr int TargetWidth = 255;
 		float bounds[] = {0.0f, 10.0f};
 		while(bounds[1] - bounds[0] > 0.001f) {
 			height = (bounds[0] + bounds[1]) * 0.5f;
 			const float depth = depth_at(192);
 			const int width = int(0.5f + (131.0f / depth));
 
-			if(width > 255) {
+			if(width > TargetWidth) {
 				bounds[0] = (bounds[0] + bounds[1]) * 0.5f;
 			} else {
 				bounds[1] = (bounds[0] + bounds[1]) * 0.5f;
@@ -188,6 +189,11 @@ private:
 			line_widths[y] = int(0.5f + (4.0f / depth));
 			curve_offset[y] = sin(depth / DepthCurvatureDivider) * 128.0f;
 			one_over_distances[y] = 128.0f / depth;
+
+			if(road_widths[y] < 8) {
+				++top_y;
+				continue;
+			}
 
 			max_depth = std::max(max_depth, depth);
 			min_depth = std::min(min_depth, depth);
