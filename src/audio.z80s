@@ -1,0 +1,33 @@
+;
+; Called 50 times per second for timed updates to audio.
+;
+; A genuine attempt is made to make these calls reasonably regular but they are not necessarily
+; absolutely so. Will need to decide whether that is completely destructive to music playback.
+;
+
+audio:
+	ret
+
+;	in a, (LMPR)
+;	push af
+;	ld a, %00100000 + PAGE.VIDEO + 2
+;	out (LMPR), a
+
+	; I've found no use for the alternate registers elsewhere in this code,
+	; and audio_play seems empirically to trash all of BC, DE and HL.
+	;
+	; So for now let it have the other register bank to itself.
+;	exx
+;	call audio_play
+;	exx
+
+;	pop af
+;	out (LMPR), a
+
+;	ret
+
+
+;	MDAT "../binary/music.bin"
+
+;	audio_setup: EQU 0
+;	audio_play: EQU 7

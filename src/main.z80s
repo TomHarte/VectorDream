@@ -96,179 +96,11 @@ include "road/road.z80s"
 include "road/objects.z80s"
 include "road/bss.z80s"
 
+include "palette.z80s"
+include "setup.z80s"
+include "draw.z80s"
+include "update.z80s"
 
-setup:
-;	ld a, PAGE.VIDEO + 2
-;	out (HMPR), a
-;	call audio_setup
-	jp road.setup
-
-
-draw:
-	call road.draw
-	jp objects.draw
-
-
-update:
-	push bc
-	call @+update
-	pop bc
-	djnz update
-
-@update:
-	; Read joystick/67890.
-	ld bc, 0xeffe
-	in a, (c)
-	rra
-	rra
-	jr c, @+no_up
-
-	ld hl, (player.yvelocity)
-	ld de, 8
-	add hl, de
-	ld (player.yvelocity), hl
-
-	@no_up:
-	rra
-	jr c, @+no_down
-
-	ld hl, (player.yvelocity)
-	ld de, -8
-	add hl, de
-	ld (player.yvelocity), hl
-
-	@no_down:
-	rra 
-	jr c, @+no_right
-
-	ld bc, -256
-	ld (player.xvelocity), bc
-
-	@no_right:
-	rra
-	jr c, @+no_left
-
-	ld bc, 256
-	ld (player.xvelocity), bc
-
-	@no_left:
-
-	; Read QW.
-	ld bc, 0xfbfe
-	in a, (c)
-	rra
-	jr c, @+no_q
-
-	call road.curve_left
-
-	ld hl, (curvature)
-	ld bc, -7
-	add hl, bc
-	ld (curvature), hl
-
-	jr @+no_w
-
-	@no_q:
-	rra
-	jr c, @+no_w
-	call road.curve_right
-
-	ld hl, (curvature)
-	ld bc, 7
-	add hl, bc
-	ld (curvature), hl
-
-	@no_w:
-
-	;
-	; Y velocity.
-	;
-
-		; Apply.
-		ld a, (player.y + 2)
-		ld d, a
-		ld hl, (player.y)					; D:HL = player,y
-
-		ld a, (player.yvelocity + 1)
-		rla
-		sbc a
-		ld bc, (player.yvelocity)			; A:BC = velocity, sign extended.
-
-		add hl, bc
-		adc d
-
-		ld (player.y), hl
-		ld (player.y + 2), a
-
-		ld a, (player.yvelocity + 1)
-		sra a
-
-		; Dampen a little.
-		ld b, 0x00
-		ld c, a
-		or a
-		jp p, @+positive
-		ld b, 0xff
-		@positive:
-
-		ld c, a
-		ld hl, (player.yvelocity)
-		or a
-		sbc hl, bc
-		ld (player.yvelocity), hl
-
-	;
-	; X velocity.
-	;
-		; Apply. With 8-bit arithmetic in order to catch overflow.
-		ld bc, (player.xvelocity)
-		ld hl, (player.x)
-		ld a, c
-		add l
-		ld l, a
-		ld a, b
-		adc h
-		ld h, a
-		jp po, @+no_overflow
-
-		or a
-		sbc hl, bc
-
-	@no_overflow:
-		ld (player.x), hl
-
-		; Dampen harshly.
-		ld hl, (player.xvelocity)
-		sra b
-		rr c
-		sra b
-		rr c
-		or a
-		sbc hl, bc
-		ld (player.xvelocity), hl
-
-	ret
-
-audio:
-	ret
-
-;	in a, (LMPR)
-;	push af
-;	ld a, %00100000 + PAGE.VIDEO + 2
-;	out (LMPR), a
-
-	; I've found no use for the alternate registers elsewhere in this code,
-	; and audio_play seems empirically to trash all of BC, DE and HL.
-	;
-	; So for now let it have the other register bank to itself.
-;	exx
-;	call audio_play
-;	exx
-
-;	pop af
-;	out (LMPR), a
-
-;	ret
 
 curvature: dw 0
 player.x: dw 16 * 256
@@ -279,51 +111,13 @@ player.y:
 player.yvelocity: dw 0
 
 ;
-; Colour selections and palette.
-;
-border_colour:		EQU 0
-tyre_colour:		EQU 0x00
-sky_colour:			EQU 0x11
-grass_colour1:		EQU 0x22
-grass_colour2:		EQU 0x33
-road_colour:		EQU 0x44
-line_colour:		EQU 0x55
-wood_colour:		EQU 0x66
-leaf_colour:		EQU 0x77
-warning_colour:		EQU 0x88
-grass_colour_mix: 	EQU 0x99
-
-racing_blue_colour:	EQU 0xaa
-racing_red_colour:	EQU 0xbb
-
-; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
-; This list is OTIRd elsewhere, so is in reverse order.
-palette:
-	db 0, 0, 0, 0
-	db 34			; racing car red
-	db 16			; racing car blue
-	db 65			; mixed-grass colour
-	db %0101010		; bright red, for warning signage
-	db %1101100		; yet another green, for trees
-	db %1100010		; brown, for wood
-	db %1110111		; line
-	db %0000111		; road
-	db 64			; grass 2 (the dimmer one, by convention)
-	db 67			; grass 1
-	db %0011000		; sky
-	db %0000000		; screen border
-
-;
 ; Interrupt routine sits almost at the end of the available space, so always include this last.
 ;
 include "span_buffers/interrupt.z80s"
 
-
 ;
 ; Cross-page dispatcher. Duplicated on every page.
 ;
-;spans.swap.dispatch: EQU 0x7fd6
-;count_time.dispatch: EQU 0x7fee
 
 dispatch_spans_swap: MACRO
 	ld a, (current_spans)
@@ -377,15 +171,3 @@ DUMP PAGE.VIDEO, spans.swap.dispatch
 ORG spans.swap.dispatch
 	dispatch_spans_swap
 	dispatch_count_time
-
-;
-; Add music.
-;
-
-;	ORG 0x0000
-;	DUMP PAGE.VIDEO + 2, 0
-
-;	MDAT "../binary/music.bin"
-
-;	audio_setup: EQU 0
-;	audio_play: EQU 7
