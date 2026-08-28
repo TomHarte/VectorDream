@@ -52,10 +52,10 @@ frame_counter: db 0
 
 	; Get B = number of frames since last did updates.
 @get_frame_counter:
-	di
-	ld a, (frame_counter)
-	ld b, a
 	xor a
+
+	di
+	ld bc, (frame_counter - 1)		; So B = count; C = [who cares?]
 	ld (frame_counter), a
 	ei
 
