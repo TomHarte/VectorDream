@@ -94,9 +94,9 @@ edge.fill.upward:
 ;		IXh, A.
 ;
 edge.fill.vertical.downward:
-	ld a, ixl
-	or a
-	ret z
+	ld a, ixl		; TODO: it should be possible to move this test up the pipeline and eliminate it here;
+	or a			; e.g. if this is used for a rectangle then the zero condition will affect _both_ edges
+	ret z			; and is therefore more sensibly done there.
 
 	ld a, h
 	or a
