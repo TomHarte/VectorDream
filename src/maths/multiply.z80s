@@ -53,7 +53,7 @@ multiply.u8.u8:
 	ld h, (hl)
 	ld l, a
 
-	; C is guarantted to be clear here; @low_page was the target of a `jr nc`
+	; C is guaranteed to be clear here; @low_page was the target of a `jr nc`
 	; and neither `ld` nor `inc/dec r` modify carry.
 	sbc hl, bc
 	ret

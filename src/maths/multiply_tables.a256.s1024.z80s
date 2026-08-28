@@ -4,6 +4,8 @@
 ; These require 256-byte alignment so are offered separately from the
 ; multiplication routine to ease manual packing.
 ;
+; Code also assumes their positioning relative to each other.
+;
 
 ALIGN 256
 squares:
