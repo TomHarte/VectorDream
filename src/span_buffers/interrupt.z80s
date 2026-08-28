@@ -29,6 +29,6 @@ count_time:
 	inc a
 	ld (frame_counter), a
 
-;	call audio
+	call update_audio
 
 	ret

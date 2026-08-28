@@ -5,7 +5,7 @@
 ; absolutely so. Will need to decide whether that is completely destructive to music playback.
 ;
 
-audio:
+update_audio:
 	ret
 
 ;	in a, (LMPR)

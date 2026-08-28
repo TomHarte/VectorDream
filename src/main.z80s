@@ -100,6 +100,7 @@ include "palette.z80s"
 include "setup.z80s"
 include "draw.z80s"
 include "update.z80s"
+include "audio.z80s"
 
 
 curvature: dw 0
