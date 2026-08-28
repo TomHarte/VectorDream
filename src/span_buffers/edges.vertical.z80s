@@ -1,0 +1,42 @@
+; edge.fill.vertical.downward:
+;
+; A specialised edge filler that clamps A:H to the range [0, 255], then fills the pointed-to edge list
+; downwards with IXl copies of that clamped value.
+;
+; 	Input:
+;		DE = pointer to list; this is the first entry that will be filled.
+;		IXl = number of lines to write.
+;		HL = position to write in 8:8.
+;
+;	Clobbers:
+;		IXh, A.
+;
+edge.fill.vertical.downward:
+	ld a, ixl		; TODO: it should be possible to move this test up the pipeline and eliminate it here;
+	or a			; e.g. if this is used for a rectangle then the zero condition will affect _both_ edges
+	ret z			; and is therefore more sensibly done there.
+
+	ld a, h
+	or a
+	jr z, @+write_l
+	jp p, @+write_255
+
+	ld a, 0
+	ld b, ixl
+	jr @+write_byte
+
+@write_255:
+	ld a, 0xff
+	ld b, ixl
+	jr @+write_byte
+
+@write_l:
+	ld a, l
+	ld b, ixl
+
+@write_byte:
+	ld (de), a
+	inc e
+	djnz @-write_byte
+
+	ret

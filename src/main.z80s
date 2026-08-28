@@ -13,10 +13,10 @@
 ;	While in the code page, where the interrupt handler lives, interrupts are enabled and
 ;	occur on line 191 of the display.
 ;
-;	While in the video page, interrupts are disabled because neither the interrupt handler not
-;	the in-memory state it relies on are present. The span updating code instead polls HPEN
-;	periodically and performs a manual call to the inner part of the interrupt handler if
-;	HPEN becomes 192 after not having been 192 previously.
+;	While in the video page interrupts are disabled because neither the interrupt handler nor
+;	the in-memory state it relies on are present. The span buffer code on the video page
+;	instead polls HPEN periodically and performs a manual call to the inner part of the
+;	interrupt handler if HPEN becomes 192 after not having been 192 previously.
 ;
 ;	Relevant facts affecting these choices:
 ;
@@ -45,44 +45,53 @@ ORG 0x0000
 DUMP PAGE.CODE, 0
 
 	;
-	; Install various tables first, because they're all at least 256-byte aligned and this
-	; causes them to be tightly-packed.
+	; First 256 bytes. Packed by trial and error.
 	;
-	include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
-	include "road/curve_tables.s130.z80s"							; 552 + 130 = 682; there are 86 spare bytes until 256 alignment.
-	include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
-	include "span_buffers/bss.a256.s448.z80s"						; Ends 64 bytes short of 256 alignment.
-	include "span_buffers/interrupt_vector_table.a256.s257.z80s"	; Ends one byte after 256 aligned.
-																	;
-																	; Net exterior wastage: 64 + 86 = 150 bytes.
-																	; There are another 63 internally wasted in span_buffers/bss, so that's 213 total.
+
+		include "span_buffers/overprint.z80s"							; At the time of writing, this is _exactly_ 0x38 bytes long. That's lucky!
+
+		@interrupt_prior: ASSERT @interrupt_prior < 0x38
+		include "span_buffers/interrupt.z80s"							; Locates itself at 0x38. Ends at 0x4e at the time of writing
+
+		include "road/curve_tables.s130.z80s"
+		include "maths/multiply.z80s"
+		include "setup.z80s"
+		@first_256: ASSERT @first_256 < 0x100
 
 	;
-	; Call main setup and execution engine; this will call out to game-specific routines.
+	; From offset 256 to 1024.
 	;
-	include "span_buffers/game_loop.z80s"
+
+ 		include "span_buffers/bss.a256.s448.z80s"						; Ends 64 bytes short of 256 alignment.
+		include "maths/divide.z80s"
+		include "span_buffers/setup_and_clear.z80s"
+		include "span_buffers/get_address.z80s"
+		include "palette.z80s"
+		include "state.z80s"
+		include "draw.z80s"
+		include "span_buffers/game_loop.z80s"
+		include "span_buffers/edges.vertical.z80s"
+
+		@to_1024: ASSERT @to_1024 < 0x400
 
 	;
-	; Other code in use.
+	; 1kb things, one of which needs to be 1kb-aligned.
 	;
-	include "span_buffers/setup_and_clear.z80s"
-	include "span_buffers/overprint.z80s"
-	include "span_buffers/edges.z80s"
-	include "span_buffers/get_address.z80s"
+		include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
+		include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
 
-	include "maths/multiply.z80s"
-	include "maths/divide.z80s"
+	;
+	; From here: things without alignment concerns, so no need to pack manually.
+	;
 
-	include "road/road.z80s"
-	include "road/objects.z80s"
-	include "road/bss.z80s"
+		include "span_buffers/edges.z80s"
 
-	include "palette.z80s"
-	include "setup.z80s"
-	include "draw.z80s"
-	include "update.z80s"
-	include "audio.z80s"
-	include "state.z80s"
+		include "road/road.z80s"
+		include "road/objects.z80s"
+		include "road/bss.z80s"
+
+		include "update.z80s"
+		include "audio.z80s"
 
 ;
 ; Video page: 24kb of the actual frame buffer, then the span swap routine
@@ -96,11 +105,4 @@ ORG 0x6000
 ;
 ; Stuff that places itself is below.
 ;
-; At the end of the code page, currently:
-;
-;	starting 7f7f: interrupt routine;
-;	ending 8000: cross-page dispatcher;			[also on the video page]
-;	in between: the stack.
-;
-include "span_buffers/interrupt.z80s"					; Puts itself on the code page.
 include "span_buffers/cross_page_dispatcher.z80s"		; Puts itself on both code and video pages.

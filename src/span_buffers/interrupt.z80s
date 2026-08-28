@@ -1,14 +1,10 @@
 ;
-; Interrupt handler. Just counts frames, for frame-rate compensation.
-; Probably TODO: add music player from here.
-;
-; TODO: is this really part of 'span_buffers'?
+; Interrupt handler. Counts frames, for frame-rate compensation,
+; and offers a call-out for audio updates.
 ;
 
-interrupt: EQU 0x7f7f
-
-DUMP PAGE.CODE + 1, interrupt & 16383
-ORG interrupt
+DUMP PAGE.CODE, 0x38
+ORG 0x38
 
 ;
 ; This assumes AF' is unused elsewhere. Which it currently is.
