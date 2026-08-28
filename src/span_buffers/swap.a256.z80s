@@ -209,19 +209,9 @@ ENDIF
 		inc b
 		ld a, (bc)
 		cp (hl)
-		jr z, @+no_paint
+		jr nz, @+paint
 
-		; Set IXh = colour; IYl = width.
-		ld ixh, a
-		dec b
-		ld a, (bc)
-		inc b
-		sub e
-		ld iyl, a
-
-		call @fill_span
-
-		@no_paint:
+	@same_ending_tail:
 		dec h
 		dec b
 
@@ -232,7 +222,8 @@ ENDIF
 
 		; Check whether that ended the line.
 		inc a
-		jr z, @+next_line
+		jr z, @+next_line			; Slightly convoluted control flow follows, to try to reserve the fast path
+									; for the nothing-to-draw case.
 
 		;
 		; TAIL DISPATCH.
@@ -243,6 +234,18 @@ ENDIF
 		jr z, @-same_ending
 		jr c, @-hl_greater
 		jr @-bc_greater
+
+	@paint:
+		; Set IXh = colour; IYl = width.
+		ld ixh, a
+		dec b
+		ld a, (bc)
+		inc b
+		sub e
+		ld iyl, a
+
+		call @fill_span
+		jr @-same_ending_tail
 
 	@next_line:
 		; Advance high part of span pointers.
