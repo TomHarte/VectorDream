@@ -311,7 +311,7 @@ finish_painting: MACRO
 
 	; To here: (HL) = aligned target address, A = number of pixels to paint; IXh = colour to paint.
 	@no_initial_right:
-		srl a
+		srl a							; TODO: a mystery reason prevents this being an RRA. Needs diagnosis.
 		jr c, @+with_final_left
 
 		call @fill_bytes
@@ -333,7 +333,7 @@ finish_painting: MACRO
 		ld (de), a
 
 	@finish_painting:
-	finish_painting
+		finish_painting
 
 ;
 ; fill_bytes
