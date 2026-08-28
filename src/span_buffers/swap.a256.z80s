@@ -130,12 +130,11 @@ ENDIF
 		; IXh = colour.
 		ld ixh, a
 
-		; IYl = length.
+		; A = length.
 		dec h
 		ld a, (hl)
 		inc h
 		sub e
-		ld iyl, a
 
 		; Draw.
 		call @fill_span
@@ -172,12 +171,11 @@ ENDIF
 		; IXh = colour.
 		ld ixh, a
 
-		; IYl = length.
+		; A = length.
 		dec b
 		ld a, (bc)
 		inc b
 		sub e
-		ld iyl, a
 
 		; Draw.
 		call @fill_span
@@ -216,9 +214,9 @@ ENDIF
 		dec b
 
 		ld a, (bc)		; arbitrarily, could just as easily be (hl)
-		ld c, a
 		ld l, a
 		ld e, a
+		ld c, a
 
 		; Check whether that ended the line.
 		inc a
@@ -236,13 +234,12 @@ ENDIF
 		jr @-bc_greater
 
 	@paint:
-		; Set IXh = colour; IYl = width.
+		; Set IXh = colour; A = width.
 		ld ixh, a
 		dec b
 		ld a, (bc)
 		inc b
 		sub e
-		ld iyl, a
 
 		call @fill_span
 		jr @-same_ending_tail
@@ -281,9 +278,9 @@ finish_painting: MACRO
 	ENDM
 
 	;
-	; Paint from d = y, e = x to x = IYl in colour IXh.
+	; Paint from d = y, e = x for with = A pixels, in colour IXl.
 	;
-	; Preserves HL, BC and D. Requires IYl >= 1.
+	; Preserves HL, BC and D. Requires A >= 1.
 	;
 @fill_span:
 	; Compute frame buffer address.
@@ -291,6 +288,9 @@ finish_painting: MACRO
 	rr e
 
 	jr nc, @+no_initial_right
+
+		; Store width away somewhere.
+		ld iyl, a
 
 		; Store low pixel of new colour.
 		ld a, ixh
@@ -305,13 +305,12 @@ finish_painting: MACRO
 		inc e
 
 		; Decrement remaining pixel count, possibly exit.
-		dec iyl
+		ld a, iyl
+		dec a
 		jr z, @+finish_painting
 
-	; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
+	; To here: (HL) = aligned target address, A = number of pixels to paint; IXh = colour to paint.
 	@no_initial_right:
-
-		ld a, iyl
 		srl a
 		jr c, @+with_final_left
 
