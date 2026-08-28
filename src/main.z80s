@@ -1,24 +1,4 @@
 ;
-; Hardware register locations.
-;
-
-CLUT:		EQU 248		; high byte of port address selects CLUT entry
-LINE:		EQU 249		; output: line to enable a CPU interrupt on, in range 0–191, or any other value to disable.
-STATUS:		EQU 249		; input: b0: active low line interrupt pending; b1: mouse interrupt; b2: MIDI IN; b3: frame; b4: MIDI OUT; b5-b7: keyboard matrix lines 6-8.
-
-LMPR:		EQU 250		; b0–b4: page control; b5: set to enable RAM in section A; b6: clear to enable RAM in section B; b7: write protect for section A.
-HMPR:		EQU 251		; b0–b4: page control; b5-b6: bits 4 & 8 of the Mode 3 CLUT address; b7: use external memory.
-VMPR:		EQU 252		; b0–b4: displayed page; b5-b6: graphics mode; b7: MIDI IN/OUT.
-BORDER:		EQU 254		; output: b0–b2, b5: border colour; b3: MIC output; b4: BEEP output; b7: set to disable display in Modes 3 & 4.
-KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen strobe; b6: EAR input; b7: external memory status bit.
-	; Keyboard reading is otherwise similar to the ZX Spectrum; use the high 8 bits of the port address to indicate which lines are active.
-
-HPEN:		EQU 504		; input: if no light-pen connected, current vertical scan position. Otherwise light-pen position.
-LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan position. Otherwise light-pen position.
-
-
-
-;
 ; Memory map and interrupts.
 ;
 ;	There is a single page of video, housing both the actual pixel data and the routine
@@ -52,123 +32,75 @@ LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan posi
 ; Program defines.
 ;
 
+include "hardware.z80s"
 include "span_buffers/position.z80s"
 PAGE.VIDEO:			EQU 0							; The page on which the framebuffer lies.
 PAGE.CODE:			EQU 2							; The main code page.
 PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffer begins.
 
 ;
-; Place this code just after where the frame buffer will be, in the upper half of memory.
+; Code page: an entire 32kb area just for code, that will sit in the low 32kb of the memory map.
 ;
-	ORG 0x0000
-	DUMP PAGE.CODE, 0
+ORG 0x0000
+DUMP PAGE.CODE, 0
 
-;
-; Install various tables first, because they're all at least 256-byte aligned and this
-; causes them to be tightly-packed.
-;
-include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
-include "road/curve_tables.s130.z80s"							; 552 + 130 = 682; there are 86 spare bytes until 256 alignment.
-include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
-include "span_buffers/bss.a256.s448.z80s"						; Ends 64 bytes short of 256 alignment.
-include "span_buffers/interrupt_vector_table.a256.s257.z80s"	; Ends one byte after 256 aligned.
-																;
-																; Net exterior wastage: 64 + 86 = 150 bytes.
-																; There are another 63 internally wasted in span_buffers/bss, so that's 213 total.
+	;
+	; Install various tables first, because they're all at least 256-byte aligned and this
+	; causes them to be tightly-packed.
+	;
+	include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
+	include "road/curve_tables.s130.z80s"							; 552 + 130 = 682; there are 86 spare bytes until 256 alignment.
+	include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
+	include "span_buffers/bss.a256.s448.z80s"						; Ends 64 bytes short of 256 alignment.
+	include "span_buffers/interrupt_vector_table.a256.s257.z80s"	; Ends one byte after 256 aligned.
+																	;
+																	; Net exterior wastage: 64 + 86 = 150 bytes.
+																	; There are another 63 internally wasted in span_buffers/bss, so that's 213 total.
 
-;
-; Call main setup and execution engine; this will call out to game-specific routines.
-;
-include "span_buffers/game_loop.z80s"
+	;
+	; Call main setup and execution engine; this will call out to game-specific routines.
+	;
+	include "span_buffers/game_loop.z80s"
 
-;
-; Other code in use.
-;
-include "span_buffers/setup_and_clear.z80s"
-include "span_buffers/overprint.z80s"
-include "span_buffers/edges.z80s"
-include "span_buffers/get_address.z80s"
+	;
+	; Other code in use.
+	;
+	include "span_buffers/setup_and_clear.z80s"
+	include "span_buffers/overprint.z80s"
+	include "span_buffers/edges.z80s"
+	include "span_buffers/get_address.z80s"
 
-include "maths/multiply.z80s"
-include "maths/divide.z80s"
+	include "maths/multiply.z80s"
+	include "maths/divide.z80s"
 
-include "road/road.z80s"
-include "road/objects.z80s"
-include "road/bss.z80s"
+	include "road/road.z80s"
+	include "road/objects.z80s"
+	include "road/bss.z80s"
 
-include "palette.z80s"
-include "setup.z80s"
-include "draw.z80s"
-include "update.z80s"
-include "audio.z80s"
-
-
-curvature: dw 0
-player.x: dw 16 * 256
-player.xvelocity: dw 0
-
-player.y:
-	db 0x00, 0x00, 0x00		; 16:8 fixed form; little-endian.
-player.yvelocity: dw 0
+	include "palette.z80s"
+	include "setup.z80s"
+	include "draw.z80s"
+	include "update.z80s"
+	include "audio.z80s"
+	include "state.z80s"
 
 ;
-; Interrupt routine sits almost at the end of the available space, so always include this last.
+; Video page: 24kb of the actual frame buffer, then the span swap routine
+; (and some stack, and the cross-page dispatcher).
 ;
-include "span_buffers/interrupt.z80s"
-
-;
-; Cross-page dispatcher. Duplicated on every page.
-;
-
-dispatch_spans_swap: MACRO
-	ld a, (current_spans)
-	ld b, a
-
-	ld a, PAGE.VIDEO + %00100000
-	di
-	out (LMPR), a
-
-	ld a, b
-	ld (current_spans_swap), a
-	call spans.swap
-
-	ld a, PAGE.CODE + %00100000
-	out (LMPR), a
-	ei
-
-	ld a, (current_spans)
-	xor 0x40
-	ld (current_spans), a
-
-	ret
-	ENDM
-
-dispatch_count_time: MACRO
-	ld a, PAGE.CODE + %00100000
-	out (LMPR), a
-	call count_time
-
-	ld a, PAGE.VIDEO + %00100000
-	out (LMPR), a
-	ret
-	ENDM
-
-dispatch_low: EQU 0x7fd6
-
-DUMP PAGE.CODE, dispatch_low
-ORG dispatch_low
-spans.swap.dispatch:
-	dispatch_spans_swap
-count_time.dispatch:
-	dispatch_count_time
-@here: ASSERT @here == 0x8000
-
-
 DUMP PAGE.VIDEO, 0x6000
 ORG 0x6000
-include "span_buffers/swap.a256.z80s"
 
-DUMP PAGE.VIDEO, spans.swap.dispatch
-ORG spans.swap.dispatch
-	dispatch_spans_swap
-	dispatch_count_time
+	include "span_buffers/swap.a256.z80s"
+
+;
+; Stuff that places itself is below.
+;
+; At the end of the code page, currently:
+;
+;	starting 7f7f: interrupt routine;
+;	ending 8000: cross-page dispatcher;			[also on the video page]
+;	in between: the stack.
+;
+include "span_buffers/interrupt.z80s"					; Puts itself on the code page.
+include "span_buffers/cross_page_dispatcher.z80s"		; Puts itself on both code and video pages.

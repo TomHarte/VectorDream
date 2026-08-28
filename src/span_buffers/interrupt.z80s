@@ -7,8 +7,8 @@
 
 interrupt: EQU 0x7f7f
 
-ORG interrupt
 DUMP PAGE.CODE + 1, interrupt & 16383
+ORG interrupt
 
 ;
 ; This assumes AF' is unused elsewhere. Which it currently is.

@@ -1,0 +1,17 @@
+;
+; Hardware register locations.
+;
+
+CLUT:		EQU 248		; high byte of port address selects CLUT entry
+LINE:		EQU 249		; output: line to enable a CPU interrupt on, in range 0–191, or any other value to disable.
+STATUS:		EQU 249		; input: b0: active low line interrupt pending; b1: mouse interrupt; b2: MIDI IN; b3: frame; b4: MIDI OUT; b5-b7: keyboard matrix lines 6-8.
+
+LMPR:		EQU 250		; b0–b4: page control; b5: set to enable RAM in section A; b6: clear to enable RAM in section B; b7: write protect for section A.
+HMPR:		EQU 251		; b0–b4: page control; b5-b6: bits 4 & 8 of the Mode 3 CLUT address; b7: use external memory.
+VMPR:		EQU 252		; b0–b4: displayed page; b5-b6: graphics mode; b7: MIDI IN/OUT.
+BORDER:		EQU 254		; output: b0–b2, b5: border colour; b3: MIC output; b4: BEEP output; b7: set to disable display in Modes 3 & 4.
+KEYBOARD:	EQU 254		; input: b0-b4: keyboard matrix lines 1-5; b5: light pen strobe; b6: EAR input; b7: external memory status bit.
+	; Keyboard reading is otherwise similar to the ZX Spectrum; use the high 8 bits of the port address to indicate which lines are active.
+
+HPEN:		EQU 504		; input: if no light-pen connected, current vertical scan position. Otherwise light-pen position.
+LPEN:		EQU 248		; input: if no light-pen connected, current horizontal scan position. Otherwise light-pen position.
