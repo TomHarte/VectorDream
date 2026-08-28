@@ -130,12 +130,11 @@ ENDIF
 		; IXh = colour.
 		ld ixh, a
 
-		; IYl = length.
+		; A = length.
 		dec h
 		ld a, (hl)
 		inc h
 		sub e
-		ld iyl, a
 
 		; Draw.
 		call @fill_span
@@ -172,12 +171,11 @@ ENDIF
 		; IXh = colour.
 		ld ixh, a
 
-		; IYl = length.
+		; A = length.
 		dec b
 		ld a, (bc)
 		inc b
 		sub e
-		ld iyl, a
 
 		; Draw.
 		call @fill_span
@@ -209,30 +207,21 @@ ENDIF
 		inc b
 		ld a, (bc)
 		cp (hl)
-		jr z, @+no_paint
+		jr nz, @+paint
 
-		; Set IXh = colour; IYl = width.
-		ld ixh, a
-		dec b
-		ld a, (bc)
-		inc b
-		sub e
-		ld iyl, a
-
-		call @fill_span
-
-		@no_paint:
+	@same_ending_tail:
 		dec h
 		dec b
 
 		ld a, (bc)		; arbitrarily, could just as easily be (hl)
-		ld c, a
 		ld l, a
 		ld e, a
+		ld c, a
 
 		; Check whether that ended the line.
 		inc a
-		jr z, @+next_line
+		jr z, @+next_line			; Slightly convoluted control flow follows, to try to reserve the fast path
+									; for the nothing-to-draw case.
 
 		;
 		; TAIL DISPATCH.
@@ -243,6 +232,17 @@ ENDIF
 		jr z, @-same_ending
 		jr c, @-hl_greater
 		jr @-bc_greater
+
+	@paint:
+		; Set IXh = colour; A = width.
+		ld ixh, a
+		dec b
+		ld a, (bc)
+		inc b
+		sub e
+
+		call @fill_span
+		jr @-same_ending_tail
 
 	@next_line:
 		; Advance high part of span pointers.
@@ -278,9 +278,9 @@ finish_painting: MACRO
 	ENDM
 
 	;
-	; Paint from d = y, e = x to x = IYl in colour IXh.
+	; Paint from d = y, e = x for with = A pixels, in colour IXl.
 	;
-	; Preserves HL, BC and D. Requires IYl >= 1.
+	; Preserves HL, BC and D. Requires A >= 1.
 	;
 @fill_span:
 	; Compute frame buffer address.
@@ -288,6 +288,9 @@ finish_painting: MACRO
 	rr e
 
 	jr nc, @+no_initial_right
+
+		; Store width away somewhere.
+		ld iyl, a
 
 		; Store low pixel of new colour.
 		ld a, ixh
@@ -302,14 +305,13 @@ finish_painting: MACRO
 		inc e
 
 		; Decrement remaining pixel count, possibly exit.
-		dec iyl
+		ld a, iyl
+		dec a
 		jr z, @+finish_painting
 
-	; To here: (HL) = aligned target address, IYl = number of pixels to paint; IXh = colour to paint.
+	; To here: (HL) = aligned target address, A = number of pixels to paint; IXh = colour to paint.
 	@no_initial_right:
-
-		ld a, iyl
-		srl a
+		srl a							; TODO: a mystery reason prevents this being an RRA. Needs diagnosis.
 		jr c, @+with_final_left
 
 		call @fill_bytes
@@ -331,7 +333,7 @@ finish_painting: MACRO
 		ld (de), a
 
 	@finish_painting:
-	finish_painting
+		finish_painting
 
 ;
 ; fill_bytes
