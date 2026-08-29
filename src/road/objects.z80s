@@ -397,7 +397,7 @@ objects.draw:
 @no_interpolate:
 	ld h, b
 	ld l, c
-	jp @-draw_object
+	jr @-draw_object
 
 
 
