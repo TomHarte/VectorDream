@@ -53,7 +53,7 @@ DUMP PAGE.CODE, 0
 		@interrupt_prior: ASSERT @interrupt_prior <= 0x38
 		include "span_buffers/interrupt.z80s"							; Locates itself at 0x38. Ends at 0x4e at the time of writing
 
-		include "road/curve_tables.s130.z80s"
+		include "road/curve_tables.s128.z80s"
 		include "maths/multiply.z80s"
 		include "setup.z80s"
 		@first_256: ASSERT @first_256 <= 0x100
@@ -78,7 +78,7 @@ DUMP PAGE.CODE, 0
 	; 1kb things, one of which needs to be 1kb-aligned.
 	;
 		include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
-		include "road/segment_tables.a1024.s552.z80s"					; 1024-alignment is guaranteed here.
+		include "road/segment_tables.a1024.s544.z80s"					; 1024-alignment is guaranteed here.
 
 	;
 	; From here: things without alignment concerns, so no need to pack manually.
