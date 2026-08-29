@@ -1,77 +1,195 @@
 ;
 ; Called once per frame by by span_buffers/game_loop.z80s.
 ;
-; BC = the number of 50Hz ticks that have occurred since update was last called.
+; B = the number of 50Hz ticks that have occurred since update was last called.
 ; It is guaranteed to be a non-zero number.
 ;
+@accelerate: db 0
+@brake: db 0
+@left: db 0
+@right: db 0
+
 update:
+	;
+	; Read input only once. It won't change significantly in the available time.
+	;
+
 	push bc
-	call @+update
+
+		; Seed D, E, H, L to 0xff. Bits from other locations will be shifted into them.
+		; If any is not 0xff at the end then that indicates:
+		;
+		;	D != 0xff => accelerate.
+		;	E != 0xff => brake.
+		;	H != 0xff >= left.
+		;	L != 0xff >= right.
+		ld d, 0xff
+		ld e, d
+		ld h, d
+		ld l, d
+
+		;
+		; Read joystick input via port $EFFE.
+		;
+		;	b0 = accelerate [0],
+		;	b2 = brake [8],
+		;	b3 = right [7],
+		;	b3 = left [6].
+		ld bc, 0xeffe
+		in a, (c)
+		rra
+		rl d
+		rra
+		rra
+		rl e
+		rra
+		rl l
+		rra
+		rl h
+
+		;
+		; Read cursor keys via port $FFFE.
+		;
+		;	b1 = accelerate [up],
+		;	b2 = brake [down],
+		;	b3 = left [left],
+		;	b3 = right [right]
+		ld b, 0xff
+		in a, (c)
+		rra
+		rra
+		rl d
+		rra
+		rl e
+		rra
+		rl h
+		rra
+		rl l
+
+		;
+		; Read port $DFFE for O and P.
+		;
+		;	b0 = right [o],
+		;	b1 = left [p]
+		ld b, 0xdf
+		in a, (c)
+		rra
+		rl l
+		rra
+		rl h
+
+		;
+		; Read port $FBFE for Q at b0.
+		;
+		ld b, 0xfb
+		in a, (c)
+		rra
+		rl d
+
+		;
+		; Read port $FDFE for A at b0.
+		;
+		ld b, 0xfd
+		in a, (c)
+		rra
+		rl e
+
+		;
+		; Write current inputs, summarising them into b0 of each byte.
+		;
+	@summarise:
+		ld a, d
+		cp 0xff
+		rla
+		ld (@-accelerate), a
+
+		ld a, e
+		cp 0xff
+		rla
+		ld (@-brake), a
+
+		ld a, h
+		cp 0xff
+		rla
+		ld (@-left), a
+
+		ld a, l
+		cp 0xff
+		rla
+		ld (@-right), a
+
 	pop bc
-	djnz update
 
-@update:
-	; Read joystick/67890.
-	ld bc, 0xeffe
-	in a, (c)
+	;
+	; Call update routine as many times as requested.
+	;
+@update_loop:
+	push bc
+
+	ld a, (@-accelerate)
 	rra
+	jr nc, @+no_accelerate
+
+		ld hl, (player.yvelocity)
+		ld de, 8
+		add hl, de
+		ld (player.yvelocity), hl
+
+	@no_accelerate:
+	ld a, (@-brake)
 	rra
-	jr c, @+no_up
+	jr nc, @+no_brake
 
-	ld hl, (player.yvelocity)
-	ld de, 8
-	add hl, de
-	ld (player.yvelocity), hl
+		ld hl, (player.yvelocity)
+		ld de, -8
+		add hl, de
+		ld (player.yvelocity), hl
 
-	@no_up:
-	rra
-	jr c, @+no_down
-
-	ld hl, (player.yvelocity)
-	ld de, -8
-	add hl, de
-	ld (player.yvelocity), hl
-
-	@no_down:
+	@no_brake:
+	ld a, (@-right)
 	rra 
-	jr c, @+no_right
+	jr nc, @+no_right
 
-	ld bc, -256
-	ld (player.xvelocity), bc
+		ld bc, -256
+		ld (player.xvelocity), bc
 
 	@no_right:
+	ld a, (@-left)
 	rra
-	jr c, @+no_left
+	jr nc, @+no_left
 
-	ld bc, 256
-	ld (player.xvelocity), bc
+		ld bc, 256
+		ld (player.xvelocity), bc
 
 	@no_left:
 
-	; Read QW.
-	ld bc, 0xfbfe
+	;
+	; TEMPORARY. Read ZX. Use it to adjust current road curvature.
+	;
+	ld bc, 0xfefe
 	in a, (c)
+	rra
 	rra
 	jr c, @+no_q
 
-	call road.curve_left
+		call road.curve_left
 
-	ld hl, (curvature)
-	ld bc, -7
-	add hl, bc
-	ld (curvature), hl
-
-	jr @+no_w
+		ld hl, (curvature)
+		ld bc, -7
+		add hl, bc
+		ld (curvature), hl
+		jr @+no_w
 
 	@no_q:
 	rra
 	jr c, @+no_w
-	call road.curve_right
 
-	ld hl, (curvature)
-	ld bc, 7
-	add hl, bc
-	ld (curvature), hl
+		call road.curve_right
+
+		ld hl, (curvature)
+		ld bc, 7
+		add hl, bc
+		ld (curvature), hl
 
 	@no_w:
 
@@ -141,5 +259,9 @@ update:
 		or a
 		sbc hl, bc
 		ld (player.xvelocity), hl
+
+	pop bc
+	dec b
+	jp nz, @-update_loop
 
 	ret
