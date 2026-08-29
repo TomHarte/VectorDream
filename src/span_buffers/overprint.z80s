@@ -21,13 +21,14 @@
 ;	Clobbers:
 ;		A, DE, L, IXl.
 ;
+@early_exit:
+	inc h
+	ret
+
 spans.overprint.checkextent:
 	ld a, b
 	cp c
-	jr c, spans.overprint
-
-	inc h
-	ret
+	jr nc, @-early_exit
 
 spans.overprint:
 
