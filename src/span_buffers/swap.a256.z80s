@@ -48,14 +48,13 @@ ALIGN 256
 ;
 
 current_spans_swap: db 0
-@previous_hpen: db 0
 
 spans.swap:
-	; Store current line.
+	; Store current line for upcoming interrupt checks.
 	exx
 	ld bc, HPEN
 	in a, (c)
-	ld (@-previous_hpen), a
+	ld d, a
 	exx
 
 	;
@@ -73,24 +72,6 @@ spans.swap:
 	; Output.
 
 @page: EQU for spans.num_pages
-
-	; Check for potential missed interrupt.
-	exx
-	ld a, (@-previous_hpen)
-	ld d, a
-	in a, (c)
-	ld (@-previous_hpen), a
-
-	cp 192
-	jr nz, @+not_new_192
-
-	cp d
-	call nz, count_time.dispatch
-
-@not_new_192:
-	exx
-
-
 	; Page in proper source and destination buffers.
 	ld a, PAGE.FIRSTSPAN + (@page * 2)
 	out (HMPR), a
@@ -262,14 +243,26 @@ ENDIF
 		ld a, d
 		and %11111
 
-IF @page == spans.num_pages - 1
-		ret z
-		jr @-compare_spans
-ELSE
 		jr nz, @-compare_spans
-ENDIF
 
-NEXT @page
+		; At end of each page of lines, check for a potential missed interrupt.
+		exx
+		ld e, d
+		in a, (c)
+		ld d, a
+
+		cp 192
+		jr nz, @+not_new_192
+
+		cp e
+		call nz, count_time.dispatch
+
+	@not_new_192:
+		exx
+
+	NEXT @page
+
+		ret
 
 finish_painting: MACRO
 	rl e	; just to get the top bit into carry; low 7 don't really matter.
