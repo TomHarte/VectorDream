@@ -88,7 +88,7 @@ DUMP PAGE.CODE, 0
 
 		include "road/road.z80s"
 		include "road/objects.z80s"
-		include "road/bss.z80s"
+		include "road/bss.a2.z80s"
 
 		include "update.z80s"
 		include "audio.z80s"
