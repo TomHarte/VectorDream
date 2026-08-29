@@ -1,0 +1,10 @@
+;
+; Uninitialised data storage for the road drawer.
+;
+; These will always be more than 256 bytes unless total road size drops below 128 lines at some point;
+; there's therefore no benefit to greater alignment.
+;
+
+ALIGN 2
+road.centres: ds (bottom_y - top_y) * 2
+road.curvature: ds (bottom_y - top_y) * 2

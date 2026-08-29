@@ -1,6 +1,0 @@
-;
-; Uninitialised data storage for the road drawer.
-;
-
-road.centres: ds (bottom_y - top_y) * 2
-road.curvature: ds (bottom_y - top_y) * 2

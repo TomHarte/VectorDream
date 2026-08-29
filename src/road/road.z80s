@@ -88,7 +88,7 @@ road.draw:
 @write_centre:
 	ex de, hl
 	ld (hl), e
-	inc hl
+	inc l
 	ld (hl), d
 	inc hl
 	ex de, hl
@@ -128,7 +128,7 @@ road.draw:
 @write_centre:
 	ex de, hl
 	ld (hl), e
-	inc hl
+	inc l
 	ld (hl), d
 	inc hl
 	ex de, hl
@@ -145,12 +145,10 @@ road.draw:
 	ld de, road.curvature
 	ld b, bottom_y - top_y
 
-	; Below currently assumes all curvature is positive.
-
 @apply:
 
 	; Load only high byte of accumulated curvature, test sign.
-	inc de
+	inc e
 	ld a, (de)
 	or a
 	jp p, @+positive
@@ -158,7 +156,7 @@ road.draw:
 	; Add to low byte
 	add (hl)
 	ld (hl), a
-	inc hl
+	inc l
 
 	jr c, @+advance
 
@@ -171,7 +169,7 @@ road.draw:
 	; Add to low byte of road centre and propagate carry.
 	add (hl)
 	ld (hl), a
-	inc hl
+	inc l
 
 	jr nc, @+no_carry
 	inc (hl)
@@ -183,8 +181,7 @@ road.draw:
 	inc hl
 
 	; Repeat.
-	dec b
-	jr nz, @-apply
+	djnz @-apply
 
 
 @fill_sky:
@@ -310,7 +307,7 @@ road.curve_right:
 
 	; DE = current curvature.
 	ld e, (hl)
-	inc hl
+	inc l
 	ld d, (hl)
 
 	; Add BC to DE.
@@ -320,11 +317,11 @@ road.curve_right:
 
 	; Write out current curvature.
 	ld (hl), d
-	dec hl
+	dec l
 	ld (hl), e
 
 	; Advance pointers.
-	inc hl
+	inc l
 	inc hl
 	inc ix
 
@@ -349,7 +346,7 @@ road.curve_left:
 
 	; DE = current curvature.
 	ld e, (hl)
-	inc hl
+	inc l
 	ld d, (hl)
 
 	; Subtract BC from DE.
@@ -360,11 +357,11 @@ road.curve_left:
 
 	; Write out current curvature.
 	ld (hl), d
-	dec hl
+	dec l
 	ld (hl), e
 
 	; Advance pointers.
-	inc hl
+	inc l
 	inc hl
 	inc ix
 
