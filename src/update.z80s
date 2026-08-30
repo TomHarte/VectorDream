@@ -141,8 +141,27 @@ update:
 	jr nc, @+no_brake
 
 		ld hl, (player.yvelocity)
-		ld de, -8
-		add hl, de
+		ld a, l
+		ld c, h
+		ld b, 0
+
+		add a, a
+		rl c
+		rl b
+		add a, a
+		rl c
+		rl b
+
+		ld a, b
+		or c
+		jr z, @+zero_velocity
+		sbc hl, bc
+		jr @+dont_zero
+
+	@zero_velocity:
+		ld hl, 00
+
+	@dont_zero:
 		ld (player.yvelocity), hl
 
 	@no_brake:
@@ -200,7 +219,7 @@ update:
 		; Apply.
 		ld a, (player.y + 2)
 		ld d, a
-		ld hl, (player.y)					; D:HL = player,y
+		ld hl, (player.y)					; D:HL = player.y
 
 		ld a, (player.yvelocity + 1)
 		rla
