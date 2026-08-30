@@ -196,9 +196,6 @@ road.draw:
 	ld a, (current_spans)
 	ld e, a
 
-	jr fill_er
-fill_er:
-
 @fill_sky: EQU FOR top_y
 	IF @fill_sky & %11111 == 0
 		ld a, PAGE.FIRSTSPAN + ((@fill_sky / 32) * 2)
@@ -209,70 +206,45 @@ fill_er:
 	ld (hl), b
 	inc h
 	ld (hl), c
-	IF @fill_sky != top_y - 1
-		inc h
-	ENDIF
+	inc h
 NEXT @fill_sky
+
+
+	jr @+fill_er
+@fill_er:
 
 	;
 	; Draw road, per tables.
 	;
-	ld iy, road.centres
-	xor a
-	ld e, a
-@road.fill:
-	add top_y
-	and %11111
-	jr nz, @+incremental_address
+@road.fill: EQU for bottom_y - top_y
+@screen_y: EQU @road.fill + top_y
+	IF @screen_y & %11111 == 0
+		ld a, PAGE.FIRSTSPAN + (@screen_y / 32) * 2
+		out (HMPR), a
+		ld a, (current_spans)
+		ld h, a
+	ENDIF
 
-	ld a, e
-	add top_y
-	call spans.getaddress
-	jr @+address_done
-
-	; HL = target span address.
-@incremental_address:
-	ld l, 0
-	inc h
-
-@address_done:
 	; Establish B = half road width, C = half line width, A = offset.
-	push hl
+@segment: EQU segments + @road.fill * 4
+	ld bc, (@segment)
 
-	; 'segments' is guaranteed 1024-aligned.
-	; So this is just a touch faster than doing four 16-bit adds.
-	ld h, segments >> 10
-	ld l, e
-	add hl, hl
-	add hl, hl
-
-	ld c, (hl)
-	inc l
-	ld b, (hl)
-	inc l
 	ld a, (player.y + 1)
-	add (hl)
-
-	pop hl
-
-	; Preserve DE for next loop around
-	push de
+	ld d, a
+	ld a, (@segment + 2)
+	add d
 
 	; Set DE = centre.
-	ld e, (iy)
-	ld d, (iy + 1)
-	inc iy
-	inc iy
+	ld de, (road.centres + @road.fill * 2)
 
 	; Draw 2d element.
 	call road.span
 
-	; Increment E and check for having hit the final line.
-	pop de
-	inc e
-	ld a, e
-	cp bottom_y - top_y
-	jr nz, @-road.fill
+	IF @road.fill != bottom_y - top_y - 1
+		inc h
+		ld l, 0
+	ENDIF
+NEXT @road.fill
 
 	ret
 
