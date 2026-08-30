@@ -95,8 +95,6 @@ screen_line:
 	db 0
 
 objects.draw:
-	ret
-
 	; `firstobject` is whichever was first last frame. It might need updating.
 	ld iy, (firstobject)
 
