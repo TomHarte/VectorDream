@@ -184,37 +184,35 @@ road.draw:
 	djnz @-apply
 
 
-@fill_sky:
 	;
 	; Fill sky above road, a simple solid colour.
 	;
 	; TODO: maybe throw in some scrolling clouds or a mountain or similar?
 	;
-
-	ld d, 0
+	xor a
+	ld d, a
 	ld bc, 0xff00 | sky_colour
+	ld l, a
+	ld a, (current_spans)
+	ld e, a
 
-@sky.fillpage:
-	ld a, d
-	call spans.getaddress
+	jr fill_er
+fill_er:
 
-@sky.fill:
+@fill_sky: EQU FOR top_y
+	IF @fill_sky & %11111 == 0
+		ld a, PAGE.FIRSTSPAN + ((@fill_sky / 32) * 2)
+		out (HMPR), a
+		ld h, e
+	ENDIF
+
 	ld (hl), b
 	inc h
 	ld (hl), c
-
-	inc d
-	ld a, d
-	cp top_y
-	jr z, @+sky.stop
-
-	and %11111
-	jr z, @-sky.fillpage
-
-	inc h
-	jr @-sky.fill
-
-@sky.stop:
+	IF @fill_sky != top_y - 1
+		inc h
+	ENDIF
+NEXT @fill_sky
 
 	;
 	; Draw road, per tables.
