@@ -31,7 +31,7 @@ update:
 		;
 		; Read joystick input via port $EFFE.
 		;
-		;	b0 = accelerate [0],
+		;	b0 or b1 = accelerate [0 or 9],
 		;	b2 = brake [8],
 		;	b3 = right [7],
 		;	b3 = left [6].
@@ -40,6 +40,7 @@ update:
 		rra
 		rl d
 		rra
+		rl d
 		rra
 		rl e
 		rra
@@ -93,6 +94,14 @@ update:
 		in a, (c)
 		rra
 		rl e
+
+		;
+		; Read port $7FFE to accept space at b0 as an alternate accelerate.
+		;
+		ld b, 0x7f
+		in a, (c)
+		rra
+		rl d
 
 		;
 		; Write current inputs, summarising them into b0 of each byte.
