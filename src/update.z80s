@@ -200,24 +200,30 @@ update:
 	rra
 	jr c, @+no_q
 
+		ld hl, (curvature)
+		dec hl
+		ld a, h
+		cp -2
+		jr z, @+no_q
+
+		ld (curvature), hl
 		call road.curve_left
 
-		ld hl, (curvature)
-		ld bc, -7
-		add hl, bc
-		ld (curvature), hl
 		jr @+no_w
 
 	@no_q:
 	rra
 	jr c, @+no_w
 
-		call road.curve_right
 
 		ld hl, (curvature)
-		ld bc, 7
-		add hl, bc
+		inc hl
+		ld a, h
+		cp 1
+		jr z, @+no_w
+
 		ld (curvature), hl
+		call road.curve_right
 
 	@no_w:
 
