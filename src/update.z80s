@@ -294,6 +294,51 @@ update:
 		sbc hl, bc
 		ld (player.xvelocity), hl
 
+	;
+	; Push left/right as a function of velocity and curvature.
+	;
+
+	ld a, (player.yvelocity + 1)
+	ld d, a
+	ld hl, (curvature)
+	ld a, h
+	or a
+
+	jp p, @+positive_curve
+
+		ld a, l
+		neg
+		ld e, a
+		call multiply.u8.u8
+		ex de, hl
+
+		srl d
+		rr e
+		srl d
+		rr e
+
+		ld hl, (player.x)
+		or a
+		sbc hl, de
+		jr @+curve_done
+
+	@positive_curve:
+		ld e, l
+		call multiply.u8.u8
+		ex de, hl
+
+		srl d
+		rr e
+		srl d
+		rr e
+
+		ld hl, (player.x)
+		add hl, de
+		jr @+curve_done
+
+	@curve_done:
+	ld (player.x), hl
+
 	pop bc
 	dec b
 	jp nz, @-update_loop
