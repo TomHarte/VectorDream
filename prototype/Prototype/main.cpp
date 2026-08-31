@@ -84,11 +84,11 @@ public:
 			}
 		}
 
-		if(key_states[SDL_SCANCODE_Q] && curve > -123) {
+		if(key_states[SDL_SCANCODE_Q] && curve > -128) {
 			curve -= 5.0f;
 		}
 
-		if(key_states[SDL_SCANCODE_W] && curve < 122) {
+		if(key_states[SDL_SCANCODE_W] && curve < 128) {
 			curve += 5.0f;
 		}
 	}
@@ -96,7 +96,7 @@ public:
 private:
 	uint8_t player_y = 0;
 	int16_t player_x = 0;
-	int8_t curve = 0;
+	int16_t curve = 0;
 
 	//
 	// Road drawing lookup tables.
@@ -187,7 +187,7 @@ private:
 			const float depth = height * cos(screen_angle) / cos(cast_angle);
 			road_widths[y] = int(0.5f + (131.0f / depth));
 			line_widths[y] = int(0.5f + (4.0f / depth));
-			curve_offset[y] = sin(depth / DepthCurvatureDivider) * 128.0f;
+			curve_offset[y] = sin(depth / DepthCurvatureDivider) * 128.0f * 1.4f;	// Hand-picked magic constant to give a first entry of ~128.
 			one_over_distances[y] = 128.0f / depth;
 
 			if(road_widths[y] < 8) {

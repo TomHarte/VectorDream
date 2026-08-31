@@ -8,6 +8,7 @@
 @brake: db 0
 @left: db 0
 @right: db 0
+@curvature_shift: dw 0
 
 update:
 	;
@@ -198,28 +199,44 @@ update:
 	in a, (c)
 	rra
 	rra
-	jr c, @+no_q
+	jr c, @+no_curvature_decrement
 
+		ld hl, (curvature)
+		dec hl
+
+		; Don't go past 0xff01	(i.e. -255).
+		ld a, h
+		cp 0xff
+		jr nz, @+keep_curvature_decrement
+
+		ld a, l
+		cp 0x01
+		jr nz, @+keep_curvature_decrement
+
+		jr @+no_curvature_decrement
+
+		@keep_curvature_decrement:
+		ld (curvature), hl
 		call road.curve_left
 
-		ld hl, (curvature)
-		ld bc, -7
-		add hl, bc
-		ld (curvature), hl
-		jr @+no_w
+		jr @+no_curvature_increment
 
-	@no_q:
+	@no_curvature_decrement:
 	rra
-	jr c, @+no_w
+	jr c, @+no_curvature_increment
 
+		ld hl, (curvature)
+		inc hl
+
+		; Don't go past 0x00ff (i.e. +255).
+		ld a, h
+		cp 1
+		jr z, @+no_curvature_increment
+
+		ld (curvature), hl
 		call road.curve_right
 
-		ld hl, (curvature)
-		ld bc, 7
-		add hl, bc
-		ld (curvature), hl
-
-	@no_w:
+	@no_curvature_increment:
 
 	;
 	; Y velocity.
@@ -261,25 +278,81 @@ update:
 	;
 	; X velocity.
 	;
-		; Apply. With 8-bit arithmetic in order to catch overflow.
-		ld bc, (player.xvelocity)
+
+	;
+	; Push left/right as a function of velocity and curvature.
+	;
+
+	ld a, (player.yvelocity + 1)
+	ld d, a
+	ld hl, (curvature)
+	ld a, h
+	or a
+
+	jp p, @+positive_curve
+
+		ld a, l
+		neg
+		ld e, a
+		call multiply.u8.u8
+		ex de, hl
+		ld hl, 0
+		or a
+		sbc hl, de
+		ld (@-curvature_shift), hl
+
+		jr @+curve_done
+
+	@positive_curve:
+
+		ld e, l
+		call multiply.u8.u8
+		ld (@-curvature_shift), hl
+
+	@curve_done:
+
+	;
+	; Sum left/right push of road curvature and current player steering into DE.
+	;
+
+		ld de, (@-curvature_shift)
+		sra d
+		rr e
+		sra d
+		rr e
+		sra d
+		rr e
+
+		ld hl, (player.xvelocity)
+		add hl, de
+		ex de, hl
+		; ld de, (player.xvelocity)
+
+	;
+	; Add current left/right push to player position.
+	; With 8-bit arithmetic in order to catch overflow.
+	;
 		ld hl, (player.x)
-		ld a, c
+		ld a, e
 		add l
 		ld l, a
-		ld a, b
+		ld a, d
 		adc h
 		ld h, a
 		jp po, @+no_overflow
 
 		or a
-		sbc hl, bc
+		sbc hl, de
 
 	@no_overflow:
 		ld (player.x), hl
 
-		; Dampen harshly.
+	;
+	; Dampen effect of steering.
+	;
 		ld hl, (player.xvelocity)
+		ld b, h
+		ld c, l
 		sra b
 		rr c
 		sra b

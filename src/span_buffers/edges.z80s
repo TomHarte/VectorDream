@@ -46,6 +46,9 @@ edge.fill.upward:
 	sbc a, a		; a = a - a (- another bit, if sign was set)
 	ld ixh, a
 
+	; Potential TODO: branch from here into leftward or rightward fills,
+	; to reduce cost of clamping if/when an edge goes off-screen.
+
 	pop af
 
 @output_line:
@@ -69,15 +72,36 @@ edge.fill.upward:
 	dec l
 	ex de, hl
 
-	; HL:A += BC:IXh.
+	; A:HL += IXh:BC.
 	add hl, bc
 	adc a, ixh
+
+	; Some sort of optimisation to be made here:
+	;
+	;	*	if IXh:BC is positive and no carry into A, clearly the test above will give the same result for
+	;		the next line.
+	;	*	if IX:BC is negative andd there _is_ carry, same logic.
+	;
 
 	; Test for end of loop.
 	dec ixl
 	jr nz, @-output_line
 
 	ret
+
+
+;
+; TODO: this is less important to optimise than below, because it's kind of specific to the 2d cases
+; where I'm clipping edges as I fill, but ideas:
+;
+;	*	check sign of B up front to divide into fill-rightward and fill-leftward;
+;	*	if filling 'rightward' then if/when crossing 0xff, just fill from there as 0xff
+;		(and similarly for leftward and 0x00).
+;
+; Plus potential unrollings, to reduce or eliminate the dec ixl, I guess. But, as above, this means
+; of edge filling isn't what I intend to use in future projects necessarily.
+;
+
 
 ;
 ; edges.output
@@ -88,9 +112,9 @@ edge.fill.upward:
 ; This fill proceeds _downward_.
 ;
 ; 	Input:
-;		D = colour.
 ;		B = first line to output.
 ;		C = number of lines to output.
+;		D = colour.
 ;
 ;	Clobbers:
 ;		A, C, DE, HL, IX, IYl.
@@ -165,3 +189,23 @@ edges.output:
 	NEXT @page
 
  	ret
+
+;
+; TODO: there's probably an unrolled solution to the above, and it'd be worth doing as this routine
+; would also carry over into filled polygon 3d.
+;
+; Likely the stepping stones would be something like the following.
+;
+; Step 1:
+;
+;	*	unroll the inner part of 32 lines, with a computed jump to do any number
+;		from 1 to 32 of them;
+;	*	per page, set up HMPR, decide how many lines to do in total, do the fill call.
+;
+; This might allow IYl, at least, to go unused. Which would reduce stack activity elsewhere.
+;
+; Step 2:
+;
+;	*	provide a separate dispatcher per HMPR page, i.e. six of them, and externally jump
+;		straight to the first of those that is relevant.
+;
