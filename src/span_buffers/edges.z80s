@@ -194,11 +194,11 @@ edges.output:
 ; TODO: there's probably an unrolled solution to the above, and it'd be worth doing as this routine
 ; would also carry over into filled polygon 3d.
 ;
-; Probably the stepping stones would be something like the following.
+; Likely the stepping stones would be something like the following.
 ;
 ; Step 1:
 ;
-;	*	unroll the inner part of 32 lines, probably with a computed jump to do any number
+;	*	unroll the inner part of 32 lines, with a computed jump to do any number
 ;		from 1 to 32 of them;
 ;	*	per page, set up HMPR, decide how many lines to do in total, do the fill call.
 ;
