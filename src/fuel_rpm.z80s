@@ -9,11 +9,11 @@ __: EQU 0x00
 ; Graphics for 'FUEL' and 'RPM'.
 ;
 @fuel:
-	db XX, X_, 		X_, X_,		XX,	X_,		X_, __
-	db X_, __, 		X_, X_,		X_, __,		X_, __
-	db XX, X_, 		X_, X_,		XX, X_,		X_, __
-	db X_, __, 		X_, X_,		X_, __,		X_, __
-	db X_, __, 		XX, X_,		XX, X_,		XX, X_
+	db _X, XX, 		_X, _X,		_X,	XX,		_X, __
+	db _X, __, 		_X, _X,		_X, __,		_X, __
+	db _X, XX, 		_X, _X,		_X, XX,		_X, __
+	db _X, __, 		_X, _X,		_X, __,		_X, __
+	db _X, __, 		_X, XX,		_X, XX,		_X, XX
 
 @rpm:
 	db XX, X_, _X, XX, __, XX, _X, X_
