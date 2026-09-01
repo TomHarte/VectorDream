@@ -179,15 +179,44 @@ update:
 	rra 
 	jr nc, @+no_right
 
-		ld bc, -256
+		ld bc, (player.yvelocity)
+		sra b
+		rr c
+		sra b
+		rr c
+
+		ld a, b
+		cp 2
+		jr c, @+use_directly
+
+		ld bc, -512
 		ld (player.xvelocity), bc
+		jr @+no_right
+
+	@use_directly:
+		ld hl, 0
+		or a
+		sbc hl, bc
+		ld (player.xvelocity), hl
 
 	@no_right:
 	ld a, (@-left)
 	rra
 	jr nc, @+no_left
 
-		ld bc, 256
+		ld bc, (player.yvelocity)
+		sra b
+		rr c
+		sra b
+		rr c
+
+		ld a, b
+		cp 2
+		jr c, @+use_directly
+
+		ld bc, 512
+
+	@use_directly:
 		ld (player.xvelocity), bc
 
 	@no_left:
@@ -320,8 +349,8 @@ update:
 		rr e
 		sra d
 		rr e
-		sra d
-		rr e
+		; sra d
+		; rr e
 
 		ld hl, (player.xvelocity)
 		add hl, de
