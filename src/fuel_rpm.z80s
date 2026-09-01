@@ -32,7 +32,7 @@ __: EQU 0x00
 @image_width:	EQU 8		; In bytes; implied by the graphics above.
 @image_height:	EQU 5		; In rows; also implied by the graphics above.
 @bar_width:		EQU 63		; The space reserved for the relevant bars.
-@spacer:		EQU 2		; Space between image and the start of each bar.
+@spacer:		EQU 1		; Space between image and the start of each bar.
 
 ;
 ; Copies the RPM and fuel graphics into place in the frame buffer.
