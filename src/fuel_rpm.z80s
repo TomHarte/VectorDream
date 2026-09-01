@@ -3,6 +3,8 @@ XX: EQU 0x11
 _X: EQU 0x01
 __: EQU 0x00
 
+@current_rpm: db 0
+
 ;
 ; Graphics for 'FUEL' and 'RPM'.
 ;
@@ -118,4 +120,29 @@ protect_fuel_rpm:
 
 	NEXT @fill
 
+	ret
+
+;
+; Called from 'update' to set the new RPM gauge reading.
+; H will be the current value in the range 0 to 63.
+;
+update_rpm:
+	; No change => exit now.
+	ld a, (@-current_rpm)
+	cp h
+	ret z
+
+	jr c, @+increase_rpm
+
+		; TODO: Decrease in RPM. So erase some.
+		jr @+store_rpm
+
+	@increase_rpm:
+
+		; TODO: Increase in RPM. So paint extra.
+
+@store_rpm:
+	; Store current RPM.
+	ld a, h
+	ld (@-current_rpm), a
 	ret
