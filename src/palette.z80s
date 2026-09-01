@@ -1,36 +1,42 @@
 ;
 ; Colour selections and palette.
 ;
-border_colour:		EQU 0
-tyre_colour:		EQU 0x00
-line_colour:		EQU 0x11
-sky_colour:			EQU 0x22
-grass_colour1:		EQU 0x33
-grass_colour2:		EQU 0x44
-road_colour:		EQU 0x55
-wood_colour:		EQU 0x66
-leaf_colour:		EQU 0x77
-warning_colour:		EQU 0x88
-grass_colour_mix: 	EQU 0x99
+colour.border:		EQU 0
+colour.sky:			EQU 0x22
 
-racing_blue_colour:	EQU 0xaa
-racing_red_colour:	EQU 0xbb
+colour.tyre:		EQU 0x00
 
-rpm_bar_colour:		EQU 0xbb
+colour.line:		EQU 0x11
+colour.grass1:		EQU 0x33
+colour.grass2:		EQU 0x44
+colour.grass_mix: 	EQU 0x99
+colour.road:		EQU 0x55
+
+colour.wood:		EQU 0x66
+colour.leaf:		EQU 0x77
+colour.warning:		EQU 0x88
+
+colour.car.blue:	EQU 0xaa
+colour.car.red:		EQU 0xbb
+
+colour.rpm.slow:	EQU 0x11
+colour.rpm.medium:	EQU 0xcc
+colour.rpm.fast:	EQU 0x88
 
 ; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
 ; This list is OTIRd elsewhere, so is in reverse order.
 palette:
-	db 0, 0, 0, 0
-	db 34			; racing car red
-	db 16			; racing car blue
-	db 65			; mixed-grass colour
-	db %0101010		; bright red, for warning signage
-	db %1101100		; yet another green, for trees
-	db %1100010		; brown, for wood
-	db %0000111		; road
-	db 64			; grass 2 (the dimmer one, by convention)
-	db 67			; grass 1
-	db %0011000		; sky
-	db %1110111		; line (white)
-	db %0000000		; screen border
+	db 0, 0, 0
+	db 111			; C: a yellow/amber
+	db 34			; B: racing car red
+	db 16			; A: racing car blue
+	db 65			; 9: mixed-grass colour
+	db %0101010		; 8: bright red, for warning signage
+	db %1101100		; 7: yet another green, for trees
+	db %1100010		; 6: brown, for wood
+	db %0000111		; 5: road
+	db 64			; 4: grass 2 (the dimmer one, by convention)
+	db 67			; 3: grass 1
+	db %0011000		; 2: sky
+	db %1110111		; 1: line (white)
+	db %0000000		; 0: screen border

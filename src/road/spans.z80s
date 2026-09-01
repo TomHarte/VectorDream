@@ -57,9 +57,9 @@ complete_with_grass: MACRO
 road.span:
 	; Get a grass colour into IXl.
 	rla
-	ld ixl, grass_colour1
+	ld ixl, colour.grass1
 	jr nc, @+keep_grass_colour1
-	ld ixl, grass_colour2
+	ld ixl, colour.grass2
 	@keep_grass_colour1:
 
 	; Consider whether to draw a centre line.
@@ -88,17 +88,17 @@ road.span:
 	jr c, @+complete_with_road
 
 @from_road_8bit:
-	fill_to a, road_colour
+	fill_to a, colour.road
 
 	add c
 	jr c, @+complete_with_line
 	add c
 	jr c, @+complete_with_line
-	fill_to a, line_colour
+	fill_to a, colour.line
 
 	add d
 	jr c, @+complete_with_road
-	fill_to a, road_colour
+	fill_to a, colour.road
 	complete_with_grass
 
 @road_starts_off_left:
@@ -124,7 +124,7 @@ road.span:
 	jp m, @+complete_with_grass
 	jr nz, @+complete_with_road
 
-	fill_to e, road_colour
+	fill_to e, colour.road
 	;complete_with_grass		[[fallthrough]]
 
 ;
@@ -137,13 +137,13 @@ road.span:
 @complete_with_line:
 	ld (hl), 0xff
 	inc h
-	ld (hl), line_colour
+	ld (hl), colour.line
 	ret
 
 @complete_with_road:
 	ld (hl), 0xff
 	inc h
-	ld (hl), road_colour
+	ld (hl), colour.road
 	ret
 
 @line_starts_off_left:
@@ -159,10 +159,10 @@ road.span:
 	ld c, a
 
 	ld a, e
-	fill_to a, line_colour
+	fill_to a, colour.line
 	add c
 	jr c, @-complete_with_road
-	fill_to a, road_colour
+	fill_to a, colour.road
 	complete_with_grass
 
 @draw_without_line_phase:
@@ -171,7 +171,7 @@ road.span:
 	jp nz, @+draw_without_line
 
 @draw_without_line_distant:
-	ld ixl, grass_colour_mix
+	ld ixl, colour.grass_mix
 
 @draw_without_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
@@ -189,7 +189,7 @@ road.span:
 	add b
 	jr c, @-complete_with_road
 
-	fill_to a, road_colour
+	fill_to a, colour.road
 	complete_with_grass
 
 @starts_off_left:
@@ -199,5 +199,5 @@ road.span:
 	jp m, @-complete_with_grass
 	jr nz, @-complete_with_road
 
-	fill_to e, road_colour
+	fill_to e, colour.road
 	complete_with_grass

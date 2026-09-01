@@ -125,15 +125,27 @@ protect_fuel_rpm:
 	; Install RPM bar.
 	;
 	pop hl
-	ld b, @rpm_x + @image_width * 2 + @spacer
+@bar_start: EQU @rpm_x + @image_width * 2 + @spacer
+	ld b, @bar_start
 	ld a, (@current_rpm)
 	or a
 	jr z, @+no_rpm_bar
 	add b
 	ld c, a
 
+	ld ixh, colour.rpm.slow
+	cp 40 + @bar_start
+	jr c, @+fill_rpm_bar
+
+	ld ixh, colour.rpm.medium
+	cp 56 + @bar_start
+	jr c, @+fill_rpm_bar
+
+	ld ixh, colour.rpm.fast
+
+@fill_rpm_bar:
 @fill: EQU for @image_height
-	ld d, rpm_bar_colour
+	ld d, ixh
 	call spans.overprint
 
 	IF @fill != @image_height - 1
