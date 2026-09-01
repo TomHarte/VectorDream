@@ -23,11 +23,11 @@ __: EQU 0x00
 	db X_, _X, _X, __, __, X_, __, X_
 
 
-@fuel_x: EQU 4				; Must be a multiple of 2.
-@fuel_y: EQU 4				; Must keep the entire graphic within a single 32-line page.
+@rpm_x: EQU 4					; Must be a multiple of 2.
+@rpm_y: EQU 4					; Must keep the entire graphic within a single 32-line page.
 
-@rpm_x: EQU 254 - 16 - @fuel_x	; Same constraint as above.
-@rpm_y: EQU @fuel_y			; Ditto.
+@fuel_x: EQU 254 - 16 - @rpm_x	; Same constraint as above.
+@fuel_y: EQU @rpm_y				; Ditto.
 
 @image_width:	EQU 8		; In bytes; implied by the graphics above.
 @image_height:	EQU 5		; In rows; also implied by the graphics above.
@@ -42,17 +42,17 @@ __: EQU 0x00
 ;
 install_fuel_rpm:
 	;
+	; Fuel.
+	;
+	ld de, 0x8000 + 0x80 * @fuel_y + (@fuel_x / 2)
+	ld hl, @-fuel
+	call @+copy_graphic
+
+	;
 	; RPM.
 	;
 	ld de, 0x8000 + 0x80 * @rpm_y + (@rpm_x / 2)
 	ld hl, @-rpm
-	call @+copy_graphic
-
-	;
-	; FUEL.
-	;
-	ld de, 0x8000 + 0x80 * @fuel_y + (@fuel_x / 2)
-	ld hl, @-fuel
 	call @+copy_graphic
 
 	ret
@@ -79,14 +79,14 @@ install_fuel_rpm:
 protect_fuel_rpm:
 
 	;
-	; Protect 'RPM'.
+	; Protect 'Fuel'.
 	; Implicit assumption: gauge goes **to the left**.
 	;
-	ld a, @-rpm_y
+	ld a, @-fuel_y
 	call spans.getaddress
 
-	ld b, @rpm_x - @spacer - @bar_width
-	ld c, @rpm_x + @image_width * 2
+	ld b, @fuel_x - @spacer - @bar_width
+	ld c, @fuel_x + @image_width * 2
 
 @fill: EQU for @image_height
 	ld d, 0
@@ -100,14 +100,14 @@ protect_fuel_rpm:
 	NEXT @fill
 
 	;
-	; Protect 'fuel'.
+	; Protect 'RPM'.
 	; Implicit assumption: gauge goes **to the right**.
 	;
-	ld a, @-fuel_y
+	ld a, @-rpm_y
 	call spans.getaddress
 
-	ld b, @fuel_x
-	ld c, @fuel_x + @spacer + @bar_width + @image_width * 2
+	ld b, @rpm_x
+	ld c, @rpm_x + @spacer + @bar_width + @image_width * 2
 
 @fill: EQU for @image_height
 	ld d, 0
