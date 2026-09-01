@@ -1,0 +1,100 @@
+X_: EQU 0x10
+XX: EQU 0x11
+_X: EQU 0x01
+__: EQU 0x00
+
+;
+; Graphics for 'FUEL' and 'RPM'.
+;
+@fuel:
+	db XX, X_, 		X_, X_,		XX,	X_,		X_, __
+	db X_, __, 		X_, X_,		X_, __,		X_, __
+	db XX, X_, 		X_, X_,		XX, X_,		X_, __
+	db X_, __, 		X_, X_,		X_, __,		X_, __
+	db X_, __, 		XX, X_,		XX, X_,		XX, X_
+
+@rpm:
+	db XX, X_, _X, XX, __, XX, _X, X_
+	db X_, _X, _X, __, X_, X_, X_, X_
+	db XX, X_, _X, XX, __, X_, __, X_
+	db X_, _X, _X, __, __, X_, __, X_
+	db X_, _X, _X, __, __, X_, __, X_
+
+
+;
+; Copies the RPM and fuel graphics into place in the frame buffer.
+; This is called just once, at startup, so it doesn't need to be fast.
+;
+; At this point the frame buffer will be accessible from 0x8000.
+;
+install_fuel_rpm:
+	;
+	; RPM.
+	;
+	ld de, 0x8081	; position (1, 1)
+	ld hl, @-rpm
+	call @+copy_graphic
+
+	;
+	; FUEL.
+	;
+	ld de, 0x8401	; position (1, 7)
+	ld hl, @-fuel
+	call @+copy_graphic
+
+	ret
+
+@copy_graphic:
+	ld ixl, 5		; For five lines...
+@copy_line:
+	ld bc, 8		; Copy 8 pixels.
+	ldir
+
+	ex de, hl
+	ld bc, 0x80 - 8
+	add hl, bc
+	ex de, hl
+
+	dec ixl
+	jr nz, @-copy_line
+
+	ret
+
+;
+; Adds blank spans to avoid the span buffer overwriting the fuel and RPM gauges.
+;
+protect_fuel_rpm:
+	ld a, 1
+	call spans.getaddress
+
+	ld b, 1
+	ld c, 16
+
+@fill: EQU for 5
+	ld d, 0
+	call spans.overprint
+
+	inc h
+	ld l, 0
+
+	NEXT @fill
+
+	inc h
+
+@fill: EQU for 5
+	inc h
+	ld l, 0
+
+	ld d, 0
+	call spans.overprint
+
+	NEXT @fill
+
+
+	ret
+
+;	Input:
+; 		B = start x.
+;		C = end x.
+;		D = colour.
+;		HL = pointer within span list, to any span that starts at or before the new one.

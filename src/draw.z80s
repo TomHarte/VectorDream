@@ -5,4 +5,11 @@
 ;
 draw:
 	call road.draw
-	jp objects.draw
+	call objects.draw
+	jp protect_fuel_rpm
+
+;
+; Called once at initial program launch to give a chance to paint in any permanent pixel assets.
+;
+setup_overlay:
+	jp install_fuel_rpm

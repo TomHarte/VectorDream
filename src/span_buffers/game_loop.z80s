@@ -36,6 +36,11 @@ frame_counter: db 0
 	call draw
 	call spans.swap.dispatch
 
+	; For setting up overlays only, make the screen buffer accessible high.
+	ld a, PAGE.VIDEO
+	out (HMPR), a
+	call setup_overlay
+
 	; Reenable display.
 	ld a, 0
 	out (BORDER), a
