@@ -21,6 +21,12 @@ __: EQU 0x00
 	db X_, _X, _X, __, __, X_, __, X_
 
 
+@fuel_x: EQU 2			; Must be a multiple of 2.
+@fuel_y: EQU 59			; Must keep the entire graphic within a single 32-line page.
+
+@rpm_x: EQU 238			; Same constraint as above.
+@rpm_y: EQU 59			; Ditto.
+
 ;
 ; Copies the RPM and fuel graphics into place in the frame buffer.
 ; This is called just once, at startup, so it doesn't need to be fast.
@@ -31,14 +37,14 @@ install_fuel_rpm:
 	;
 	; RPM.
 	;
-	ld de, 0x8081	; position (1, 1)
+	ld de, 0x8000 + 0x80 * @rpm_y + (@rpm_x / 2)
 	ld hl, @-rpm
 	call @+copy_graphic
 
 	;
 	; FUEL.
 	;
-	ld de, 0x8401	; position (1, 7)
+	ld de, 0x8000 + 0x80 * @fuel_y + (@fuel_x / 2)
 	ld hl, @-fuel
 	call @+copy_graphic
 
@@ -64,37 +70,45 @@ install_fuel_rpm:
 ; Adds blank spans to avoid the span buffer overwriting the fuel and RPM gauges.
 ;
 protect_fuel_rpm:
-	ld a, 1
+
+	;
+	; Protect 'RPM'.
+	;
+	ld a, @-rpm_y
 	call spans.getaddress
 
-	ld b, 1
-	ld c, 16
+	ld b, @rpm_x
+	ld c, @rpm_x + 16
 
 @fill: EQU for 5
 	ld d, 0
 	call spans.overprint
 
-	inc h
-	ld l, 0
+	IF @fill != 4
+		inc h
+		ld l, 0
+	ENDIF
 
 	NEXT @fill
 
-	inc h
+	;
+	; Protect 'fuel'.
+	;
+	ld a, @-fuel_y
+	call spans.getaddress
+
+	ld b, @fuel_x
+	ld c, @fuel_x + 16
 
 @fill: EQU for 5
-	inc h
-	ld l, 0
-
 	ld d, 0
 	call spans.overprint
 
-	NEXT @fill
+	IF @fill != 4
+		inc h
+		ld l, 0
+	ENDIF
 
+	NEXT @fill
 
 	ret
-
-;	Input:
-; 		B = start x.
-;		C = end x.
-;		D = colour.
-;		HL = pointer within span list, to any span that starts at or before the new one.
