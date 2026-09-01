@@ -141,7 +141,7 @@ update:
 	jr nc, @+no_accelerate
 
 		ld hl, (player.yvelocity)
-		ld de, 8
+		ld de, 16
 		add hl, de
 		ld (player.yvelocity), hl
 
@@ -151,27 +151,13 @@ update:
 	jr nc, @+no_brake
 
 		ld hl, (player.yvelocity)
-		ld a, l
-		ld c, h
-		ld b, 0
+		ld bc, -18
+		add hl, bc
+		jr c, @+store_velocity
 
-		add a, a
-		rl c
-		rl b
-		add a, a
-		rl c
-		rl b
+		ld hl, 0
 
-		ld a, b
-		or c
-		jr z, @+zero_velocity
-		sbc hl, bc
-		jr @+dont_zero
-
-	@zero_velocity:
-		ld hl, 00
-
-	@dont_zero:
+	@store_velocity:
 		ld (player.yvelocity), hl
 
 	@no_brake:
@@ -291,17 +277,20 @@ update:
 		sra a
 
 		; Dampen a little.
-		ld b, 0x00
-		ld c, a
+		ex de, hl
+		ld h, 0x00
+		ld l, a
 		or a
 		jp p, @+positive
-		ld b, 0xff
+		ld h, 0xff
 		@positive:
 
-		ld c, a
+		add hl, hl
+		ex de, hl
+
 		ld hl, (player.yvelocity)
 		or a
-		sbc hl, bc
+		sbc hl, de
 		ld (player.yvelocity), hl
 
 	;
