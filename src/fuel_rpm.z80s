@@ -22,10 +22,10 @@ __: EQU 0x00
 
 
 @fuel_x: EQU 2			; Must be a multiple of 2.
-@fuel_y: EQU 59			; Must keep the entire graphic within a single 32-line page.
+@fuel_y: EQU 1			; Must keep the entire graphic within a single 32-line page.
 
 @rpm_x: EQU 238			; Same constraint as above.
-@rpm_y: EQU 59			; Ditto.
+@rpm_y: EQU @fuel_y		; Ditto.
 
 ;
 ; Copies the RPM and fuel graphics into place in the frame buffer.
