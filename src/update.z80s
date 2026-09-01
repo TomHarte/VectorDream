@@ -151,27 +151,13 @@ update:
 	jr nc, @+no_brake
 
 		ld hl, (player.yvelocity)
-		ld a, l
-		ld c, h
-		ld b, 0
+		ld bc, -18
+		add hl, bc
+		jr c, @+store_velocity
 
-		add a, a
-		rl c
-		rl b
-		add a, a
-		rl c
-		rl b
+		ld hl, 0
 
-		ld a, b
-		or c
-		jr z, @+zero_velocity
-		sbc hl, bc
-		jr @+dont_zero
-
-	@zero_velocity:
-		ld hl, 00
-
-	@dont_zero:
+	@store_velocity:
 		ld (player.yvelocity), hl
 
 	@no_brake:
