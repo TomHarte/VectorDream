@@ -44,7 +44,7 @@ object1:
 	dw object2
 
 	db -10
-	db racing_red_colour
+	db colour.car.red
 
 object2:
 	dw 250
@@ -54,7 +54,7 @@ object2:
 	dw object3
 
 	db -128
-	db racing_blue_colour
+	db colour.car.blue
 
 object3:
 	dw 1000
@@ -64,7 +64,7 @@ object3:
 	dw 0			; Nothing is further.
 
 	db 67
-	db racing_blue_colour
+	db colour.car.blue
 
 ;
 ; Pointer to current location within the object list, which
@@ -516,7 +516,7 @@ draw.leftward_arrow:
 	inc a
 	ld b, a								; Start position = base - height + top_y + 1.
 
-	ld d, warning_colour				; This is a warning sign.
+	ld d, colour.warning				; This is a warning sign.
 	push iy								; TODO: can edges.output avoid IY, somehow?
 	call edges.output
 	pop iy
@@ -546,7 +546,7 @@ draw_tyre: MACRO
 	ld b, a
 	srl b							; B = width of tyre
 
-	ld c, tyre_colour				; C = colour of tyre.
+	ld c, colour.tyre				; C = colour of tyre.
 	call rectangle
 	ENDM
 

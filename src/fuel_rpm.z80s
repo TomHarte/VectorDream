@@ -133,7 +133,7 @@ protect_fuel_rpm:
 	ld c, a
 
 @fill: EQU for @image_height
-	ld d, rpm_bar_colour
+	ld d, colour.rpm.slow
 	call spans.overprint
 
 	IF @fill != @image_height - 1

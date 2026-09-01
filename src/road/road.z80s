@@ -191,7 +191,7 @@ road.draw:
 	;
 	xor a
 	ld d, a
-	ld bc, 0xff00 | sky_colour
+	ld bc, 0xff00 | colour.sky
 	ld l, a
 	ld a, (current_spans)
 	ld e, a

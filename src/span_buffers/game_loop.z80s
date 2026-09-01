@@ -42,7 +42,8 @@ frame_counter: db 0
 	call setup_overlay
 
 	; Reenable display.
-	ld a, 0
+@spread_border: EQU (colour.border & 7) | ((colour.border & 8) << 2)
+	ld a, @spread_border
 	out (BORDER), a
 
 	; Enable frame-counting interrupts, on line 191.
