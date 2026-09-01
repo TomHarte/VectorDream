@@ -210,9 +210,6 @@ road.draw:
 NEXT @fill_sky
 
 
-	jr @+fill_er
-@fill_er:
-
 	;
 	; Draw road, per tables.
 	;

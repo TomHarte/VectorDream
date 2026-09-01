@@ -16,6 +16,8 @@ grass_colour_mix: 	EQU 0x99
 racing_blue_colour:	EQU 0xaa
 racing_red_colour:	EQU 0xbb
 
+rpm_bar_colour:		EQU 0xbb
+
 ; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
 ; This list is OTIRd elsewhere, so is in reverse order.
 palette:

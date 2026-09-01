@@ -396,11 +396,8 @@ update:
 
 
 	;
-	; Update guages.
+	; Update gauges.
 	;
-	ld a, PAGE.VIDEO
-	out (HMPR), a
-
 	ld hl, (player.yvelocity)
 	add hl, hl
 	add hl, hl
