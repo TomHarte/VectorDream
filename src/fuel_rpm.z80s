@@ -1,0 +1,157 @@
+X_: EQU 0x10
+XX: EQU 0x11
+_X: EQU 0x01
+__: EQU 0x00
+
+@current_rpm: db 0
+
+;
+; Graphics for 'FUEL' and 'RPM'.
+;
+@fuel:
+	db _X, XX, 		_X, _X,		_X,	XX,		_X, __
+	db _X, __, 		_X, _X,		_X, __,		_X, __
+	db _X, XX, 		_X, _X,		_X, XX,		_X, __
+	db _X, __, 		_X, _X,		_X, __,		_X, __
+	db _X, __, 		_X, XX,		_X, XX,		_X, XX
+
+@rpm:
+	db XX, X_, _X, XX, __, XX, _X, X_
+	db X_, _X, _X, __, X_, X_, X_, X_
+	db XX, X_, _X, XX, __, X_, __, X_
+	db X_, _X, _X, __, __, X_, __, X_
+	db X_, _X, _X, __, __, X_, __, X_
+
+
+@rpm_x: EQU 4					; Must be a multiple of 2.
+@rpm_y: EQU 4					; Must keep the entire graphic within a single 32-line page.
+
+@fuel_x: EQU 254 - 16 - @rpm_x	; Same constraint as above.
+@fuel_y: EQU @rpm_y				; Ditto.
+
+@image_width:	EQU 8		; In bytes; implied by the graphics above.
+@image_height:	EQU 5		; In rows; also implied by the graphics above.
+@bar_width:		EQU 63		; The space reserved for the relevant bars.
+@spacer:		EQU 2		; Space between image and the start of each bar.
+
+;
+; Copies the RPM and fuel graphics into place in the frame buffer.
+; This is called just once, at startup, so it doesn't need to be fast.
+;
+; At this point the frame buffer will be accessible from 0x8000.
+;
+install_fuel_rpm:
+	;
+	; Fuel.
+	;
+	ld de, 0x8000 + 0x80 * @fuel_y + (@fuel_x / 2)
+	ld hl, @-fuel
+	call @+copy_graphic
+
+	;
+	; RPM.
+	;
+	ld de, 0x8000 + 0x80 * @rpm_y + (@rpm_x / 2)
+	ld hl, @-rpm
+	call @+copy_graphic
+
+	ret
+
+@copy_graphic:
+	ld ixl, @image_height
+@copy_line:
+	ld bc, @image_width
+	ldir
+
+	ex de, hl
+	ld bc, 0x80 - @image_width
+	add hl, bc
+	ex de, hl
+
+	dec ixl
+	jr nz, @-copy_line
+
+	ret
+
+;
+; Adds blank spans to avoid the span buffer overwriting the fuel and RPM gauges.
+;
+protect_fuel_rpm:
+
+	;
+	; Protect 'Fuel'.
+	; Implicit assumption: gauge goes **to the left**.
+	;
+	ld a, @-fuel_y
+	call spans.getaddress
+
+	ld b, @fuel_x - @spacer - @bar_width
+	ld c, @fuel_x + @image_width * 2
+
+@fill: EQU for @image_height
+	ld d, 0
+	call spans.overprint
+
+	IF @fill != @image_height - 1
+		inc h
+		ld l, 0
+	ENDIF
+
+	NEXT @fill
+
+	;
+	; Protect 'RPM'.
+	; Implicit assumption: gauge goes **to the right**.
+	;
+	ld a, @-rpm_y
+	call spans.getaddress
+	push hl
+
+	ld b, @rpm_x
+	ld c, @rpm_x + @image_width * 2 + @spacer + @bar_width
+
+@fill: EQU for @image_height
+	ld d, 0
+	call spans.overprint
+
+	IF @fill != @image_height - 1
+		inc h
+		ld l, 0
+	ENDIF
+
+	NEXT @fill
+
+	;
+	; Install RPM bar.
+	;
+	pop hl
+	ld b, @rpm_x + @image_width * 2 + @spacer
+	ld a, (@current_rpm)
+	or a
+	jr z, @+no_rpm_bar
+	add b
+	ld c, a
+
+@fill: EQU for @image_height
+	ld d, rpm_bar_colour
+	call spans.overprint
+
+	IF @fill != @image_height - 1
+		inc h
+		ld l, 0
+	ENDIF
+
+	NEXT @fill
+
+@no_rpm_bar:
+	ret
+
+;
+; Called from 'update' to set the new RPM gauge reading.
+; H will be the current value in the range 0 to 63.
+;
+update_rpm:
+	; Store current RPM.
+	ld a, h
+	ld (@-current_rpm), a
+	ret

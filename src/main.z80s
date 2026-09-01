@@ -90,6 +90,7 @@ DUMP PAGE.CODE, 0
 		include "road/objects.z80s"
 		include "road/bss.a2.z80s"
 
+		include "fuel_rpm.z80s"
 		include "update.z80s"
 		include "audio.z80s"
 

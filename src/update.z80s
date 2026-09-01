@@ -394,4 +394,13 @@ update:
 	dec b
 	jp nz, @-update_loop
 
+
+	;
+	; Update gauges.
+	;
+	ld hl, (player.yvelocity)
+	add hl, hl
+	add hl, hl
+	call update_rpm
+
 	ret
