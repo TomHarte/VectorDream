@@ -141,7 +141,7 @@ update:
 	jr nc, @+no_accelerate
 
 		ld hl, (player.yvelocity)
-		ld de, 8
+		ld de, 16
 		add hl, de
 		ld (player.yvelocity), hl
 
@@ -277,17 +277,20 @@ update:
 		sra a
 
 		; Dampen a little.
-		ld b, 0x00
-		ld c, a
+		ex de, hl
+		ld h, 0x00
+		ld l, a
 		or a
 		jp p, @+positive
-		ld b, 0xff
+		ld h, 0xff
 		@positive:
 
-		ld c, a
+		add hl, hl
+		ex de, hl
+
 		ld hl, (player.yvelocity)
 		or a
-		sbc hl, bc
+		sbc hl, de
 		ld (player.yvelocity), hl
 
 	;
