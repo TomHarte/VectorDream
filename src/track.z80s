@@ -1,0 +1,19 @@
+;
+; Defines one segment of track.
+;
+; When the player reaches or passes track.position, the game should subsequently tick once each time
+; they go another track.tick_distance. Each tick should adjust curvature in the direction indicated by
+; track.tick_direction, with is either 0 for -1 or non-0 for +1. These ticks should continue until
+; curvature is equal to track.tick_target, at which point the game should move to the next thing in
+; the segments list.
+;
+; My intention is that gameplay might occasionally involve the player being pushed backwards a short bit.
+; In that case it's acceptable not to tick backwards, provided there are no spurious forwards ticks.
+;
+
+segment.position:			EQU 0
+segment.tick_distance:		EQU 2
+segment.tick_direction:		EQU 4
+segment.tick_target:		EQU 5
+
+segment.size:				EQU 7
