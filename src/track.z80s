@@ -17,3 +17,23 @@ segment.tick_direction:		EQU 4
 segment.tick_target:		EQU 5
 
 segment.size:				EQU 7
+
+
+
+
+;
+; Design thoughts, to record somewhere:
+;
+;
+;	Track 1: introductory; shallow corners, cars that stay in lanes, no on-track obstacles.
+;
+;	Track 2: sharper corners, player-seeking cars, some on-track obstacles.
+;
+;	Track 3: long and straight, lots of lorries and barriers.
+;
+;	Track 4: almost all tight corners, both lorries and cars.
+;
+;	Track 5: back to mere sharper corners, all player-seeking cars, tight time limit.
+;
+; ... and repeat?
+;
