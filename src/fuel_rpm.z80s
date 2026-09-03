@@ -16,11 +16,11 @@ __: EQU 0x00
 	db _X, __, 		_X, XX,		_X, XX,		_X, XX
 
 @rpm:
-	db XX, X_, _X, XX, __, XX, _X, X_
-	db X_, _X, _X, __, X_, X_, X_, X_
-	db XX, X_, _X, XX, __, X_, __, X_
-	db X_, _X, _X, __, __, X_, __, X_
-	db X_, _X, _X, __, __, X_, __, X_
+	db XX, __, XX, __, X_, __, X_, __
+	db X_, X_, X_, X_, XX, _X, X_, __
+	db XX, __, XX, __, X_, X_, X_, __
+	db X_, X_, X_, __, X_, __, X_, __
+	db X_, X_, X_, __, X_, __, X_, __
 
 
 @rpm_x: EQU 4					; Must be a multiple of 2.
@@ -29,7 +29,10 @@ __: EQU 0x00
 @fuel_x: EQU 254 - 16 - @rpm_x	; Same constraint as above.
 @fuel_y: EQU @rpm_y				; Ditto.
 
-@image_width:	EQU 8		; In bytes; implied by the graphics above.
+@rpm_width:		EQU 7		; In bytes; implied by the graphics above.
+@fuel_width:	EQU 8
+@max_width:		EQU 8
+
 @image_height:	EQU 5		; In rows; also implied by the graphics above.
 @bar_width:		EQU 63		; The space reserved for the relevant bars.
 @spacer:		EQU 1		; Space between image and the start of each bar.
@@ -60,11 +63,11 @@ install_fuel_rpm:
 @copy_graphic:
 	ld ixl, @image_height
 @copy_line:
-	ld bc, @image_width
+	ld bc, @max_width
 	ldir
 
 	ex de, hl
-	ld bc, 0x80 - @image_width
+	ld bc, 0x80 - @max_width
 	add hl, bc
 	ex de, hl
 
@@ -86,7 +89,7 @@ protect_fuel_rpm:
 	call spans.getaddress
 
 	ld b, @fuel_x - @spacer - @bar_width
-	ld c, @fuel_x + @image_width * 2
+	ld c, @fuel_x + @fuel_width * 2
 
 @fill: EQU for @image_height
 	ld d, 0
@@ -108,7 +111,7 @@ protect_fuel_rpm:
 	push hl
 
 	ld b, @rpm_x
-	ld c, @rpm_x + @image_width * 2 + @spacer + @bar_width
+	ld c, @rpm_x + @rpm_width * 2 + @spacer + @bar_width
 
 @fill: EQU for @image_height
 	ld d, 0
@@ -125,7 +128,7 @@ protect_fuel_rpm:
 	; Install RPM bar.
 	;
 	pop hl
-@bar_start: EQU @rpm_x + @image_width * 2 + @spacer
+@bar_start: EQU @rpm_x + @rpm_width * 2 + @spacer
 	ld b, @bar_start
 	ld a, (@current_rpm)
 	or a
