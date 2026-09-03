@@ -383,6 +383,7 @@ update:
 	or l
 	jr z, @+check_for_new_segment
 
+@check_next_curvature_tick:
 	ex de, hl
 	ld hl, (player.y + 1)
 	sbc hl, de
@@ -391,7 +392,7 @@ update:
 
 	; Apply tick.
 	ld iy, (current_segment)
-	ld a, (current_segment + segment.tick_direction)
+	ld a, (iy + segment.tick_direction)
 	or a
 	jr z, @+tick_negative
 
@@ -402,20 +403,24 @@ update:
 	call @+decrement_curvature
 
 @post_tick:
-	; TODO: compare 'curvature' and target, potentially to set next_curvature_tick to 0
+	; Compare 'curvature' and target, potentially to set next_curvature_tick to 0
 	; and thereby end the segment.
 	ld l, (iy + segment.tick_target)
 	ld h, (iy + segment.tick_target + 1)
 	ld de, (curvature)
 	or a
 	sbc hl, de
-	ld a, h
-	or l
 	jr nz, @+continue_segment
 
 	xor a
 	ld (@-next_curvature_tick), a
-	ld (@-next_curvature_tick + 1), a
+	ld (@-next_curvature_tick + 1), a		; Zero-out next_curvature_tick. No curve ongoing.
+
+	ld hl, (current_segment)
+	ld bc, segment.size
+	add hl, bc
+	ld (current_segment), hl				; Advance segment pointer.
+
 	jr @+track_done
 
 @continue_segment:
@@ -424,7 +429,7 @@ update:
 	ld d, (iy + segment.tick_distance + 1)
 	add hl, de
 	ld (@-next_curvature_tick), hl
-	jr @-check_current_segment				; Guard against multiple ticks being due.
+	jr @-check_next_curvature_tick			; Guard against multiple ticks being due.
 
 @check_for_new_segment:
 	ld iy, (current_segment)

@@ -27,14 +27,14 @@ track:
 	dw 1000
 	dw 64
 	db @TICK_POSITIVE
-	db 60
+	dw 60
 
 
-	; Then go back to straight
+	; Then go back to straight, more quickly.
 	dw 5000
-	dw 32
+	dw 30
 	db @TICK_NEGATIVE
-	db 0
+	dw 0
 
 
 	; ... and that's it.
