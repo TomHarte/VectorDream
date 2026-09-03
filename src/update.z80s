@@ -10,6 +10,8 @@
 @right: db 0
 @curvature_shift: dw 0
 
+@next_curvature_tick: dw 0
+
 update:
 	;
 	; Read input only once. It won't change significantly in the available time.
@@ -216,40 +218,14 @@ update:
 	rra
 	jr c, @+no_curvature_decrement
 
-		ld hl, (curvature)
-		dec hl
-
-		; Don't go past 0xff01	(i.e. -255).
-		ld a, h
-		cp 0xff
-		jr nz, @+keep_curvature_decrement
-
-		ld a, l
-		cp 0x01
-		jr nz, @+keep_curvature_decrement
-
-		jr @+no_curvature_decrement
-
-		@keep_curvature_decrement:
-		ld (curvature), hl
-		call road.curve_left
-
-		jr @+no_curvature_increment
+		call @+decrement_curvature
+		jr @+no_curvature_increment		; ... as it's easier than restoring A.
 
 	@no_curvature_decrement:
 	rra
 	jr c, @+no_curvature_increment
 
-		ld hl, (curvature)
-		inc hl
-
-		; Don't go past 0x00ff (i.e. +255).
-		ld a, h
-		cp 1
-		jr z, @+no_curvature_increment
-
-		ld (curvature), hl
-		call road.curve_right
+		call @+increment_curvature
 
 	@no_curvature_increment:
 
@@ -392,4 +368,94 @@ update:
 	add hl, hl
 	call update_rpm
 
+	;
+	; Update track.
+	;
+
+
+	;
+	; Is a segment currently ongoing?
+	;
+
 	ret
+
+@check_current_segment:
+	ld hl, (@-next_curvature_tick)
+	ld a, h
+	or l
+	jr z, @+check_for_new_segment
+
+	ex de, hl
+	ld hl, (player.y + 1)
+	sbc hl, de
+
+	jr c, @+track_done		; Not past next tick position yet.
+
+	; Apply tick.
+	ld iy, (current_segment)
+	ld a, (current_segment + segment.tick_direction)
+	or a
+	jr z, @+tick_negative
+
+	call @+increment_curvature
+	jr @+track_done
+
+@tick_negative:
+	call @+decrement_curvature
+	jr @+track_done
+
+@check_for_new_segment:
+	ld iy, (current_segment)
+	ld a, iyh
+	or iyl
+	jr z, @+track_done
+
+	; IY points to segment.
+	ld e, (iy + segment.position)
+	ld d, (iy + segment.position + 1)
+	ld hl, (player.y + 1)
+	sbc hl, de
+
+	jr c, @+track_done
+
+	ld l, (iy + segment.tick_distance)
+	ld h, (iy + segment.tick_distance + 1)
+	add hl, de
+	ld (@-next_curvature_tick), hl
+	jr @-check_current_segment
+
+	nop				; TODO: install segment, jump back to segment processor.
+
+@track_done:
+	ret
+
+
+@decrement_curvature:
+	ld hl, (curvature)
+	dec hl
+
+	; Don't go past 0xff01	(i.e. -255).
+	ld a, h
+	cp 0xff
+	jr nz, @+keep_curvature_decrement
+
+	ld a, l
+	cp 0x01
+	ret z
+
+@keep_curvature_decrement:
+	ld (curvature), hl
+	jp road.curve_left
+
+
+@increment_curvature:
+	ld hl, (curvature)
+	inc hl
+
+	; Don't go past 0x00ff (i.e. +255).
+	ld a, h
+	cp 1
+	ret z
+
+	ld (curvature), hl
+	jp road.curve_right

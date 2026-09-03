@@ -11,15 +11,36 @@
 ; In that case it's acceptable not to tick backwards, provided there are no spurious forwards ticks.
 ;
 
-segment.position:			EQU 0
+segment.position:			EQU 0		; = 0 => end of segments.
 segment.tick_distance:		EQU 2
-segment.tick_direction:		EQU 4
+segment.tick_direction:		EQU 4		; 0 => tick -1. Non-zero => tick +1.
 segment.tick_target:		EQU 5
 
 segment.size:				EQU 7
 
+@TICK_POSITIVE: EQU 0xff
+@TICK_NEGATIVE: EQU 0x00
+
+track:
+	; At position 1000, tick +1 every 64 track units until reaching a curvature of 60.
+	; => should be done at position 1000 + 60 * 64 = 4840
+	dw 1000
+	dw 64
+	db @TICK_POSITIVE
+	db 60
 
 
+	; Then go back to straight
+	dw 5000
+	dw 32
+	db @TICK_NEGATIVE
+	db 0
+
+
+	; ... and that's it.
+	dw 0
+
+current_segment: dw track
 
 ;
 ; Design thoughts, to record somewhere:
