@@ -16,9 +16,9 @@ __: EQU 0x00
 	db _X, __, 		_X, XX,		_X, XX,		_X, XX
 
 @rpm:
-	db XX, __, XX, __, XX, _X, X_, __
-	db X_, X_, X_, X_, X_, X_, X_, __
 	db XX, __, XX, __, X_, __, X_, __
+	db X_, X_, X_, X_, XX, _X, X_, __
+	db XX, __, XX, __, X_, X_, X_, __
 	db X_, X_, X_, __, X_, __, X_, __
 	db X_, X_, X_, __, X_, __, X_, __
 
