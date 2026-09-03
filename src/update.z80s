@@ -377,8 +377,6 @@ update:
 	; Is a segment currently ongoing?
 	;
 
-	ret
-
 @check_current_segment:
 	ld hl, (@-next_curvature_tick)
 	ld a, h
@@ -398,11 +396,35 @@ update:
 	jr z, @+tick_negative
 
 	call @+increment_curvature
-	jr @+track_done
+	jr @+post_tick
 
 @tick_negative:
 	call @+decrement_curvature
+
+@post_tick:
+	; TODO: compare 'curvature' and target, potentially to set next_curvature_tick to 0
+	; and thereby end the segment.
+	ld l, (iy + segment.tick_target)
+	ld h, (iy + segment.tick_target + 1)
+	ld de, (curvature)
+	or a
+	sbc hl, de
+	ld a, h
+	or l
+	jr nz, @+continue_segment
+
+	xor a
+	ld (@-next_curvature_tick), a
+	ld (@-next_curvature_tick + 1), a
 	jr @+track_done
+
+@continue_segment:
+	ld hl, (@-next_curvature_tick)
+	ld e, (iy + segment.tick_distance)
+	ld d, (iy + segment.tick_distance + 1)
+	add hl, de
+	ld (@-next_curvature_tick), hl
+	jr @-check_current_segment				; Guard against multiple ticks being due.
 
 @check_for_new_segment:
 	ld iy, (current_segment)
