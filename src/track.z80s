@@ -1,0 +1,60 @@
+;
+; Defines one segment of track.
+;
+; When the player reaches or passes track.position, the game should subsequently tick once each time
+; they go another track.tick_distance. Each tick should adjust curvature in the direction indicated by
+; track.tick_direction, with is either 0 for -1 or non-0 for +1. These ticks should continue until
+; curvature is equal to track.tick_target, at which point the game should move to the next thing in
+; the segments list.
+;
+; My intention is that gameplay might occasionally involve the player being pushed backwards a short bit.
+; In that case it's acceptable not to tick backwards, provided there are no spurious forwards ticks.
+;
+
+segment.position:			EQU 0		; = 0 => end of segments.
+segment.tick_distance:		EQU 2
+segment.tick_direction:		EQU 4		; 0 => tick -1. Non-zero => tick +1.
+segment.tick_target:		EQU 5
+
+segment.size:				EQU 7
+
+@TICK_POSITIVE: EQU 0xff
+@TICK_NEGATIVE: EQU 0x00
+
+track:
+	; At position 1000, tick +1 every 64 track units until reaching a curvature of 60.
+	; => should be done at position 1000 + 60 * 64 = 4840
+	dw 1000
+	dw 64
+	db @TICK_POSITIVE
+	dw 60
+
+
+	; Then go back to straight, more quickly.
+	dw 5000
+	dw 30
+	db @TICK_NEGATIVE
+	dw 0
+
+
+	; ... and that's it.
+	dw 0
+
+current_segment: dw track
+
+;
+; Design thoughts, to record somewhere:
+;
+;
+;	Track 1: introductory; shallow corners, cars that stay in lanes, no on-track obstacles.
+;
+;	Track 2: sharper corners, player-seeking cars, some on-track obstacles.
+;
+;	Track 3: long and straight, lots of lorries and barriers.
+;
+;	Track 4: almost all tight corners, both lorries and cars.
+;
+;	Track 5: back to mere sharper corners, all player-seeking cars, tight time limit.
+;
+; ... and repeat?
+;
