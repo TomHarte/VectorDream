@@ -19,12 +19,12 @@ update:
 
 	push bc
 
-	include "update/read_input.z80s"
+		include "update/read_input.z80s"
 
 	pop bc
 
 	;
-	; Call update routine as many times as requested.
+	; Call update routines as many times as requested.
 	;
 @update_loop:
 	push bc
@@ -32,20 +32,12 @@ update:
 		include "update/apply_input.z80s"
 		include "update/y_velocity.z80s"
 		include "update/x_velocity.z80s"
+		include "update/track.z80s"
 
 	pop bc
 	dec b
 	jp nz, @-update_loop
 
-
-	;
-	; Update gauges.
-	;
-	ld hl, (player.yvelocity)
-	add hl, hl
-	add hl, hl
-	call update_rpm
-
-		include "update/track.z80s"
+		include "update/gauges.z80s"
 
 	ret
