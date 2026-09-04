@@ -24,18 +24,32 @@ segment.size:				EQU 7
 track:
 	; At position 1000, tick +1 every 64 track units until reaching a curvature of 60.
 	; => should be done at position 1000 + 60 * 64 = 4840
-	dw 1000
-	dw 64
-	db @TICK_POSITIVE
-	dw 60
+	dw 1000					; Start position.
+	dw 64					; Rate.
+	db @TICK_POSITIVE		; Direction.
+	dw 60					; Limit.
 
 
 	; Then go back to straight, more quickly.
-	dw 5000
-	dw 30
-	db @TICK_NEGATIVE
-	dw 0
+	; from 60 to -120 starting at 5000 at a tick rate of 10 => done at 5000 + 180*10 = 6800.
+	dw 5000					; Start position.
+	dw 10					; Rate.
+	db @TICK_NEGATIVE		; Direction.
+	dw -120					; Limit.
 
+
+	; From -120 to +100 = 220. 7500 + 220 * 80 = 25,100.
+	dw 7500					; Start position.
+	dw 80					; Rate.
+	db @TICK_POSITIVE		; Direction.
+	dw 100					; Limit.
+
+
+	; 30,000 + 100 * 20 = 32,000.
+	dw 30000				; Start position.
+	dw 20					; Rate.
+	db @TICK_NEGATIVE		; Direction.
+	dw 0					; Limit.
 
 	; ... and that's it.
 	dw 0
