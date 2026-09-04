@@ -1,0 +1,92 @@
+	ld a, (@-accelerate)
+	rra
+	jr nc, @+no_accelerate
+
+		ld hl, (player.yvelocity)
+		ld de, 16
+		add hl, de
+		ld (player.yvelocity), hl
+
+	@no_accelerate:
+	ld a, (@-brake)
+	rra
+	jr nc, @+no_brake
+
+		ld hl, (player.yvelocity)
+		ld bc, -18
+		add hl, bc
+		jr c, @+store_velocity
+
+		ld hl, 0
+
+	@store_velocity:
+		ld (player.yvelocity), hl
+
+	@no_brake:
+	ld a, (@-right)
+	rra 
+	jr nc, @+no_right
+
+		ld bc, (player.yvelocity)
+		sra b
+		rr c
+		sra b
+		rr c
+
+		ld a, b
+		cp 2
+		jr c, @+use_directly
+
+		ld bc, -512
+		ld (player.xvelocity), bc
+		jr @+no_right
+
+	@use_directly:
+		ld hl, 0
+		or a
+		sbc hl, bc
+		ld (player.xvelocity), hl
+
+	@no_right:
+	ld a, (@-left)
+	rra
+	jr nc, @+no_left
+
+		ld bc, (player.yvelocity)
+		sra b
+		rr c
+		sra b
+		rr c
+
+		ld a, b
+		cp 2
+		jr c, @+use_directly
+
+		ld bc, 512
+
+	@use_directly:
+		ld (player.xvelocity), bc
+
+	@no_left:
+
+
+	;
+	; TEMPORARY. Read ZX. Use it to adjust current road curvature.
+	;
+	; ld bc, 0xfefe
+	; in a, (c)
+	; rra
+	; rra
+	; jr c, @+no_curvature_decrement
+
+	; 	call @+decrement_curvature
+	; 	jr @+no_curvature_increment		; ... as it's easier than restoring A.
+
+	; @no_curvature_decrement:
+	; rra
+	; jr c, @+no_curvature_increment
+
+	; 	call @+increment_curvature
+
+	; @no_curvature_increment:
+
