@@ -33,3 +33,5 @@
 	or a
 	sbc hl, de
 	ld (player.yvelocity), hl
+
+	; TODO: check tyre_flags.left and tyre_flags.right for potential extra friction.

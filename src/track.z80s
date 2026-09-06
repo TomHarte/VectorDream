@@ -58,7 +58,8 @@ track:
 	; ... and that's it.
 	dw 0
 
-current_segment: dw track
+current_segment:
+	dw 0
 
 ;
 ; Design thoughts, to record somewhere:
