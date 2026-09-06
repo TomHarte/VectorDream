@@ -1,2 +1,47 @@
+@TYRE_WIDTH:			EQU 50
+
+@TYRE_MIN_HEIGHT:		EQU 8
+@TYRE_VIBRATE_HEIGHT:	EQU 7
+
+@TYRE_OFFSET:			EQU 80
+@TYRE_BOTTOM:			EQU 192
+
+tyre_flags.left:		db 1
+tyre_flags.right:		db 1
+
+@get_height:
+	rra
+	jr c, @+vibrate
+
+	ld a, @-TYRE_MIN_HEIGHT + @-TYRE_VIBRATE_HEIGHT
+	ret
+
+@vibrate:
+	ld a, r
+	and @-TYRE_VIBRATE_HEIGHT
+	add @-TYRE_MIN_HEIGHT
+	ret
+
 tyres.draw:
+	;
+	; Ideally I would get decent assets for these.
+	; For now, rectangles will have to do.
+	;
+
+	ld a, (tyre_flags.right)
+	call @-get_height
+	ld hl, 128 + @-TYRE_OFFSET
+	ld e, @-TYRE_BOTTOM
+	ld b, @-TYRE_WIDTH
+	ld c, colour.tyre
+	call rectangle
+
+	ld a, (tyre_flags.left)
+	call @-get_height
+	ld hl, 128 - @-TYRE_OFFSET
+	ld e, @-TYRE_BOTTOM
+	ld b, @-TYRE_WIDTH
+	ld c, colour.tyre
+	call rectangle
+
 	ret
