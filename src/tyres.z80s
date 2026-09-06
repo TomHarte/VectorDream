@@ -1,3 +1,5 @@
+TYRE_SPACING:			EQU 16
+
 @TYRE_WIDTH:			EQU 50
 
 @TYRE_MIN_HEIGHT:		EQU 8
@@ -6,8 +8,8 @@
 @TYRE_OFFSET:			EQU 80
 @TYRE_BOTTOM:			EQU 192
 
-tyre_flags.left:		db 1
-tyre_flags.right:		db 1
+tyre_flags.left:		db 0
+tyre_flags.right:		db 0
 
 @get_height:
 	rra

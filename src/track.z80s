@@ -22,6 +22,9 @@ segment.size:				EQU 7
 @TICK_NEGATIVE: EQU 0x00
 
 track:
+	dw 0
+
+
 	; At position 1000, tick +1 every 64 track units until reaching a curvature of 60.
 	; => should be done at position 1000 + 60 * 64 = 4840
 	dw 1000					; Start position.
@@ -50,6 +53,7 @@ track:
 	dw 20					; Rate.
 	db @TICK_NEGATIVE		; Direction.
 	dw 0					; Limit.
+
 
 	; ... and that's it.
 	dw 0

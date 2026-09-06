@@ -79,3 +79,40 @@
 		or a
 		sbc hl, bc
 		ld (player.xvelocity), hl
+
+	;
+	; Determine tyre wobbles.
+	;
+		ld hl, (player.x)
+		ld de, (64 - TYRE_SPACING) * 256
+
+		or a
+		sbc hl, de
+		jp p, @+set_vibrate			; Vibrate if player.x + TYRE_SPACING - road width < 0, i.e.
+
+		xor a
+		jr @+end
+
+	@set_vibrate:
+		ld a, 1
+
+	@end:
+		ld (tyre_flags.left), a
+
+
+
+		ld hl, (player.x)
+		ld de, (64 + TYRE_SPACING) * 256
+
+		or a
+		sbc hl, de
+		jp p, @+set_vibrate			; Vibrate if player.x + TYRE_SPACING - road width < 0, i.e.
+
+		xor a
+		jr @+end
+
+	@set_vibrate:
+		ld a, 1
+
+	@end:
+		ld (tyre_flags.right), a

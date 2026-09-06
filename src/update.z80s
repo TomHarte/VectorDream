@@ -30,8 +30,8 @@ update:
 	push bc
 
 		include "update/apply_input.z80s"
-		include "update/y_velocity.z80s"
 		include "update/x_velocity.z80s"
+		include "update/y_velocity.z80s"
 		include "update/track.z80s"
 
 	pop bc
