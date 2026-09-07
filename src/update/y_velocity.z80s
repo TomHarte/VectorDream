@@ -32,6 +32,25 @@
 	ld hl, (player.yvelocity)
 	or a
 	sbc hl, de
-	ld (player.yvelocity), hl
 
-	; TODO: check tyre_flags.left and tyre_flags.right for potential extra friction.
+	; Check tyre_flags.left and tyre_flags.right for potential extra friction.
+	;
+	; Reuse the existing calculation of drag in DE.
+
+	ld a, (tyre_flags.left)
+	rra
+	jr nc, @+not_offroad
+
+	or a
+	sbc hl, de
+
+	@not_offroad:
+	ld a, (tyre_flags.right)
+	rra
+	jr nc, @+not_offroad
+
+	or a
+	sbc hl, de
+
+	@not_offroad:
+	ld (player.yvelocity), hl
