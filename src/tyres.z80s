@@ -1,0 +1,73 @@
+TYRE_SPACING:			EQU 16
+
+@TYRE_WIDTH:			EQU 50
+@TYRE_HEIGHT:			EQU 15
+
+@TYRE_OFFSET:			EQU 80
+@TYRE_BOTTOM:			EQU 192
+
+tyre_flags.left:		db 0
+tyre_flags.right:		db 0
+
+@get_height:
+	rra
+	jr c, @+vibrate
+
+@no_vibration:
+	ld a, @-TYRE_HEIGHT
+	ret
+
+@vibrate:
+	ld hl, (player.yvelocity)
+	ld a, h
+	or l
+	jr z, @-no_vibration
+
+	ld a, h
+	cp 8
+	jr c, @+less_than_8
+
+	ld a, r
+	and 7
+	add @-TYRE_HEIGHT - 7
+	ret
+
+@less_than_8:
+	ld a, h
+	cp 4
+	jr c, @+less_than_4
+
+	ld a, r
+	and 3
+	add @-TYRE_HEIGHT - 3
+	ret
+
+@less_than_4:
+	ld a, r
+	and 1
+	add @-TYRE_HEIGHT - 1
+	ret
+
+tyres.draw:
+	;
+	; Ideally I would get decent assets for these.
+	; For now, rectangles will have to do.
+	;
+
+	ld a, (tyre_flags.right)
+	call @-get_height
+	ld hl, 128 + @-TYRE_OFFSET
+	ld e, @-TYRE_BOTTOM
+	ld b, @-TYRE_WIDTH
+	ld c, colour.tyre
+	call rectangle
+
+	ld a, (tyre_flags.left)
+	call @-get_height
+	ld hl, 128 - @-TYRE_OFFSET
+	ld e, @-TYRE_BOTTOM
+	ld b, @-TYRE_WIDTH
+	ld c, colour.tyre
+	call rectangle
+
+	ret

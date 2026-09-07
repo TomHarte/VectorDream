@@ -6,6 +6,7 @@
 draw:
 	call road.draw
 	call objects.draw
+	call tyres.draw
 	jp protect_fuel_rpm
 
 ;

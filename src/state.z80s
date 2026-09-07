@@ -1,8 +1,11 @@
 curvature: dw 0
 
-player.x: dw 16 * 256
+player.x: dw 0
 player.xvelocity: dw 0
 
 player.y:
 	db 0x00, 0x00, 0x00		; 16:8 fixed form; little-endian.
 player.yvelocity: dw 0
+
+tyre.left_vibrate: db 0
+tyre.right_vibrate: db 0
