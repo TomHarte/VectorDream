@@ -6,7 +6,7 @@
 	ld hl, (@-next_curvature_tick)
 	ld a, h
 	or l
-	jr z, @+check_for_new_segment
+	jr z, @+check_for_new_segment			; Next tick = 0 => previous segment ended.
 
 @check_next_curvature_tick:
 	ex de, hl
@@ -64,25 +64,23 @@
 	jr @-check_next_curvature_tick			; Guard against multiple ticks being due.
 
 @check_for_new_segment:
-	ld iy, (current_segment)
-	ld a, iyh
-	or iyl
+	ld iy, (current_segment)				; IY points to segment.
+	ld e, (iy + segment.position)
+	ld d, (iy + segment.position + 1)		; DE = location at which segment starts.
+
+	; Segment position of 0 = terminal.
+	ld a, e
+	or d
 	jr z, @+track_done
 
-	; IY points to segment.
-	ld e, (iy + segment.position)
-	ld d, (iy + segment.position + 1)
 	ld hl, (player.y + 1)
-	sbc hl, de
-
-	jr c, @+track_done
+	sbc hl, de								; HL = -(distance to segment)
+	jr c, @+track_done						; HL is negative = segment not yet reached.
 
 	ld l, (iy + segment.tick_distance)
 	ld h, (iy + segment.tick_distance + 1)
 	add hl, de
-	ld (@-next_curvature_tick), hl
-	jp @-check_current_segment
-
-	nop				; TODO: install segment, jump back to segment processor.
+	ld (@-next_curvature_tick), hl			; HL = position of first curvature tick.
+	jp @-check_current_segment				; Check whether first tick and any others have already been crossed.
 
 @track_done:
