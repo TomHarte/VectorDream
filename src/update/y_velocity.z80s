@@ -35,7 +35,9 @@
 
 	; Check tyre_flags.left and tyre_flags.right for potential extra friction.
 	;
-	; Reuse the existing calculation of drag in DE.
+	; Reuse but increase the existing calculation of drag in DE.
+	sla e
+	rl d
 
 	ld a, (tyre_flags.left)
 	rra
