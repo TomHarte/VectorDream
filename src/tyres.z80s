@@ -1,9 +1,7 @@
 TYRE_SPACING:			EQU 16
 
 @TYRE_WIDTH:			EQU 50
-
-@TYRE_MIN_HEIGHT:		EQU 8
-@TYRE_VIBRATE_HEIGHT:	EQU 7
+@TYRE_HEIGHT:			EQU 15
 
 @TYRE_OFFSET:			EQU 80
 @TYRE_BOTTOM:			EQU 192
@@ -15,13 +13,39 @@ tyre_flags.right:		db 0
 	rra
 	jr c, @+vibrate
 
-	ld a, @-TYRE_MIN_HEIGHT + @-TYRE_VIBRATE_HEIGHT
+@no_vibration:
+	ld a, @-TYRE_HEIGHT
 	ret
 
 @vibrate:
+	ld hl, (player.yvelocity)
+	ld a, h
+	or l
+	jr z, @-no_vibration
+
+	ld a, h
+	cp 8
+	jr c, @+less_than_8
+
 	ld a, r
-	and @-TYRE_VIBRATE_HEIGHT
-	add @-TYRE_MIN_HEIGHT
+	and 7
+	add @-TYRE_HEIGHT - 7
+	ret
+
+@less_than_8:
+	ld a, h
+	cp 4
+	jr c, @+less_than_4
+
+	ld a, r
+	and 3
+	add @-TYRE_HEIGHT - 3
+	ret
+
+@less_than_4:
+	ld a, r
+	and 1
+	add @-TYRE_HEIGHT - 1
 	ret
 
 tyres.draw:
