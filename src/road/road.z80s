@@ -55,7 +55,6 @@ road.draw:
 
 	;
 	; Calculate per-line road skew.
-	; TODO: include some curvature.
 	;
 
 	ld a, (player.x + 1)
