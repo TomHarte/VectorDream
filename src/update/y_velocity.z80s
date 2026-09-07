@@ -34,8 +34,8 @@
 	sbc hl, de
 
 	; Check tyre_flags.left and tyre_flags.right for potential extra friction.
-	sra d
-	rr e		; DE = penalty per off-road tyre.
+	;
+	; Reuse the existing calculation of drag in DE.
 
 	ld a, (tyre_flags.left)
 	rra
