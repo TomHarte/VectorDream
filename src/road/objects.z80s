@@ -38,7 +38,7 @@ object.sizeof: EQU 10
 ;
 object1:
 	dw 50
-	dw draw.car;draw.leftward_arrow
+	dw draw.car
 	dw 0
 	dw 0			; Nothing is closer.
 	dw object2
@@ -61,10 +61,31 @@ object3:
 	dw draw.car
 	dw 0
 	dw object2
-	dw 0			; Nothing is further.
+	dw object4
 
 	db 67
 	db colour.car.blue
+
+object4:
+	dw 32000
+	dw draw.leftward_arrow
+	dw 0
+	dw object3
+	dw object5
+
+object5:
+	dw 48000
+	dw draw.leftward_arrow
+	dw 0
+	dw object4
+	dw object6
+
+object6:
+	dw 65000
+	dw draw.leftward_arrow
+	dw 0
+	dw object5
+	dw 0
 
 ;
 ; Pointer to current location within the object list, which
