@@ -36,6 +36,7 @@
 	; Check tyre_flags.left and tyre_flags.right for potential extra friction.
 	;
 	; Reuse but increase the existing calculation of drag in DE.
+	inc de
 	sla e
 	rl d
 
@@ -55,4 +56,21 @@
 	sbc hl, de
 
 	@not_offroad:
+
+	;
+	; Check that HL hasn't gone overly negative.
+	;
+	ld bc, 0x6000
+	or a
+	sbc hl, bc
+	jr c, @+hl_fine
+
+	ld hl, 0
 	ld (player.yvelocity), hl
+	jr @+y_velocity_done
+
+	@hl_fine:
+	add hl, bc
+	ld (player.yvelocity), hl
+
+	@y_velocity_done:
