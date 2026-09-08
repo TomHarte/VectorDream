@@ -222,13 +222,9 @@ NEXT @fill_sky
 	ENDIF
 
 	; Establish B = half road width, C = half line width, A = offset.
-@segment: EQU segments + @road.fill * 4
-	ld bc, (@segment)
-
+	ld bc, (road_width_{@road.fill} << 8) | line_width_{@road.fill}
 	ld a, (player.y + 1)
-	ld d, a
-	ld a, (@segment + 2)
-	add d
+	add depth_{@road.fill} & 0xff
 
 	; Set DE = centre.
 	ld de, (road.centres + @road.fill * 2)

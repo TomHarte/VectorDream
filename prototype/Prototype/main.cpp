@@ -267,6 +267,13 @@ private:
 		printf("one_over_z_0: EQU %d\n", int(127.0f / depth_at(top_y)));
 		printf("one_over_z_64: EQU %d\n", int(127.0f / depth_at(top_y + 64)));
 		printf("max_object_depth: EQU %d\n", int(max_depth * DepthUnitConversion));
+
+		for(int y = top_y; y < 192; y++) {
+			printf("\n");
+			printf("line_width_%d: EQU %d\n", y - top_y, line_widths[y]);
+			printf("road_width_%d: EQU %d\n", y - top_y, road_widths[y]);
+			printf("depth_%d: EQU %d\n", y - top_y, distances[y]);
+		}
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) const {
