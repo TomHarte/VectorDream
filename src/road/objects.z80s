@@ -226,8 +226,7 @@ get_player_relative_depth: MACRO
 		; HL = difference in depths between line object is on and line before.
 		; DE = difference in depths between line object is on and object.
 
-	call getratio.uf16.uf16	; B = BC / DE, required ratio, in 0:8 fixed point.
-							; TODO: adapt routine to calculate DE / HL.
+	call getratio.uf16.uf16	; B = DE / HL, required ratio, in 0:8 fixed point.
 
 	;
 	; Up to here:
