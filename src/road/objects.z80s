@@ -190,17 +190,8 @@ objects.draw:
 	;
 
 
-	ld a, 1					; Don't consider placement on the top line, due to
-							; need to have something to interpolate against.
-	ld hl, segments + 3		; HL = pointer into depths table (for A = 1).
-
-
-	;
-	; BEGIN: main object loop.
-	;
-@next_object:
-	ex de, hl
-
+	; Loads HL with the player-relative depth of the object pointed to by IY.
+get_player_relative_depth: MACRO
 	; Get player-relative depth of current object into DE.
 	ld l, (iy + object.depth)
 	ld h, (iy + object.depth + 1)
@@ -211,78 +202,37 @@ objects.draw:
 	; Check whether current visible object is behind camera.
 	; If so, drawing is done.
 	ret m
+	ENDM
 
-	ex de, hl		; DE = object depth; HL = pointer into segments table.
+	get_player_relative_depth
 
-@test_depth:
+@test_line: EQU FOR bottom_y - top_y - 1
+	ld bc, (segments + 4 * (@test_line + 1) + 2)		; BC = depth of line.
 
-	inc hl	; Advance to next depth within table.
-	inc l
-	inc l
-
-	; Let BC = depth of this line.
-	ld c, (hl)
-	inc l
-	ld b, (hl)
-
-	push de			; Save planar depth of object on stack.
-	ex de, hl		; Preserve pointer into segments table in DE.
-
-	; Let HL = (depth of object) - (depth of line).
+	; HL = (depth of object) - (depth of line).
 	or a
 	sbc hl, bc
 
-	jr nc, @+object_found		; (depth of line) <= (depth of object), so object is here.
+	jp c, @+object_not_found		; (depth of line) <= (depth of object), so object is here.
 
-	ex de, hl		; Restore pointer into segments table into HL.
-	pop de			; Restore planar depth of object.
-
-	inc a
-	cp bottom_y - top_y
-	jr nz, @-test_depth
-
-	ret
-	;
-	; END: main object loop.
-	;
-
-
-
-
-@object_found:
-	; HL = distance from this line to object. Will be positive — it's how far behind the front
-	; of this line the object lies.
-	;
-	; BC still equals depth of this line; recede and get the one before into DE.
-	; Then use that to get the difference between the two.
-
-	push hl		; Save distance from line to object — quotient for upcoming ratio calculation.
+	ld a, @test_line + 1
 	ld (@-base_line), a
 
-	ex de, hl	; HL = pointer to depth table.
-				; BC = depth of current line.
-
-	dec l
-	dec l
-	dec l
-	dec hl
-	ld d, (hl)
-	dec l
-	ld e, (hl)	; DE = depth of previous line.
-
-	ld (@-segment_pointer), hl
-
-	ex de, hl				; HL = depth of previous line, BC = depth of current line.
+	ex de, hl
+	ld hl, (segments + 4 * @test_line + 2)		; HL = depth of previous line.
 	or a
 	sbc hl, bc
-	ex de, hl				; DE = distance between lines (positive — it was further minus closer).
-	pop bc					; BC = distance from line to object.
+
+		; HL = difference in depths between line object is on and line before.
+		; DE = difference in depths between line object is on and object.
+
 	call getratio.uf16.uf16	; B = BC / DE, required ratio, in 0:8 fixed point.
+							; TODO: adapt routine to calculate DE / HL.
 
 	;
 	; Up to here:
 	;
-	;	@base_line and @segment_pointer are populated.
+	;	@base_line is populated.
 	;	L = ratio (in 0:8 fixed point) of (object depth - closer line depth) / (further line depth - closer line depth).
 	;
 	; So from here:
@@ -299,24 +249,17 @@ objects.draw:
 	ld e, b
 
 	; Work out interpolated size.
-	ld hl, (@-segment_pointer)
-
-	dec l
-	ld b, (hl)		; Road width at further line.
-	inc l
-	inc l
-	inc hl
-	inc l
-	ld a, (hl)		; Road width at closer line.
-	push af
+	ld a, (segments + 4 * @test_line + 1)
+	ld b, a											; Width at further line.
+	ld a, (segments + 4 * (@test_line + 1) + 1)		; Width at further line.
 
 	sub b			; Difference in road width.
 	ld d, a
 
 	call multiply.u8.u8
 
-	; H = amount to subtract from value that (hl) was pointing to.
-	pop af
+	; H = amount to subtract from width at closer value.
+	ld a, (segments + 4 * (@test_line + 1) + 1)		; Width at further line.
 	sub h
 	ld (object_width), a		; Establish object width.
 
@@ -324,28 +267,12 @@ objects.draw:
 	; Grab relevant values from curvature table.
 	;
 
-	ld hl, road.centres - 2
-	ld bc, (@-base_line)
-	add hl, bc
-	add hl, bc
-
-
-	ld e, (hl)
-	inc hl
-	ld d, (hl)
-	inc hl
-	ld c, (hl)
-	inc hl
-	ld b, (hl)		; DE = centre at line above.
-					; BC = centre at line.
-
-	ex de, hl
+	ld hl, (road.centres + 2 * @test_line)			; HL = centre at line above.
+	ld bc, (road.centres + 2 * (@test_line + 1))	; BC = centre at line.
 	or a
 	sbc hl, bc		; HL = (centre at line above) - (centre at line)
 					; Which is always less than a byte-sized quantity, per corner constraints.
 	jr z, @+no_interpolate
-
-	push bc
 	jp m, @+negative_interpolate
 
 	;
@@ -358,18 +285,16 @@ objects.draw:
 
 	ld c, h
 	ld b, 0
-	pop hl
+	ld hl, (road.centres + 2 * (@test_line + 1))
 	add hl, bc
 	jr @+draw_object
 
 @negative_interpolate:
-
 	;
 	; Perform BC -= (ratio * -l).
 	;
 
 	ld de, (@-ratio)	; D = ratio.
-
 	ld a, l
 	neg
 	ld e, a				; D = -l
@@ -378,16 +303,14 @@ objects.draw:
 
 	ld c, h
 	ld b, 0
-	pop hl
+	ld hl, (road.centres + 2 * (@test_line + 1))
 	or a
 	sbc hl, bc
 
 @draw_object:
 	;
-	; Here: HL = centre to use.
+	; HL = centre to use.
 	;
-
-	pop af		; Throw away planar depth of object on stack.
 
 	ld a, (@-base_line)
 	add top_y
@@ -410,16 +333,22 @@ objects.draw:
 	ld iyl, e
 	ld iyh, d
 
-	ld a, (@-base_line)
-	ld hl, (@-segment_pointer)
-	inc l
-	jp @-next_object
+	get_player_relative_depth		; Get new depth.
+
+	jr @+finish_line
 
 @no_interpolate:
 	ld h, b
 	ld l, c
 	jr @-draw_object
 
+@object_not_found:
+	add hl, bc		; Restore depth of object.
+					; TODO: might be cheaper to have a table of the difference in depth between each line?
+
+@finish_line:
+NEXT @test_line
+	ret
 
 
 ;
