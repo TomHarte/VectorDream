@@ -25,15 +25,14 @@ active_objects:
 	dw 1000
 	dw draw.car1
 
-	dw 0xffff			; Distance from player = -1 => list terminated.
-						; (though only the high byte is tested)
-
-	dw 250
+	dw 900
 	dw draw.car2
 
-	dw 50				; Current distance from player.
-	dw draw.car3		; Draw routine.
+	; dw 50				; Current distance from player.
+	; dw draw.car3		; Draw routine.
 
+	dw 0xffff			; Distance from player = -1 => list terminated.
+						; (though only the high byte is tested)
 
 ;
 ; Transient storage used by objects.draw.
@@ -79,24 +78,22 @@ get_player_relative_depth: MACRO
 	ret z
 
 @test_line: EQU FOR bottom_y - top_y - 1
-	ld bc, depth_{@test_line + 1}			; BC = depth of line.
-
-	; HL = (depth of object) - (depth of line).
-	or a
-	sbc hl, bc
+	; HL = depth of object; compare with depth of line.
+	ld a, l
+	sub depth_{@test_line + 1} \ 256
+	ld a, h
+	sbc depth_{@test_line + 1} / 256
 	jr c, @+object_not_found		; (depth of line) <= (depth of object), so object is here.
 
 	;
 	; Precept: objects are 'rare'. So using index registers here isn't a bottleneck.
-	; Conversely, this loop is unrolled so direct table loads would cast a large footprint.
+	; Additionally, this loop is unrolled so direct table loads would cast a large footprint.
 	;
 	ld a, @test_line + 1
 	ld ix, segments + 4 * @test_line
 	call @+object_found
 
 @object_not_found:
-	add hl, bc		; Restore depth of object.
-
 NEXT @test_line
 	ret
 
@@ -109,12 +106,16 @@ NEXT @test_line
 	;	A = base line.
 	;	IY = pointer to object.
 	;	IX = pointer to line before in segments table.
-	;	HL = (depth of object) - (depths of line object is on).
-	;	BC = .depth of line object is on.
+	;	HL = depth of object.
 	;
 	; Should preserve IY. Everything else isn't important.
 
 	ld (@-base_line), a
+
+	ld c, (ix + 6)
+	ld b, (ix + 7)					; BC = depth of current line.
+	or a
+	sbc hl, bc						; HL = (depth of object) - (depth of current line).
 
 	ld e, (ix + 2)
 	ld d, (ix + 3)
@@ -236,22 +237,12 @@ NEXT @test_line
 @call_draw:
 	call 0
 
-	;
-	; Advance IY to closer object and continue if one exists.
-	;
-;	ld e, (iy + object.closer)
-;	ld d, (iy + object.closer + 1)
-;	ld a, e
-;	or d
-;	jr z, @+double_ret
-;	ld iyl, e
-;	ld iyh, d
+	; Advance IY to next object.
 	ld bc, object.sizeof
 	add iy, bc
 
 	get_player_relative_depth		; Get new depth.
-	ld bc, 0						; If if the ret nz takes effect, an add hl, bc will occur. Ensure that's a no-op.
-	ret nz
+	ret nz							; Exit if list _isn't_ terminated. Otherwise fall through to double_ret.
 
 @double_ret:
 	pop bc							; Latest object is behind camera. Force a double-ret.
