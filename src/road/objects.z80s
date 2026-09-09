@@ -1,7 +1,5 @@
 ;
-; Offsets exist within a doubly-linked list.
-;
-; Fields (EQUd to their offsets):
+; Object fields (EQUd to their offsets):
 ;
 
 object.depth: EQU 0			; Planar depth, i.e. along the ground, of this object.
