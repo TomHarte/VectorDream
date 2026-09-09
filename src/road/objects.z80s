@@ -12,111 +12,27 @@ object.draw: EQU 2			; Routine to draw an object. When called:
 							;	(@object_width) = width of a piece of road at the object's depth;
 							;	(@base_line) = line on screen where the bottom of the object should appear.
 
-object.testcollision: EQU 4	; TODO: I haven't quite figured out the semantics here, but likely it'll be
-							; that this is called if the object is within the appropriate 'depth' of the
-							; player vehicle and it checks the left/right bounds and takes the appropriate
-							; collision action if hit.
-
-object.closer: EQU 6		; Pointer to the 'next' object in the list. List is expected to be circular,
-							; and longer than a single screen; 
-
-object.further: EQU 8		; Pointer to the 'next' object in the list. List is expected to be circular,
-							; and longer than a single screen; 
-
-moveable.x: EQU 10			; Objects that move may also have an x position. At the time of writing this
-							; affects vehicles only. It'll probably always affect vehicles only.
-
-car.colour: EQU 11			; Colour; specific to cars.
-
 ;
 ; Hence, total size is:
 ;
-object.sizeof: EQU 10
+object.sizeof: EQU 4
 
 ;
-; A list of active objects. Each is six bytes long; a two-byte distance from the viewer,
-; a routine to draw the thing, plus a couple of spare bytes for additional attributes.
-;
-; TODO: this should be a mere ds declaration, otherwise managed by the `update` function.
+; A list of active objects. Each is merely a two-byte distance from the viewer, and
+; a routine to draw the thing.
 ;
 active_objects:
-	dw draw.car			; Draw routine.
+	dw 1000
+	dw draw.car1
+
+	dw 0xffff			; Distance from player = -1 => list terminated.
+						; (though only the high byte is tested)
+
+	dw 250
+	dw draw.car2
+
 	dw 50				; Current distance from player.
-	db -10
-	db colour.car.red
-
-	dw draw.car
-	dw 250
-	db -128
-	db colour.car.blue
-
-	dw draw.car
-	dw 1000
-	db 67
-	db colour.car.blue
-
-	dw 0				; No drawing routine => end of list.
-
-;
-; Object list (hard-coded for now).
-;
-object1:
-	dw 50
-	dw draw.car
-	dw 0
-	dw 0			; Nothing is closer.
-	dw object2
-
-	db -10
-	db colour.car.red
-
-object2:
-	dw 250
-	dw draw.car
-	dw 0
-	dw object1
-	dw object3
-
-	db -128
-	db colour.car.blue
-
-object3:
-	dw 1000
-	dw draw.car
-	dw 0
-	dw object2
-	dw object4
-
-	db 67
-	db colour.car.blue
-
-object4:
-	dw 32000
-	dw draw.leftward_arrow
-	dw 0
-	dw object3
-	dw object5
-
-object5:
-	dw 48000
-	dw draw.leftward_arrow
-	dw 0
-	dw object4
-	dw object6
-
-object6:
-	dw 65000
-	dw draw.leftward_arrow
-	dw 0
-	dw object5
-	dw 0
-
-;
-; Pointer to current location within the object list, which
-; should be to the furthest object.
-;
-firstobject:
-	dw object1
+	dw draw.car3		; Draw routine.
 
 
 ;
@@ -139,92 +55,30 @@ screen_line:
 	db 0
 
 objects.draw:
-	; `firstobject` is whichever was first last frame. It might need updating.
-	ld iy, (firstobject)
-
-	ld hl, (player.y + 1)
-	ld bc, max_object_depth
-	add hl, bc
-	ld (@-horizon_depth), hl				; Store current location of the horizon, the cutoff point for objects.
 
 	;
-	; (1) Follow object.closer for as long as object.depth is greater than maxdepth + player.y and closer objects exist.
-	; This will happen very rarely, since the player would need to be moving backwards.
+	; This walks the per-line segments list, as I wanted to fit it into the
+	; span-drawing loop when that list is being walked linearly anyway. Though
+	; it contains early-exit logic.
+	;
+	; But if I'm doing this separately, a binary search or an initial broad-table
+	; lookup would be worth investigating.
 	;
 
-@test_move_closer:
-	ld c, (iy + object.depth)
-	ld b, (iy + object.depth + 1)
-	or a
-	ld hl, (@-horizon_depth)
-	sbc hl, bc
-	jr nc, @+dont_recede			; No carry => object depth was less than maximum depth. So it's in front of the horizon, not behind it.
-
-	ld e, (iy + object.closer)
-	ld d, (iy + object.closer + 1)	; DE = pointer to closer object.
-	ld a, e
-	or d
-	ret z							; If this object was beyond the horizon but there's nothing closer then there are no objects to draw.
-	ld iyl, e
-	ld iyh, d
-	jr @-test_move_closer
-
-@dont_recede:
-
-	;
-	; (2) Follow object.further for a long as a further object exists for which object.depth is less than or equal to maxdepth + player.y.
-	;
-
-@test_move_further:
-	ld e, (iy + object.further)
-	ld d, (iy + object.further + 1)	; DE = pointer to further object.
-	ld a, e
-	or d
-	jr z, @+dont_advance				; Don't recede if there is no closer object.
-
-	ld ixl, e		; Use IX as a temporary index register.
-	ld ixh, d
-	ld c, (ix + object.depth)
-	ld b, (ix + object.depth + 1)
-	or a
-	ld hl, (@-horizon_depth)
-	sbc hl, bc
-	jr c, @+dont_advance			; Carry => object depth was greater than or equal to maximum depth. So it's behind the horizon.
-
-	; Advance then, and keep testing.
-	ld iyl, e
-	ld iyh, d
-	jr @-test_move_further
-
-@dont_advance:
-
-	; (3) Store back to firstobject.
-	ld (firstobject), iy
-
-	;
-	; From here: IY points to the first object that _might_ be visible.
-	; Draw it, if visible, follow the closer link, repeat.
-	;
-
-	;
-	; As an aside: although this walks the per-line segments list, I wasn't
-	; able to fit this into the span-drawing loop at the time of writing,
-	; though that's certainly an aspiration.
-	;
-
+	ld iy, active_objects
 
 	; Loads HL with the player-relative depth of the object pointed to by IY.
+	; Sets the zero flag if the list has ended.
 get_player_relative_depth: MACRO
 	; Get player-relative depth of current object into DE.
 	ld l, (iy + object.depth)
 	ld h, (iy + object.depth + 1)
-	ld bc, (player.y + 1)
-	or a
-	sbc hl, bc
+	ld a, h
+	inc a
 	ENDM
 
 	get_player_relative_depth
-	ret m						; Stop now if current visible object is behind camera.
+	ret z
 
 @test_line: EQU FOR bottom_y - top_y - 1
 	ld bc, depth_{@test_line + 1}			; BC = depth of line.
@@ -387,17 +241,19 @@ NEXT @test_line
 	;
 	; Advance IY to closer object and continue if one exists.
 	;
-	ld e, (iy + object.closer)
-	ld d, (iy + object.closer + 1)
-	ld a, e
-	or d
-	jr z, @+double_ret
-	ld iyl, e
-	ld iyh, d
+;	ld e, (iy + object.closer)
+;	ld d, (iy + object.closer + 1)
+;	ld a, e
+;	or d
+;	jr z, @+double_ret
+;	ld iyl, e
+;	ld iyh, d
+	ld bc, object.sizeof
+	add iy, bc
 
 	get_player_relative_depth		; Get new depth.
-	ld bc, 0						; If if the ret p takes effect return, an add hl, bc will occur. Ensure that's a no-op.
-	ret p
+	ld bc, 0						; If if the ret nz takes effect, an add hl, bc will occur. Ensure that's a no-op.
+	ret nz
 
 @double_ret:
 	pop bc							; Latest object is behind camera. Force a double-ret.
@@ -561,16 +417,29 @@ draw_tyre: MACRO
 upper_slope: EQU 63
 lower_slope: EQU 400
 
-draw.car:
+draw.car1:
 	push iy
+	ld a, -128
+	ld iyl, colour.car.blue
+	jr @+draw.car
 
+draw.car2:
+	push iy
+	ld a, 67
+	ld iyl, colour.car.red
+	jr @+draw.car
+
+draw.car3:
+	push iy
+	ld a, -10
+	ld iyl, colour.car.red
+	jr @+draw.car
+
+@draw.car:
 	; HL = centre of base.
 
 	push hl
 
-	ld a, (object_width)
-	ld e, a
-	ld a, (iy + moveable.x)
 	or a
 	jp p, @+move_right
 
@@ -581,30 +450,31 @@ draw.car:
 								; Hence if the result was zero then A = 128, which is the only value that won't fit
 								; in 8-bit arithmetic. So treat it as a special case.
 	ld d, a
+	ld a, (object_width)
+	ld e, a
 	call multiply.u8.u8
 	ld a, h
 	pop hl
 	sub_hl_a
-	jr @+get_colour
+	jr @+finish_placement
 
 @move_left_128:
 	pop hl
-	ld a, e
+	ld a, (object_width)
 	sub_hl_a
-	jr @+get_colour
+	jr @+finish_placement
 
 @move_right:
 	add a, a
 	ld d, a
+	ld a, (object_width)
+	ld e, a
 	call multiply.u8.u8
 	ld a, h
 	pop hl
 	add_hl_a
 
-@get_colour:
-	; Get colour.
-	ld a, (iy + car.colour)
-	ld iyl, a
+@finish_placement:
 
 	; Adopt total object width of one half of the size of the road.
 	; Which means scaling width down to a quarter because it'll be
