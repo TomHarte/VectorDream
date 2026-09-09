@@ -34,6 +34,30 @@ car.colour: EQU 11			; Colour; specific to cars.
 object.sizeof: EQU 10
 
 ;
+; A list of active objects. Each is six bytes long; a two-byte distance from the viewer,
+; a routine to draw the thing, plus a couple of spare bytes for additional attributes.
+;
+; TODO: this should be a mere ds declaration, otherwise managed by the `update` function.
+;
+active_objects:
+	dw draw.car			; Draw routine.
+	dw 50				; Current distance from player.
+	db -10
+	db colour.car.red
+
+	dw draw.car
+	dw 250
+	db -128
+	db colour.car.blue
+
+	dw draw.car
+	dw 1000
+	db 67
+	db colour.car.blue
+
+	dw 0				; No drawing routine => end of list.
+
+;
 ; Object list (hard-coded for now).
 ;
 object1:
@@ -98,7 +122,6 @@ firstobject:
 ;
 ; Transient storage used by objects.draw.
 ;
-@segment_pointer: dw 0
 @ratio:
 	db 0	; Throwaway byte to allow 16-bit stores.
 	db 0	; Actual ratio.
@@ -209,11 +232,6 @@ get_player_relative_depth: MACRO
 	; HL = (depth of object) - (depth of line).
 	or a
 	sbc hl, bc
-
-		; To consider: if this SBC generated carry then so will the corresponding ADD.
-		; So could move that up here and dispense with the `jr @+finish_line` below, to save a couple of unrolled bytes
-		; at the cost of having to redo the SBC and having paid for the ADD if an object was found.
-
 	jr c, @+object_not_found		; (depth of line) <= (depth of object), so object is here.
 
 	;
