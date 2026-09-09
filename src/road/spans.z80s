@@ -165,6 +165,9 @@ road.span:
 	fill_to a, colour.road
 	complete_with_grass
 
+;
+; Draw a segment without a centre line.
+;
 @draw_without_line_phase:
 	ld a, c
 	or a
