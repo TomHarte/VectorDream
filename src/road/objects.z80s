@@ -35,7 +35,7 @@ active_objects:
 						; (though only the high byte is tested)
 
 @end_of_objects:
-;ASSERT (@end_of_objects / 256) == (active_objects / 256)
+ASSERT (@end_of_objects >> 8) == (active_objects >> 8)
 
 ;
 ; Transient storage used by objects.draw.
