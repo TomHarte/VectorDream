@@ -2,7 +2,6 @@
 ; Drawing routines:
 ;
 ; HL = centre of object; other parameters are in memory.
-; Must preserve IY.
 ;
 
 
@@ -114,9 +113,7 @@ draw.leftward_arrow:
 	ld b, a								; Start position = base - height + top_y + 1.
 
 	ld d, colour.warning				; This is a warning sign.
-	push iy								; TODO: can edges.output avoid IY, somehow?
 	call edges.output
-	pop iy
 
 	ret
 
@@ -151,19 +148,16 @@ upper_slope: EQU 63
 lower_slope: EQU 400
 
 draw.car1:
-	push iy
 	ld a, -128
 	ld iyl, colour.car.blue
 	jr @+draw.car
 
 draw.car2:
-	push iy
 	ld a, 67
 	ld iyl, colour.car.red
 	jr @+draw.car
 
 draw.car3:
-	push iy
 	ld a, -10
 	ld iyl, colour.car.red
 	jr @+draw.car
@@ -342,11 +336,7 @@ draw.car3:
 	srl a							; A = height = object_width / 4
 
 	ld c, iyl
-	call rectangle
-
-	pop iy
-
-	ret
+	jp rectangle
 
 ;
 ; rectangle

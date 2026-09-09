@@ -34,12 +34,17 @@ active_objects:
 	dw 0xffff			; Distance from player = -1 => list terminated.
 						; (though only the high byte is tested)
 
+@end_of_objects:
+;ASSERT (@end_of_objects / 256) == (active_objects / 256)
+
 ;
 ; Transient storage used by objects.draw.
 ;
 @ratio:
 	db 0	; Throwaway byte to allow 16-bit stores.
 	db 0	; Actual ratio.
+object_pointer:
+	dw 0
 
 ;
 ; Per-object transient storage shared with the draw routines.
@@ -62,16 +67,20 @@ objects.draw:
 	; lookup would be worth investigating.
 	;
 
-	ld iy, active_objects
+	ld hl, active_objects
 
-	; Loads HL with the player-relative depth of the object pointed to by IY.
+	; Loads HL with the player-relative depth of the object pointed to by HL.
 	; Sets the zero flag if the list has ended.
 get_player_relative_depth: MACRO
 	; Get player-relative depth of current object into DE.
-	ld l, (iy + object.depth)
-	ld h, (iy + object.depth + 1)
-	ld a, h
+	ld e, (hl)
+	inc l
+	ld d, (hl)
+	inc l
+	ld a, d
 	inc a
+	ld (object_pointer), hl
+	ex de, hl
 	ENDM
 
 	get_player_relative_depth
@@ -231,15 +240,21 @@ NEXT @test_line
 	add top_y
 	ld (screen_line), a
 
-	ld e, (iy + object.draw)
-	ld d, (iy + object.draw + 1)
-	ld (@+call_draw + 1), de
+	ex de, hl
+	ld hl, (object_pointer)
+	ld c, (hl)
+	inc l
+	ld b, (hl)
+	inc l
+	push hl
+
+	ld (@+call_draw + 1), bc
+	ex de, hl
 @call_draw:
 	call 0
 
-	; Advance IY to next object.
-	ld bc, object.sizeof
-	add iy, bc
+	; Advance `object_pointer` to next object.
+	pop hl
 
 	get_player_relative_depth		; Get new depth.
 	ret nz							; Exit if list _isn't_ terminated. Otherwise fall through to double_ret.
