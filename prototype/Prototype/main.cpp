@@ -252,7 +252,6 @@ private:
 			printf("\n");
 		};
 
-
 		std::vector<uint8_t> combo_table;
 		for(int y = top_y; y < 192; y++) {
 			combo_table.push_back(line_widths[y]);
@@ -268,12 +267,43 @@ private:
 		printf("one_over_z_64: EQU %d\n", int(127.0f / depth_at(top_y + 64)));
 		printf("max_object_depth: EQU %d\n", int(max_depth * DepthUnitConversion));
 
+		// Also output values as EQUs; in some places the Z80 code will be unrolled, which means it can deal
+		// in assemble-time constants rather than referencing the segments table.
 		for(int y = top_y; y < 192; y++) {
 			printf("\n");
 			printf("line_width_%d: EQU %d\n", y - top_y, line_widths[y]);
 			printf("road_width_%d: EQU %d\n", y - top_y, road_widths[y]);
 			printf("depth_%d: EQU %d\n", y - top_y, distances[y]);
 		}
+
+		//
+		// Experimental: create a skip table, which takes in-range depths at some precision and maps them to
+		// the furthest line that might be correct.
+		//
+		static constexpr int DistanceShift = 5;
+		static constexpr int DistanceDiscarded = (1 << DistanceShift) - 1;
+		const int table_size = distances[top_y + 1] >> DistanceShift;
+		std::vector<uint8_t> skip_table(table_size, std::size(distances) - top_y - 1);
+		for(int c = 0; c < table_size; c++) {
+			const int max_depth = (c << DistanceShift) | DistanceDiscarded;
+
+			for(int y = top_y; y < std::size(distances); y++) {
+				if(distances[y] <= max_depth) {
+					skip_table[c] = y - top_y;
+					break;
+				}
+			}
+		}
+		dump_table("depth_skip", skip_table.begin(), skip_table.end());
+
+		int total = 0;
+		int max = 0;
+		for(size_t i = 1; i < skip_table.size(); i++) {
+			total += skip_table[i - 1] - skip_table[i];
+			max = std::max(max, skip_table[i - 1] - skip_table[i]);
+		}
+		printf("Average search length: %0.2f\n", float(total) / std::size(skip_table));
+		printf("Max search length: %d\n", max);
 	}
 
 	uint16_t mul(const uint8_t a, const uint8_t b) const {
