@@ -191,9 +191,8 @@ NEXT @test_line
 	sbc hl, bc		; HL = (centre at line above) - (centre at line)
 					; Which is always less than a byte-sized quantity, per corner constraints.
 					; Carry is left over from `add hl, de` above so is guaranteed clear.
-	; jr z, @+no_interpolate
-	; jp m, @+negative_interpolate
-	jr @+no_interpolate
+	jr z, @+no_interpolate
+	jp m, @+negative_interpolate
 
 	;
 	; Perform BC += (ratio * l).
