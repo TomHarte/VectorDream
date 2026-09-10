@@ -173,6 +173,7 @@ get_player_relative_depth: MACRO
 	ret z
 
 @test_line: EQU FOR bottom_y - top_y - 1
+@test:
 	; HL = depth of object; compare with depth of line.
 	ld a, l
 	sub depth_{@test_line + 1} \ 256
@@ -186,6 +187,7 @@ get_player_relative_depth: MACRO
 	;
 	ld a, @test_line + 1
 	call @+object_found
+	jr @-test						; Repeat test on this line; multiple objects may be here.
 
 @object_not_found:
 NEXT @test_line
