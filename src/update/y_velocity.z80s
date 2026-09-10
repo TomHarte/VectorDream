@@ -24,8 +24,6 @@
 	;
 	; It really just accepts that responsibility lies here now.
 
-	jr @+shift_them
-@shift_them:
 	ld a, (player.yvelocity + 1)
 	ld c, a
 	rla

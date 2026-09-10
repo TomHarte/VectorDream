@@ -19,22 +19,93 @@ object.sizeof: EQU 4
 ; A list of active objects. Each is merely a two-byte distance from the viewer, and
 ; a routine to draw the thing.
 ;
+
+@active_dummy:
+	; A dummy object immediately before the list; this means that a backwards search
+	; when sorting wlll always stop at the start of the list.
+	dw 0xffff
+	dw 0
+
 active_objects:
 	dw 1000
 	dw draw.car1
 
-	dw 0xffff			; Distance from player = -1 => list terminated.
-						; (though only the high byte is tested)
+	dw 50				; Current distance from player.
+	dw draw.car3		; Draw routine.
 
 	dw 900
 	dw draw.car2
 
-	dw 50				; Current distance from player.
-	dw draw.car3		; Draw routine.
-
+	dw 0xffff			; Distance from player = -1 => list terminated.
+						; (though only the high byte is tested)
 
 @end_of_objects:
-ASSERT (@end_of_objects >> 8) == (active_objects >> 8)
+ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
+
+sort_active_objects:
+	;
+	; This is a game where the object list is probably either already sorted, or is close to being properly sorted.
+	; So insertion sort is appropriate.
+	;
+
+	ld iy, active_objects
+
+@test_object:
+	;
+	; Test for end of list.
+	;
+	ld a, (iy + object.sizeof + object.depth + 1)
+	ld b, a		; Keep high byte of depth of next object to avoid a double fetch.
+	inc a
+	ret z
+
+	;
+	; Compare depth of object one ahead of this one and this one.
+	;
+	compare: MACRO
+		ld a, (iy + object.sizeof + object.depth + 0)
+		sub (iy + object.depth + 0)
+		ld a, \0
+		sbc (iy + object.depth + 1)
+	ENDM
+	compare b
+
+	; Ordering incorrect: search backwards to find out where the next object should be,
+	; and move list data appropriately.
+	jr nc, @+adjust_order
+
+	; Ordering correct: just advance.
+@advance:
+	ld bc, object.sizeof
+	add iy, bc
+	jr @-test_object
+
+@adjust_order:
+	push iy
+
+	ld bc, -4
+@test_next:
+	; Swap object and one before it, then recede and compare again.
+	swap: MACRO
+		ld e, (iy + \0)
+		ld d, (iy + object.sizeof + \0)
+		ld (iy + \0), d
+		ld (iy + object.sizeof + \0), e
+	ENDM
+
+	swap (object.depth + 0)
+	swap (object.depth + 1)
+	swap (object.draw + 0)
+	swap (object.draw + 1)
+
+	add iy, bc
+
+	compare (iy + object.sizeof + object.depth + 1)
+	jr nc, @-test_next
+
+	pop iy
+	jr @-advance
+
 
 ;
 ; Transient storage used by objects.draw.
