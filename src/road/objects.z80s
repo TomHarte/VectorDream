@@ -42,7 +42,23 @@ active_objects:
 @end_of_objects:
 ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
 
-sort_active_objects:
+;
+; active_objects.sort
+;
+; Sorts the current active_objects list so that the furthest comes first.
+;
+; Warning: this is not a stable sort. Objects at the same depth may change positions.
+;
+; 	Input:
+;		None.
+;
+; 	Output:
+;		None; as a side effect the active_objects list will now be sorted.
+;
+;	Clobbers:
+;		A, IY, BC, DE.
+;
+active_objects.sort:
 	;
 	; This is a game where the object list is probably either already sorted, or is close to being properly sorted.
 	; So insertion sort is appropriate.

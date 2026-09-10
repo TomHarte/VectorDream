@@ -4,7 +4,7 @@
 ; Should not call spans.swap or similar; span buffer swapping is handled by the game loop.
 ;
 draw:
-	call sort_active_objects
+	call active_objects.sort
 	call road.draw
 	call objects.draw
 	call tyres.draw
