@@ -40,4 +40,4 @@ update:
 
 		include "update/gauges.z80s"
 
-	jp sort_active_objects
+	ret
