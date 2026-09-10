@@ -16,7 +16,10 @@
 
 	; Update `active_objects`.
 	;
-	; TODO: this version just takes the fixed three objects and moves them.
+	; TODO:
+	;
+	; This version just finds the object linked to draw.car1 and moves it,
+	; leaving the others alone.
 	;
 	; It doesn't inspect a real object list to decide what to seed next.
 	; It doesn't apply any traffic logic.
@@ -24,13 +27,33 @@
 	;
 	; It really just accepts that responsibility lies here now.
 
+	ld hl, active_objects + 2
+@check_next:
+	ld a, (hl)
+	inc l
+	sub draw.car1 \ 256
+	ld a, (hl)
+	sbc draw.car1 / 256
+	jr z, @+found
+
+	inc l
+	inc l
+	inc l
+	jr @-check_next
+
+@found:
 	ld a, (player.yvelocity + 1)
 	ld c, a
 	rla
 	sbc a
 	ld b, a							; BC = top 16 bits of velocity.
 
-	ld hl, (active_objects + 0)
+	dec l
+	dec l							; HL points to correct object depth.
+	ld d, (hl)
+	dec l
+	ld e, (hl)
+	ex de, hl
 	or a
 	sbc hl, bc
 	jp p, @+no_reload
@@ -39,7 +62,10 @@
 	add hl, bc
 
 @no_reload:
-	ld (active_objects + 0), hl
+	ex de, hl
+	ld (hl), e
+	inc l
+	ld (hl), d
 
 
 	; Dampen.
