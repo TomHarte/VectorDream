@@ -23,14 +23,15 @@ active_objects:
 	dw 1000
 	dw draw.car1
 
+	dw 0xffff			; Distance from player = -1 => list terminated.
+						; (though only the high byte is tested)
+
 	dw 900
 	dw draw.car2
 
-	; dw 50				; Current distance from player.
-	; dw draw.car3		; Draw routine.
+	dw 50				; Current distance from player.
+	dw draw.car3		; Draw routine.
 
-	dw 0xffff			; Distance from player = -1 => list terminated.
-						; (though only the high byte is tested)
 
 @end_of_objects:
 ASSERT (@end_of_objects >> 8) == (active_objects >> 8)

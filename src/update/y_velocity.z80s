@@ -14,10 +14,40 @@
 	ld (player.y), hl
 	ld (player.y + 2), a
 
+	; Update `active_objects`.
+	;
+	; TODO: this version just takes the fixed three objects and moves them.
+	;
+	; It doesn't inspect a real object list to decide what to seed next.
+	; It doesn't apply any traffic logic.
+	; It doesn't do any collision detection.
+	;
+	; It really just accepts that responsibility lies here now.
+
+	jr @+shift_them
+@shift_them:
+	ld a, (player.yvelocity + 1)
+	ld c, a
+	rla
+	sbc a
+	ld b, a							; BC = top 16 bits of velocity.
+
+	ld hl, (active_objects + 0)
+	or a
+	sbc hl, bc
+	jp p, @+no_reload
+
+	ld bc, depth_1
+	add hl, bc
+
+@no_reload:
+	ld (active_objects + 0), hl
+
+
+	; Dampen.
 	ld a, (player.yvelocity + 1)
 	sra a
 
-	; Dampen.
 	ex de, hl
 	ld h, 0x00
 	ld l, a
