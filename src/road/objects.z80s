@@ -97,7 +97,6 @@ get_player_relative_depth: MACRO
 	; Additionally, this loop is unrolled so direct table loads would cast a large footprint.
 	;
 	ld a, @test_line + 1
-	ld ix, segments + 4 * @test_line
 	call @+object_found
 
 @object_not_found:
@@ -111,13 +110,19 @@ NEXT @test_line
 	; At entry:
 	;
 	;	A = base line.
-	;	IY = pointer to object.
-	;	IX = pointer to line before in segments table.
 	;	HL = depth of object.
 	;
-	; Should preserve IY. Everything else isn't important.
 
 	ld (@-base_line), a
+
+	dec a
+	ld c, a
+	ld b, 0
+	ld ix, segments
+	add ix, bc
+	add ix, bc
+	add ix, bc
+	add ix, bc						; IX = pointer to previous line.
 
 	ld c, (ix + 6)
 	ld b, (ix + 7)					; BC = depth of current line.
