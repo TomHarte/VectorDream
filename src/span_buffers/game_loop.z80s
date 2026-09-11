@@ -1,4 +1,5 @@
 frame_counter: db 0
+previous_frame_counter: db 0
 
 	AUTOEXEC
 
@@ -58,17 +59,17 @@ frame_counter: db 0
 
 	; Get B = number of frames since last did updates.
 @get_frame_counter:
-	xor a
+	ld a, (frame_counter)
+	ld c, a
+	ld a, (previous_frame_counter)
+	sub c
+	jr z, @-get_frame_counter	; Spin until at least one frame has passed (this is optimistic!).
 
-	di
-	ld bc, (frame_counter - 1)		; So B = count; C = [who cares?]
-	ld (frame_counter), a
-	ei
+	neg
+	ld b, a
 
-	; Spin until at least one frame has passed (this is optimistic!).
-	ld a, b
-	or a
-	jr z, @-get_frame_counter
+	ld a, c
+	ld (previous_frame_counter), a
 
 	call update
 	jr @-game_loop
