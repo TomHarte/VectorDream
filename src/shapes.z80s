@@ -147,22 +147,8 @@ draw_tyre: MACRO
 upper_slope: EQU 63
 lower_slope: EQU 400
 
-draw.car1:
-	ld a, -128
-	ld iyl, colour.car.blue
-	jr @+draw.car
 
-draw.car2:
-	ld a, 67
-	ld iyl, colour.car.red
-	jr @+draw.car
-
-draw.car3:
-	ld a, -10
-	ld iyl, colour.car.red
-	jr @+draw.car
-
-@draw.car:
+draw.car:
 	; HL = centre of base.
 
 	push hl

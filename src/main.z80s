@@ -95,6 +95,7 @@ DUMP PAGE.CODE, 0
 		include "tyres.z80s"
 		include "shapes.z80s"
 		include "state.z80s"
+		include "cars.z80s"
 		include "audio.z80s"
 
 ;
