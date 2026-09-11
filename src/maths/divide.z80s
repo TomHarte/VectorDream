@@ -4,8 +4,8 @@
 ; Performs the fixed-point calculation HL = BC / DE.
 ;
 ;	Input:
-;		BC = dividend;
-;		DE = divisor;
+;		DE = dividend;
+;		HL = divisor;
 ;		Requires BC >= 0, DE >= 0, BC < DE.
 ;
 ;	Output:
@@ -16,8 +16,7 @@
 ;
 
 getratio.uf16.uf16:
-	ld h, b
-	ld l, c
+	ex de, hl
 
 @divide_loop: EQU FOR 8
 	sl1 b			; Presume the newest bit is set.

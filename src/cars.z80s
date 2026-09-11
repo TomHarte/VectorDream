@@ -1,0 +1,29 @@
+car1:
+	db -128
+	db colour.car.blue
+
+car2:
+	db -64
+	db colour.car.red
+
+car3:
+	db -10
+	db colour.car.red
+
+draw.car1:
+	ld a, (car1+1)
+	ld iyl, a
+	ld a, (car1)
+	jp draw.car
+
+draw.car2:
+	ld a, (car2+1)
+	ld iyl, a
+	ld a, (car2)
+	jp draw.car
+
+draw.car3:
+	ld a, (car3+1)
+	ld iyl, a
+	ld a, (car3)
+	jp draw.car

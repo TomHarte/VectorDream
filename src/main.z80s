@@ -67,7 +67,6 @@ DUMP PAGE.CODE, 0
 		include "span_buffers/setup_and_clear.z80s"
 		include "span_buffers/get_address.z80s"
 		include "palette.z80s"
-		include "state.z80s"
 		include "draw.z80s"
 		include "span_buffers/game_loop.z80s"
 		include "span_buffers/edges.vertical.z80s"
@@ -94,6 +93,9 @@ DUMP PAGE.CODE, 0
 		include "update.z80s"
 		include "track.z80s"
 		include "tyres.z80s"
+		include "shapes.z80s"
+		include "state.z80s"
+		include "cars.z80s"
 		include "audio.z80s"
 
 ;
