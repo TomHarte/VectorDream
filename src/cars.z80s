@@ -3,7 +3,7 @@ car1:
 	db colour.car.blue
 
 car2:
-	db 67
+	db -64
 	db colour.car.red
 
 car3:
