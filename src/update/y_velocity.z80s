@@ -32,10 +32,12 @@
 	ld a, (hl)
 	inc l
 	sub draw.car1 \ 256
+	jr nz, @+not_found
 	ld a, (hl)
-	sbc draw.car1 / 256
+	sub draw.car1 / 256
 	jr z, @+found
 
+@not_found:
 	inc l
 	inc l
 	inc l
