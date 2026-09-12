@@ -1,5 +1,5 @@
 	;
-	; Apply drag.
+	; Apply lateral drag.
 	;
 	ld a, (player.yvelocity + 1)
 	sra a
@@ -60,3 +60,18 @@
 	ld (player.yvelocity), hl
 
 	@y_velocity_done:
+
+
+	;
+	; Dampen effect of steering.
+	;
+	ld hl, (player.xvelocity)
+	ld b, h
+	ld c, l
+	sra b
+	rr c
+	sra b
+	rr c
+	or a
+	sbc hl, bc
+	ld (player.xvelocity), hl

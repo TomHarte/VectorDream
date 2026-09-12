@@ -1,0 +1,67 @@
+	; Update `active_objects`.
+	;
+	; TODO:
+	;
+	; This version just finds the object linked to draw.car1 and moves it,
+	; leaving the others alone.
+	;
+	; It doesn't inspect a real object list to decide what to seed next.
+	; It doesn't apply any traffic logic.
+	; It doesn't do any collision detection.
+	;
+	; It really just accepts that responsibility lies here now.
+
+	ld hl, active_objects + 2
+@check_next:
+	ld a, (hl)
+	inc l
+	sub draw.car1 \ 256
+	jr nz, @+not_found
+	ld a, (hl)
+	sub draw.car1 / 256
+	jr z, @+found
+
+@not_found:
+	inc l
+	inc l
+	inc l
+	jr @-check_next
+
+@found:
+	ld a, (player.yvelocity + 1)
+	ld c, a
+	rla
+	sbc a
+	ld b, a							; BC = top 16 bits of velocity.
+
+	dec l
+	dec l							; HL points to correct object depth.
+	ld d, (hl)
+	dec l
+	ld e, (hl)
+	ex de, hl						; HL = objet depth, DE = pointer to high byte of depth.
+
+	or a
+	sbc hl, bc						; Subtract the player's velocity.
+	jp p, @+no_front_clip			; Check for crossing of near-Z.
+
+	ld bc, depth_1
+	add hl, bc
+
+@no_front_clip:
+	ld bc, 9						; Add something for car velocity.
+	add hl, bc						; TODO: has the vehicle disappeared over the horizon?
+
+	ld a, l
+	sub max_object_depth \ 256
+	ld a, h
+	sbc max_object_depth / 256
+	jr c, @+no_back_clip
+
+	ld hl, depth_135
+
+@no_back_clip:
+	ex de, hl
+	ld (hl), e
+	inc l
+	ld (hl), d
