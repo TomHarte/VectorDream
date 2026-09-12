@@ -55,78 +55,31 @@
 	ld d, (hl)
 	dec l
 	ld e, (hl)
-	ex de, hl
+	ex de, hl						; HL = objet depth, DE = pointer to high byte of depth.
+
 	or a
-	sbc hl, bc
-	jp p, @+no_reload
+	sbc hl, bc						; Subtract the player's velocity.
+	jp p, @+no_front_clip			; Check for crossing of near-Z.
 
 	ld bc, depth_1
 	add hl, bc
 
-@no_reload:
+@no_front_clip:
+	ld bc, 9						; Add something for car velocity.
+	add hl, bc						; TODO: has the vehicle disappeared over the horizon?
+
+	ld a, l
+	sub max_object_depth \ 256
+	ld a, h
+	sbc max_object_depth / 256
+	jr c, @+no_back_clip
+
+	ld hl, depth_135
+
+@no_back_clip:
 	ex de, hl
 	ld (hl), e
 	inc l
 	ld (hl), d
 
 
-	; Dampen.
-	ld a, (player.yvelocity + 1)
-	sra a
-
-	ex de, hl
-	ld h, 0x00
-	ld l, a
-	or a
-	jp p, @+positive
-	ld h, 0xff
-	@positive:
-
-	add hl, hl
-	ex de, hl
-
-	ld hl, (player.yvelocity)
-	or a
-	sbc hl, de
-
-	; Check tyre_flags.left and tyre_flags.right for potential extra friction.
-	;
-	; Reuse but increase the existing calculation of drag in DE.
-	inc de
-	sla e
-	rl d
-
-	ld a, (tyre_flags.left)
-	rra
-	jr nc, @+not_offroad
-
-	or a
-	sbc hl, de
-
-	@not_offroad:
-	ld a, (tyre_flags.right)
-	rra
-	jr nc, @+not_offroad
-
-	or a
-	sbc hl, de
-
-	@not_offroad:
-
-	;
-	; Check that HL hasn't gone overly negative.
-	;
-	ld bc, 0x6000
-	or a
-	sbc hl, bc
-	jr c, @+hl_fine
-
-	ld hl, 0
-	ld (player.yvelocity), hl
-	jr @+y_velocity_done
-
-	@hl_fine:
-	add hl, bc
-	ld (player.yvelocity), hl
-
-	@y_velocity_done:

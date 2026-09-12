@@ -33,6 +33,7 @@ update:
 		include "update/x_velocity.z80s"
 		include "update/y_velocity.z80s"
 		include "update/track.z80s"
+		include "update/drag.z80s"
 
 	pop bc
 	dec b
