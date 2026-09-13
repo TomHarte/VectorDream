@@ -41,3 +41,14 @@ sub_de: MACRO
 	ld d, a
 	ENDM
 
+; Increments A, saturating at 0xff.
+inc_a_clamped: MACRO
+	inc a
+	sbc 0
+	ENDM
+
+; Decrements A, clamping at 0x00.
+dec_a_clamped: MACRO
+	dec a
+	adc 0
+	ENDM
