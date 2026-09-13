@@ -1,26 +1,4 @@
 
-; Adds the 8-bit unsigned value in the register in the operand to DE. Clobbers A.
-addde: MACRO
-	ld a, e
-	add \0
-	ld e, a
-
-	adc d
-	sub e
-	ld d, a
-	ENDM
-
-; Subtracts the 8-bit unsigned value in the register in the operand from DE. Clobbers A.
-subde: MACRO
-	ld a, e
-	sub \0
-	ld e, a
-
-	ld a, d
-	sbc 0
-	ld d, a
-	ENDM
-
 fill_to: MACRO
 	ld (hl), \0
 	inc h
@@ -72,7 +50,7 @@ road.span:
 
 @draw_with_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
-	subde b
+	sub_de b
 	jp m, @+road_starts_off_left
 	jr nz, @+complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
@@ -103,8 +81,8 @@ road.span:
 
 @road_starts_off_left:
 	; Road started off left of display; test position of start of line.
-	addde b
-	subde c
+	add_de b
+	sub_de c
 	jp m, @+line_starts_off_left
 	jr nz, @+complete_with_road	; Road was off-screen to the left, line was off-screen to the right. So all road.
 
@@ -118,8 +96,8 @@ road.span:
 
 @right_starts_off_left:
 	; Test right-edge of road.
-	subde c
-	addde b
+	sub_de c
+	add_de b
 
 	jp m, @+complete_with_grass
 	jr nz, @+complete_with_road
@@ -148,8 +126,8 @@ road.span:
 
 @line_starts_off_left:
 	; Test right-edge of line.
-	addde c
-	addde c
+	add_de c
+	add_de c
 	jp m, @-right_starts_off_left
 	jr nz, @-complete_with_line
 
@@ -178,7 +156,7 @@ road.span:
 
 @draw_without_line:
 	; Test whether left-edge of road is in 8-bit range. If so can proceed with a pure 8-bit draw.
-	subde b
+	sub_de b
 	jp m, @+starts_off_left
 	jr nz, @-complete_with_grass	; If the left edge is off screen to the right, all is grass.
 
@@ -197,8 +175,8 @@ road.span:
 
 @starts_off_left:
 	; Find right edge of road.
-	addde b
-	addde b
+	add_de b
+	add_de b
 	jp m, @-complete_with_grass
 	jr nz, @-complete_with_road
 

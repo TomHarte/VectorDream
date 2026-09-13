@@ -48,6 +48,8 @@ DUMP PAGE.CODE, 0
 	; First 256 bytes. Packed by trial and error.
 	;
 
+		include "maths/extended_ops.z80s"								; All macros. No in-memory footprint.
+
 		include "span_buffers/overprint.z80s"							; At the time of writing, this is _exactly_ 0x38 bytes long. That's lucky!
 
 		@interrupt_prior: ASSERT @interrupt_prior <= 0x38

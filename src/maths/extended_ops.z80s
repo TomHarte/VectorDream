@@ -1,0 +1,43 @@
+; Adds the 8-bit unsigned value in A to HL. Clobbers A.
+add_hl_a: MACRO
+	add a, l
+	ld l, a
+
+	adc h
+	sub l
+	ld h, a
+	ENDM
+
+; Subtracts the 8-bit unsigned value in A from HL. Clobbers A.
+sub_hl_a: MACRO
+	neg					; Assumed: A is non-zero.
+	add l
+	ld l, a
+
+	ld a, 0xff
+	adc h
+	ld h, a
+	ENDM
+
+; Adds the 8-bit unsigned value \0 in to DE. Clobbers A.
+add_de: MACRO
+	ld a, e
+	add \0
+	ld e, a
+
+	adc d
+	sub e
+	ld d, a
+	ENDM
+
+; Subtracts the 8-bit unsigned value in \0 from DE. Clobbers A.
+sub_de: MACRO
+	ld a, e
+	sub \0
+	ld e, a
+
+	ld a, d
+	sbc 0
+	ld d, a
+	ENDM
+
