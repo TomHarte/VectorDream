@@ -1,17 +1,10 @@
-	; Update `active_objects`.
-	;
-	; TODO:
-	;
-	; This version just finds the object linked to draw.car1 and moves it,
-	; leaving the others alone.
-	;
-	; It doesn't inspect a real object list to decide what to seed next.
-	; It doesn't apply any traffic logic.
-	; It doesn't do any collision detection.
-	;
-	; It really just accepts that responsibility lies here now.
+@found_cars:
+	db 0
+
 cars.update:
 
+	xor a
+	ld (@-found_cars), a
 	ld hl, active_objects + 2
 
 @check_object:
@@ -23,7 +16,15 @@ cars.update:
 
 		ld a, (hl)
 		sub draw.car{@check_cars + 1} / 256
-		call z, @+found_car{@check_cars + 1}
+		jr nz, @+not_found
+
+		; Register car as found.
+		ld a, (@-found_cars)
+		or 1 << @check_cars
+		ld (@-found_cars), a
+
+		; Call car-specific update function, then skip further searching.
+		call @+found_car{@check_cars + 1}
 		jr @+move_to_next
 
 		@not_found:
@@ -59,7 +60,7 @@ cars.update:
 	ld d, (hl)
 	dec l
 	ld e, (hl)
-	ex de, hl						; HL = objet depth, DE = pointer to high byte of depth.
+	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
 
 	or a
 	sbc hl, bc						; Subtract the player's velocity.
@@ -69,7 +70,7 @@ cars.update:
 	add hl, bc
 
 @no_front_clip:
-	ld bc, 9						; Add something for car velocity.
+	ld bc, 7						; Add something for car velocity.
 	add hl, bc						; TODO: has the vehicle disappeared over the horizon?
 
 	ld a, l
@@ -91,6 +92,13 @@ cars.update:
 
 
 @found_car2:
+	ld a, (car2)
+	ld b, a
+	sra a
+	sra a
+	neg
+	add b
+	ld (car2), a
 	ret
 
 @found_car3:
