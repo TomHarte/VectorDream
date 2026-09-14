@@ -24,10 +24,14 @@ cars.update:
 		ld a, (hl)
 		sub draw.car{@check_cars + 1} / 256
 		call z, @+found_car{@check_cars + 1}
+		jr @+move_to_next
 
 		@not_found:
+		dec l
 	NEXT @check_cars
 
+	inc l
+@move_to_next:
 	inc l
 	inc l
 
