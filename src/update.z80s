@@ -34,7 +34,7 @@ update:
 		include "update/y_velocity.z80s"
 
 		include "update/track.z80s"			; Updates the floor, applying corners.
-		include "update/cars.z80s"			; Updates non-player vehicles.
+		call cars.update
 
 		include "update/drag.z80s"
 
@@ -45,3 +45,5 @@ update:
 		include "update/gauges.z80s"
 
 	ret
+
+include "update/cars.z80s"			; Updates non-player vehicles.

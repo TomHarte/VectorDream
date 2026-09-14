@@ -10,24 +10,40 @@
 	; It doesn't do any collision detection.
 	;
 	; It really just accepts that responsibility lies here now.
+cars.update:
 
 	ld hl, active_objects + 2
-@check_next:
-	ld a, (hl)
-	inc l
-	sub draw.car1 \ 256
-	jr nz, @+not_found
-	ld a, (hl)
-	sub draw.car1 / 256
-	jr z, @+found
 
-@not_found:
-	inc l
-	inc l
-	inc l
-	jr @-check_next
+@check_object:
+	@check_cars: EQU FOR 3
+		ld a, (hl)
+		inc l
+		sub draw.car{@check_cars + 1} \ 256
+		jr nz, @+not_found
 
-@found:
+		ld a, (hl)
+		sub draw.car{@check_cars + 1} / 256
+		call z, @+found_car{@check_cars + 1}
+
+		@not_found:
+	NEXT @check_cars
+
+	inc l
+	inc l
+
+	ld a, (hl)				; Test for high byte of distance = 0xff as a list terminator.
+	inc a
+	jr z, @+objects_done
+
+	inc l
+	jr @-check_object
+
+	@objects_done:
+	ret
+
+@found_car1:
+	push hl
+
 	ld a, (player.yvelocity + 1)
 	ld c, a
 	rla
@@ -65,3 +81,13 @@
 	ld (hl), e
 	inc l
 	ld (hl), d
+
+	pop hl
+	ret
+
+
+@found_car2:
+	ret
+
+@found_car3:
+	ret
