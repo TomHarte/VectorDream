@@ -31,6 +31,11 @@ cars.update:
 		dec l
 	NEXT @check_cars
 
+	;
+	; If here, found an object that isn't a car.
+	;
+	; TODO: update and possibly remove that as per car velocity.
+
 	inc l
 @move_to_next:
 	inc l
@@ -44,10 +49,51 @@ cars.update:
 	jr @-check_object
 
 	@objects_done:
+
+
+	; TODO:
+	;
+	;	(1)	are there any car slots free? If not, don't add any cars.
+	;	(2)	if so, something like: is the amount of time since a car was added
+	;		greater than the current refresh register value? If so, add a car now:
+	;
+	;		(a) pick an x position, between appropriate bounds;
+	;		(b)	pick a velocity, probably between 7 and 9. There's not a lot of precision here;
+	;		(c)	if player velocity is greater than or equal, add at the horizon. Otherwise add
+	;			at the near clip plane.
+	;
+	; Update total of time since car added, either way.
+	;
+
+
+	; Additional TODO: consult list of fixed objects (trees, signs, etc), possibly adding one of those
+	; to the active list.
+
 	ret
 
+
+
+
+;
+; Very dumb cars for now: just drive forwards at a fixed speed.
+;
 @found_car1:
+	ld bc, (car1 + 2)
+	jp @+add_player_velocity
+
+@found_car2:
+	ld bc, (car2 + 2)
+	jp @+add_player_velocity
+
+@found_car3:
+	ld bc, (car3 + 2)
+	jp @+add_player_velocity
+
+
+
+@add_player_velocity:
 	push hl
+	push bc
 
 	ld a, (player.yvelocity + 1)
 	ld c, a
@@ -70,9 +116,10 @@ cars.update:
 	add hl, bc
 
 @no_front_clip:
-	ld bc, 7						; Add something for car velocity.
-	add hl, bc						; TODO: has the vehicle disappeared over the horizon?
+	pop bc							; Add something for car velocity.
+	add hl, bc
 
+	; Has the car disappeared over the horizon?
 	ld a, l
 	sub max_object_depth \ 256
 	ld a, h
@@ -88,18 +135,4 @@ cars.update:
 	ld (hl), d
 
 	pop hl
-	ret
-
-
-@found_car2:
-	ld a, (car2)
-	ld b, a
-	sra a
-	sra a
-	neg
-	add b
-	ld (car2), a
-	ret
-
-@found_car3:
 	ret

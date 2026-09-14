@@ -1,14 +1,17 @@
 car1:
-	db -128
-	db colour.car.blue
+	db -128					; Current x position.
+	db colour.car.blue		; Car colour.
+	dw 7					; Forward velocity.
 
 car2:
 	db -64
 	db colour.car.red
+	dw 6
 
 car3:
 	db -10
 	db colour.car.red
+	dw 9
 
 draw.car1:
 	ld a, (car1+1)
