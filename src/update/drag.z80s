@@ -72,6 +72,14 @@
 	rr c
 	sra b
 	rr c
-	or a
+
+	ld a, b
+	or c
+	jr nz, @+subtract_as_is
+
+	ld b, h
+	ld c, l
+
+@subtract_as_is:
 	sbc hl, bc
 	ld (player.xvelocity), hl
