@@ -1,3 +1,5 @@
+NUM_CARS: EQU 3
+
 @found_cars:
 	db 0
 
@@ -8,7 +10,7 @@ cars.update:
 	ld hl, active_objects + 2
 
 @check_object:
-	@check_cars: EQU FOR 3
+	@check_cars: EQU FOR NUM_CARS
 		ld a, (hl)
 		inc l
 		sub draw.car{@check_cars + 1} \ 256
@@ -48,8 +50,31 @@ cars.update:
 	inc l
 	jr @-check_object
 
-	@objects_done:
+@objects_done:
 
+	;
+	; If there are already three active cars, add no more.
+	;
+	ld a, (@-found_cars)
+	cp 7
+	jr z, @+add_no_cars
+
+	;
+	; Otherwise require that (cars.time_since_added / 8) is greater than
+	; the current refresh count, as a broad-sweeps randomisation strategy
+	; that's possibly to be revised.
+	;
+	ld a, (cars.time_since_added)
+	rra
+	rra
+	rra
+	rra
+	and %00001111
+	ld b, a
+
+	ld a, r
+	cp b
+	jr nc, @+add_no_cars
 
 	; TODO:
 	;
@@ -65,7 +90,23 @@ cars.update:
 	; Update total of time since car added, either way.
 	;
 
+@add_car:
+	; Zero out count since car added.
+	xor a
+	ld (cars.time_since_added), a
 
+	;
+	; ... something ...
+	;
+
+	jr @+check_roadside_objects
+
+@add_no_cars:
+	ld a, (cars.time_since_added)
+	inc_a_clamped
+	ld (cars.time_since_added), a
+
+@check_roadside_objects:
 	; Additional TODO: consult list of fixed objects (trees, signs, etc), possibly adding one of those
 	; to the active list.
 
