@@ -9,3 +9,21 @@ player.yvelocity: dw 0
 
 tyre.left_vibrate: db 0
 tyre.right_vibrate: db 0
+
+;
+; State for non-player cars; I'm experimenting here, being unclear what's going
+; to make for an acceptable solution.
+;
+cars.time_since_added: db 0			; Logic ticks since a car was last added.
+cars.time_since_removed: db 0		; Logic ticks since a car was last removed.
+
+	;
+	; Thoughts:
+	;
+	;	*	if it's 'a while' since a car was added and few are visible, add one;
+	;	*	though if it's also a prolonged period since a car was removed, the
+	;		player must be struggling, so then maybe don't add anything for a bit longer.
+	;
+	; Still needed are some flags (or probabilities?) for car types, so that can be
+	; varied by level.
+	;

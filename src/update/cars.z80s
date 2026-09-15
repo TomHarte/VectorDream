@@ -1,0 +1,179 @@
+NUM_CARS: EQU 3
+
+@found_cars:
+	db 0
+
+cars.update:
+
+	xor a
+	ld (@-found_cars), a
+	ld hl, active_objects + 2
+
+@check_object:
+	@check_cars: EQU FOR NUM_CARS
+		ld a, (hl)
+		inc l
+		sub draw.car{@check_cars + 1} \ 256
+		jr nz, @+not_found
+
+		ld a, (hl)
+		sub draw.car{@check_cars + 1} / 256
+		jr nz, @+not_found
+
+		; Register car as found.
+		ld a, (@-found_cars)
+		or 1 << @check_cars
+		ld (@-found_cars), a
+
+		; Call car-specific update function, then skip further searching.
+		call @+found_car{@check_cars + 1}
+		jr @+move_to_next
+
+		@not_found:
+		dec l
+	NEXT @check_cars
+
+	;
+	; If here, found an object that isn't a car.
+	;
+	; TODO: update and possibly remove that as per car velocity.
+
+	inc l
+@move_to_next:
+	inc l
+	inc l
+
+	ld a, (hl)				; Test for high byte of distance = 0xff as a list terminator.
+	inc a
+	jr z, @+objects_done
+
+	inc l
+	jr @-check_object
+
+@objects_done:
+
+	;
+	; If there are already three active cars, add no more.
+	;
+	ld a, (@-found_cars)
+	cp 7
+	jr z, @+add_no_cars
+
+	;
+	; Otherwise require that (cars.time_since_added / 8) is greater than
+	; the current refresh count, as a broad-sweeps randomisation strategy
+	; that's possibly to be revised.
+	;
+	ld a, (cars.time_since_added)
+	rra
+	rra
+	rra
+	rra
+	and %00001111
+	ld b, a
+
+	ld a, r
+	cp b
+	jr nc, @+add_no_cars
+
+	; TODO:
+	;
+	;	(1)	are there any car slots free? If not, don't add any cars.
+	;	(2)	if so, something like: is the amount of time since a car was added
+	;		greater than the current refresh register value? If so, add a car now:
+	;
+	;		(a) pick an x position, between appropriate bounds;
+	;		(b)	pick a velocity, probably between 7 and 9. There's not a lot of precision here;
+	;		(c)	if player velocity is greater than or equal, add at the horizon. Otherwise add
+	;			at the near clip plane.
+	;
+	; Update total of time since car added, either way.
+	;
+
+@add_car:
+	; Zero out count since car added.
+	xor a
+	ld (cars.time_since_added), a
+
+	;
+	; ... something ...
+	;
+
+	jr @+check_roadside_objects
+
+@add_no_cars:
+	ld a, (cars.time_since_added)
+	inc_a_clamped
+	ld (cars.time_since_added), a
+
+@check_roadside_objects:
+	; Additional TODO: consult list of fixed objects (trees, signs, etc), possibly adding one of those
+	; to the active list.
+
+	ret
+
+
+
+
+;
+; Very dumb cars for now: just drive forwards at a fixed speed.
+;
+@found_car1:
+	ld bc, (car1 + 2)
+	jp @+add_player_velocity
+
+@found_car2:
+	ld bc, (car2 + 2)
+	jp @+add_player_velocity
+
+@found_car3:
+	ld bc, (car3 + 2)
+	jp @+add_player_velocity
+
+
+
+@add_player_velocity:
+	push hl
+	push bc
+
+	ld a, (player.yvelocity + 1)
+	ld c, a
+	rla
+	sbc a
+	ld b, a							; BC = top 16 bits of velocity.
+
+	dec l
+	dec l							; HL points to correct object depth.
+	ld d, (hl)
+	dec l
+	ld e, (hl)
+	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
+
+	or a
+	sbc hl, bc						; Subtract the player's velocity.
+	jp p, @+no_front_clip			; Check for crossing of near-Z.
+
+	ld bc, depth_1
+	add hl, bc
+
+@no_front_clip:
+	pop bc							; Add something for car velocity.
+	add hl, bc
+
+	; Has the car disappeared over the horizon?
+	ld a, l
+	sub max_object_depth \ 256
+	ld a, h
+	sbc max_object_depth / 256
+	jr c, @+no_back_clip
+
+	ld hl, depth_135
+
+@no_back_clip:
+	ex de, hl
+	ld (hl), e
+	inc l
+	ld (hl), d
+
+	pop hl
+	ret
