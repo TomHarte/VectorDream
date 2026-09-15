@@ -165,8 +165,12 @@ cars.update:
 	sbc hl, bc						; Subtract the player's velocity.
 	jp p, @+no_front_clip			; Check for crossing of near-Z.
 
-	ld bc, depth_1
-	add hl, bc
+	pop af							; Remove backed-up value of BC from stack.
+	ex de, hl						; Remove object.
+	call active_objects.remove
+
+	pop hl							; Restore HL and return.
+	ret
 
 @no_front_clip:
 	pop bc							; Add something for car velocity.
