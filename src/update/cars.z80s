@@ -91,6 +91,18 @@ cars.update:
 	;
 
 @add_car:
+	; Ensure player is going fast enough to make an over-the-horizon car sensible,
+	; or else slow enough for a from-behind car.
+	ld a, (player.yvelocity + 1)
+	cp 3
+	jr c, @+add_car_behind			; Velocity < 3 => car from behind.
+
+	cp 6
+	jr c, @+add_no_cars				; Velocity > 6 => car from front.
+
+@add_car_front:
+@add_car_behind:
+
 	; Zero out count since car added.
 	xor a
 	ld (cars.time_since_added), a
