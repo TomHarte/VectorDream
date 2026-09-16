@@ -4,7 +4,7 @@
 
 object.depth: EQU 0			; Planar depth, i.e. along the ground, of this object.
 
-object.draw: EQU 2			; Routine to draw an object. When called:
+object.draw: EQU 2			; Draw block for object. When called:
 							;
 							;	HL = centre of the road in 2d at the depth of the object;
 							;	(@object_width) = width of a piece of road at the object's depth;
@@ -14,6 +14,20 @@ object.draw: EQU 2			; Routine to draw an object. When called:
 ; Hence, total size is:
 ;
 object.sizeof: EQU 4
+
+
+;
+; A draw block is primarily the code necessary to draw the object; it also has indirections
+; towards the code necessary to update and to test collisions with an object.
+;
+; Although drawing will occur **at most** as often as updating and collision testing,
+; neither of those is likely to be unique in the general case — e.g. all static objects will
+; have the same update function; all static objects of the same size will have the same
+; collision function.
+;
+drawblock.drawcode:		EQU 0	; Code for drawing is the thing pointed to by a draw block.
+drawblock.update_jp:	EQU -3	; Three bytes before the drawing code is a JP to the update code.
+drawblock.collide_jp:	EQU -6	; Six bytes before that is a JP to the update code.
 
 ;
 ; A list of active objects. Each is merely a two-byte distance from the viewer, and

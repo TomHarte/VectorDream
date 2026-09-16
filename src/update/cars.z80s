@@ -9,23 +9,16 @@ cars.update:
 	ld hl, active_objects + 2	; (HL) = first draw function.
 
 @update_object:
-	push hl
-
 	ld e, (hl)
 	inc l
 	ld d, (hl)					; DE = draw function.
+	dec l
 
 	ex de, hl					; HL = draw function.
 	dec hl
+	dec hl
 	dec hl						; (HL) = update function.
 
-	ld e, (hl)
-	inc hl
-	ld d, (hl)
-	ex de, hl					; HL = update function.
-								; DE = pointer into list.
-
-	pop de
 	call call_hl
 
 	inc l
