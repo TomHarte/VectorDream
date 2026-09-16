@@ -4,42 +4,31 @@ NUM_CARS: EQU 3
 	db 0
 
 cars.update:
-
 	xor a
 	ld (@-found_cars), a
-	ld hl, active_objects + 2
+	ld hl, active_objects + 2	; (HL) = first draw function.
 
-@check_object:
-	@check_cars: EQU FOR NUM_CARS
-		ld a, (hl)
-		inc l
-		sub draw.car{@check_cars + 1} \ 256
-		jr nz, @+not_found
+@update_object:
+	push hl
 
-		ld a, (hl)
-		sub draw.car{@check_cars + 1} / 256
-		jr nz, @+not_found
+	ld e, (hl)
+	inc l
+	ld d, (hl)					; DE = draw function.
 
-		; Register car as found.
-		ld a, (@-found_cars)
-		or 1 << @check_cars
-		ld (@-found_cars), a
+	ex de, hl					; HL = draw function.
+	dec hl
+	dec hl						; (HL) = update function.
 
-		; Call car-specific update function, then skip further searching.
-		call @+found_car{@check_cars + 1}
-		jr @+move_to_next
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	ex de, hl					; HL = update function.
+								; DE = pointer into list.
 
-		@not_found:
-		dec l
-	NEXT @check_cars
-
-	;
-	; If here, found an object that isn't a car.
-	;
-	; TODO: update and possibly remove that as per car velocity.
+	pop de
+	call call_hl
 
 	inc l
-@move_to_next:
 	inc l
 	inc l
 
@@ -48,7 +37,7 @@ cars.update:
 	jr z, @+objects_done
 
 	inc l
-	jr @-check_object
+	jr @-update_object
 
 @objects_done:
 
@@ -126,26 +115,54 @@ cars.update:
 
 
 
+call_hl:
+	jp (hl)
 
 ;
-; Very dumb cars for now: just drive forwards at a fixed speed.
+; Update functions.
 ;
-@found_car1:
+;	Inputs:
+;		DE = pointer to low byte of update function within active objects list.
+;
+;	Outputs:
+;		HL = pointer to low byte of update function within active obejcts list.
+;
+
+update_car1:
+	ld a, (@-found_cars)
+	or 1
+	ld (@-found_cars), a
+
 	ld bc, (car1 + 2)
+	ex de, hl
 	jp @+add_player_velocity
 
-@found_car2:
+update_car2:
+	ld a, (@-found_cars)
+	or 2
+	ld (@-found_cars), a
+
 	ld bc, (car2 + 2)
+	ex de, hl
 	jp @+add_player_velocity
 
-@found_car3:
+update_car3:
+	ld a, (@-found_cars)
+	or 4
+	ld (@-found_cars), a
+
 	ld bc, (car3 + 2)
+	ex de, hl
 	jp @+add_player_velocity
 
+
+collide_car1:
+collide_car2:
+collide_car3:
+	ret
 
 
 @add_player_velocity:
-	push hl
 	push bc
 
 	ld a, (player.yvelocity + 1)
@@ -154,8 +171,7 @@ cars.update:
 	sbc a
 	ld b, a							; BC = top 16 bits of velocity.
 
-	dec l
-	dec l							; HL points to correct object depth.
+	dec l							; HL points to high byte of object depth.
 	ld d, (hl)
 	dec l
 	ld e, (hl)
@@ -190,6 +206,6 @@ cars.update:
 	ld (hl), e
 	inc l
 	ld (hl), d
+	inc l
 
-	pop hl
 	ret
