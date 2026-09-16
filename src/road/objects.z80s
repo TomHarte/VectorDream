@@ -41,19 +41,18 @@ drawblock.collide_jp:	EQU -6	; Six bytes before that is a JP to the update code.
 	dw 0
 
 active_objects:
-	dw 1000
-	dw draw.car1
-
-	dw 900
-	dw draw.car2
-
+@object: EQU FOR 8
 	dw 0xffff			; Distance from player = -1 => list terminated.
 						; (though only the high byte is tested)
-
-	dw 50				; Current distance from player.
-	dw draw.car3		; Draw routine.
+	dw 0
+NEXT @object
 
 @end_of_objects:
+	; A dummy object straight after the list; if this address is found when searching
+	; for an empty slot, none are available.
+	dw 0xffff
+	dw 0
+
 ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
 
 ;
@@ -123,10 +122,28 @@ active_objects.back_reserve:
 ; As above but for a slot at the front of the list, i.e. furthest from the viewer.
 ;
 active_objects.front_reserve:
+	; Check whether the slot at end_of_objects - 4 is empty.
+	; If not then the list is full.
+	ld a, (@end_of_objects - 3)
+	inc a
+	jr z, @+do_insert
+
+	; List is full. Sorry!
 	scf
 	ret
-	; TODO: make sure there is at least one slot free.
-	; If so, copy all objects down one slot and return a pointer to start-of-list.
+
+@do_insert:
+	; Open up the front slot with a lazy LDDR.
+	; TODO: can improve.
+	ld de, @end_of_objects - 4
+	ld hl, @end_of_objects - 8
+	ld bc, @end_of_objects - active_objects - 4
+	lddr
+
+	; Return front slot.
+	ld hl, @end_of_objects - 4
+	or a
+	ret
 
 ;
 ; active_objects.sort
@@ -151,6 +168,13 @@ active_objects.sort:
 	;
 
 	ld iy, active_objects
+
+	;
+	; Exit immediately if list is empty.
+	;
+	ld a, (iy + object.depth + 1)
+	inc a
+	ret z
 
 @test_object:
 	;
