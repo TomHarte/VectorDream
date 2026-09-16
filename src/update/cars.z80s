@@ -137,6 +137,67 @@ cars.update:
 
 
 @randomise_car:
+	; Insert a new random car at HL.
+	ld a, (@-found_cars)
+	rra
+	jr nc, @+randomise_car1
+
+	rra
+	jr nc, @+randomise_car2
+
+	; Implicitly: randomise car 3.
+	ld bc, draw.car3
+	ld de, car3
+	jr @+fill_in_car
+
+@randomise_car1:
+	ld bc, draw.car1
+	ld de, car1
+	jr @+fill_in_car
+
+@randomise_car2:
+	ld bc, draw.car2
+	ld de, car2
+	; [[fallthrough]]
+
+@fill_in_car:
+	; Store draw object pointer.
+	ld (hl), c
+	inc l
+	ld (hl), b
+
+	; Pick a random x location.
+	; (for a very loose sense of random, here and below)
+	ld a, r
+	add a, a
+	ld (de), a
+	inc de
+
+	; Pick a random colour.
+	ld a, r
+	rra
+	jr nc, @+add_blue
+
+	ld a, colour.car.red
+	jr @+store_colour
+
+@add_blue:
+	ld a, colour.car.blue
+
+@store_colour:
+	ld (de), a
+	inc de
+
+	; Pick a random speed between 6 and 9.
+	xor a
+	ld (de), a
+	inc de
+
+	ld a, r
+	and 3
+	add 6
+	ld (de), a
+
 	ret
 
 
