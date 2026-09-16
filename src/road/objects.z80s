@@ -80,6 +80,35 @@ active_objects.remove:
 	jr @-move_entry
 
 
+;
+; active_objects.back_reserve
+;
+; Reserves an object slot at the back of the list, i.e. closest to the viewer, if one is available.
+;
+; 	Input:
+;		HL = pointer to object to remove from the list.
+;
+; 	Output:
+;		HL = address of reserved slot, if one was found;
+;		carry = clear if a slot was found, set otherwise.
+;
+;	Clobbers:
+;		A, BC, DE, IY.
+;
+active_objects.back_reserve:
+	; TODO: walk through list until end.
+	; Make sure that isn't at @end_of_objects - 4.
+	; If valie, insert a proper terminator after the new end and return.
+
+
+;
+; active_objects.front_reserve
+;
+; As above but for a slot at the front of the list, i.e. furthest from the viewer.
+;
+active_objects.front_reserve:
+	; TODO: make sure there is at least one slot free.
+	; If so, copy all objects down one slot and return a pointer to start-of-list.
 
 ;
 ; active_objects.sort
@@ -181,6 +210,16 @@ object_width: db 0
 screen_line:
 	db 0
 
+;
+; objects.draw
+;
+; Walks the active object list, drawing each thing in it.
+;
+; Requires that the list currently be sorted.
+;
+;	Clobbers:
+;		A, BC, DE, HL, IX, IY.
+;
 objects.draw:
 
 	;
