@@ -110,6 +110,8 @@ active_objects.remove:
 ;		A, BC, DE, IY.
 ;
 active_objects.back_reserve:
+	scf
+	ret
 	; TODO: walk through list until end.
 	; Make sure that isn't at @end_of_objects - 4.
 	; If valie, insert a proper terminator after the new end and return.
@@ -121,6 +123,8 @@ active_objects.back_reserve:
 ; As above but for a slot at the front of the list, i.e. furthest from the viewer.
 ;
 active_objects.front_reserve:
+	scf
+	ret
 	; TODO: make sure there is at least one slot free.
 	; If so, copy all objects down one slot and return a pointer to start-of-list.
 
