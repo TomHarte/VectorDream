@@ -58,10 +58,10 @@ ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
 ;
 ; active_objects.erase
 ;
-; Removes the object at (HL) from the list.
+; Removes the object at (DE) from the list.
 ;
 ; 	Input:
-;		HL = pointer to object to remove from the list.
+;		DE = pointer to object to remove from the list.
 ;
 ; 	Output:
 ;		None; the object will have been removed from the list.
