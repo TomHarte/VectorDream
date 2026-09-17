@@ -189,14 +189,15 @@ cars.update:
 	inc de
 
 	; Pick a random speed between 6 and 9.
-	xor a
-	ld (de), a
-	inc de
-
 	ld a, r
 	and 3
 	add 6
 	ld (de), a
+
+	; TODO: do I ever need to worry about zeroing out the top byte of velocity?
+	; xor a
+	; ld (de), a
+	; inc de
 
 	ret
 
