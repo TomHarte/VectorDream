@@ -81,6 +81,8 @@ DUMP PAGE.CODE, 0
 		include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
 		include "road/segment_tables.a1024.s544.z80s"					; 1024-alignment is guaranteed here.
 
+		include "random.a256.z80s"
+
 	;
 	; From here: things without alignment concerns, so no need to pack manually.
 	;

@@ -1,0 +1,57 @@
+ALIGN 256
+
+@random.nibbles:
+	db 0x07, 0x09, 0x01, 0x04, 0x0a, 0x05, 0x08, 0x02, 0x0d, 0x00, 0x0b, 0x06, 0x03, 0x0f, 0x0e, 0x0c
+
+;
+;
+;
+;	Outputs:
+;		A = a random nibble.
+;
+;	Clobbers:
+;		B.
+;
+random.nibble:
+	; Dumbest RNG ever:
+	;
+	;	*	keep an index into an array of randomly-sorted nibbles;
+	;	*	at each call, increment the pointer and exclusive-OR it with R;
+	;	*	return whatever is at that position in the table.
+	;
+	ld a, (@load_result + 1)
+	ld b, a
+	inc b
+	ld a, r
+	rra
+	rra
+	rra
+	xor b
+	and 15
+	ld (@load_result + 1), a		; Use dynamic reprogramming for two reasons:
+									;
+									;	(1)	because this value is going to be stored in memory somewhere anyway, so it might as well
+									;		be in the instruction stream; and
+									;	(2)	to limit the number of registers clobbered.
+
+@load_result:
+	ld a, (@random.nibbles)
+	ret
+
+
+;	Outputs:
+;		A = a random nibble.
+;
+;	Clobbers:
+;		BC.
+;
+random.byte:
+	call random.nibble
+	add a, a
+	add a, a
+	add a, a
+	add a, a
+	ld c, a					; C = a random nibble in the top 4 bits.
+	call random.nibble
+	or c
+	ret
