@@ -4,10 +4,12 @@ ALIGN 256
 	db 0x07, 0x09, 0x01, 0x04, 0x0a, 0x05, 0x08, 0x02, 0x0d, 0x00, 0x0b, 0x06, 0x03, 0x0f, 0x0e, 0x0c
 
 ;
+; random.nibble
 ;
+; Generates a random nibble.
 ;
 ;	Outputs:
-;		A = a random nibble.
+;		A = a random nibble in its lower half; the upper half will be 0.
 ;
 ;	Clobbers:
 ;		B.
@@ -38,7 +40,11 @@ random.nibble:
 	ld a, (@random.nibbles)
 	ret
 
-
+;
+; random.nibble
+;
+; Generates a random byte.
+;
 ;	Outputs:
 ;		A = a random nibble.
 ;
