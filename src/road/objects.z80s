@@ -96,30 +96,66 @@ active_objects.remove:
 ;
 ; active_objects.back_reserve
 ;
-; Reserves an object slot at the back of the list, i.e. closest to the viewer, if one is available.
+; Reserves an object slot at the back of the list, i.e. **closest** to the viewer,
+; if one is available.
 ;
 ; 	Input:
-;		HL = pointer to object to remove from the list.
+;		None.
 ;
 ; 	Output:
 ;		HL = address of reserved slot, if one was found;
 ;		carry = clear if a slot was found, set otherwise.
 ;
 ;	Clobbers:
-;		A, BC, DE, IY.
+;		A.
 ;
 active_objects.back_reserve:
+	; Check whether the slot at end_of_objects - 4 is empty.
+	; If not then the list is full.
+	ld a, (@end_of_objects - 3)
+	inc a
+	jr z, @+do_insert
+
+	; List is full. Sorry!
 	scf
 	ret
-	; TODO: walk through list until end.
-	; Make sure that isn't at @end_of_objects - 4.
-	; If valie, insert a proper terminator after the new end and return.
+
+@do_insert:
+	; Find the first available slot.
+
+	ld hl, active_objects + 1
+@test_slot:
+	ld a, (hl)
+	inc a
+	jr z, @+found_slot
+
+	inc l
+	inc l
+	inc l
+	inc l
+	jr @-test_slot
+
+@found_slot:
+	dec l
+	or a
+	ret
 
 
 ;
 ; active_objects.front_reserve
 ;
-; As above but for a slot at the front of the list, i.e. furthest from the viewer.
+; Reserves an object slot at the front of the list, i.e. **furthest** to the viewer,
+; if one is available.
+;
+; 	Input:
+;		None.
+;
+; 	Output:
+;		HL = address of reserved slot, if one was found;
+;		carry = clear if a slot was found, set otherwise.
+;
+;	Clobbers:
+;		A, BC, DE.
 ;
 active_objects.front_reserve:
 	; Check whether the slot at end_of_objects - 4 is empty.
