@@ -279,7 +279,9 @@ collide_car3:
 	pop af							; Remove backed-up value of BC from stack.
 	call active_objects.erase
 
-	pop hl							; Restore HL and return.		TODO: from where?
+	ex de, hl						; Restore HL and return.
+	inc l
+	inc l
 	ret
 
 @no_front_clip:
@@ -294,7 +296,10 @@ collide_car3:
 	jr c, @+no_back_clip
 
 	call active_objects.erase
-									; TODO: restore HL?
+
+	ex de, hl						; Restore HL and return.
+	inc l
+	inc l
 	ret
 
 @no_back_clip:
