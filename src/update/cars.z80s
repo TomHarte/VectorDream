@@ -277,10 +277,9 @@ collide_car3:
 	jp p, @+no_front_clip			; Check for crossing of near-Z.
 
 	pop af							; Remove backed-up value of BC from stack.
-	ex de, hl						; Remove object.
-	call active_objects.remove
+	call active_objects.erase
 
-	pop hl							; Restore HL and return.
+	pop hl							; Restore HL and return.		TODO: from where?
 	ret
 
 @no_front_clip:
@@ -294,7 +293,9 @@ collide_car3:
 	sbc max_object_depth / 256
 	jr c, @+no_back_clip
 
-	ld hl, depth_135
+	call active_objects.erase
+									; TODO: restore HL?
+	ret
 
 @no_back_clip:
 	ex de, hl

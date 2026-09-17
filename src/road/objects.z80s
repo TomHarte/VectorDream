@@ -56,7 +56,7 @@ NEXT @object
 ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
 
 ;
-; active_objects.remove
+; active_objects.erase
 ;
 ; Removes the object at (HL) from the list.
 ;
@@ -67,10 +67,9 @@ ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
 ;		None; the object will have been removed from the list.
 ;
 ;	Clobbers:
-;		A, BC, DE, IY.
+;		A, BC, IY.
 ;
-active_objects.remove:
-	ex de, hl
+active_objects.erase:
 	ld iyh, d
 	ld iyl, e		; IY = pointer to object.
 
