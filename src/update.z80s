@@ -32,7 +32,11 @@ update:
 		include "update/apply_input.z80s"
 		include "update/x_velocity.z80s"
 		include "update/y_velocity.z80s"
-		include "update/track.z80s"
+
+		include "update/track.z80s"			; Updates the floor, applying corners.
+		call cars.update
+
+		include "update/drag.z80s"
 
 	pop bc
 	dec b
@@ -41,3 +45,5 @@ update:
 		include "update/gauges.z80s"
 
 	ret
+
+include "update/cars.z80s"			; Updates non-player vehicles.

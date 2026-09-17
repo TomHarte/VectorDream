@@ -45,6 +45,7 @@ segments:
 one_over_z_0: EQU 8
 one_over_z_64: EQU 120
 max_object_depth: EQU 2028
+min_object_depth: EQU depth_135
 
 line_width_0: EQU 0
 road_width_0: EQU 8

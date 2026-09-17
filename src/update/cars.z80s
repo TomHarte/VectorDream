@@ -1,0 +1,312 @@
+NUM_CARS: EQU 3
+
+@found_cars:
+	db 0
+
+cars.update:
+	xor a
+	ld (@-found_cars), a
+	ld hl, active_objects + 1	; (HL) = high byte of first depth.
+
+@update_object:
+	ld a, (hl)				; Test for high byte of distance = 0xff as a list terminator.
+	inc a
+	jr z, @+objects_done
+	inc l
+
+	ld e, (hl)
+	inc l
+	ld d, (hl)					; DE = draw function.
+	dec l
+
+	ex de, hl					; HL = draw function.
+	dec hl
+	dec hl
+	dec hl						; (HL) = update function.
+
+	call call_hl
+
+	inc l
+	inc l
+	inc l
+	jr @-update_object
+
+@objects_done:
+	;
+	; If there are already three active cars, add no more.
+	;
+	ld a, (@-found_cars)
+	cp 7
+	jr z, @+too_many_cars
+
+	;
+	; Otherwise require that (cars.time_since_added / 16) is greater than
+	; the current refresh count, as a broad-sweeps randomisation strategy
+	; that's possibly to be revised.
+	;
+	ld a, (cars.time_since_added)
+	rra
+	rra
+	rra
+	rra
+	and %00001111
+	ld b, a
+
+	ld a, r
+	cp b
+	jr nc, @+add_no_cars
+
+	; TODO:
+	;
+	;	(1)	are there any car slots free? If not, don't add any cars.
+	;	(2)	if so, something like: is the amount of time since a car was added
+	;		greater than the current refresh register value? If so, add a car now:
+	;
+	;		(a) pick an x position, between appropriate bounds;
+	;		(b)	pick a velocity, probably between 7 and 9. There's not a lot of precision here;
+	;		(c)	if player velocity is greater than or equal, add at the horizon. Otherwise add
+	;			at the near clip plane.
+	;
+	; Update total of time since car added, either way.
+	;
+
+	; Ensure player is going fast enough to make an over-the-horizon car sensible,
+	; or else slow enough for a from-behind car.
+	ld a, (player.yvelocity + 1)
+	cp 5
+	jr c, @+add_car_close			; Velocity < 5 => car from behind.
+
+	cp 9
+	jr c, @+add_no_cars				; Velocity > 9 => car from front.
+
+@add_car_far:
+
+	; Try to get a spot in the object table.
+	call active_objects.front_reserve
+	jr c, @+add_no_cars
+
+	; Zero out count since car added.
+	xor a
+	ld (cars.time_since_added), a
+
+	; Car is being added at the horizon, so seed depth appropriately.
+	ld a, max_object_depth \ 256
+	ld (hl), a
+	inc l
+
+	ld a, max_object_depth / 256
+	ld (hl), a
+	inc l
+
+	call @+randomise_car
+	jr @+check_roadside_objects
+
+
+@add_car_close:
+
+	; Try to get a spot in the object table.
+	call active_objects.back_reserve
+	jr c, @+add_no_cars
+
+	; Zero out count since car added.
+	xor a
+	ld (cars.time_since_added), a
+
+	; Car is being added at the horizon, so seed depth appropriately.
+	ld a, min_object_depth \ 256
+	ld (hl), a
+	inc l
+
+	ld a, min_object_depth / 256
+	ld (hl), a
+	inc l
+
+	call @+randomise_car
+	jr @+check_roadside_objects
+
+@add_no_cars:
+	ld a, (cars.time_since_added)
+	inc_a_clamped
+	ld (cars.time_since_added), a
+	jr @+check_roadside_objects
+
+@too_many_cars:
+	; Zero out count; no cars were added but it's good to have a delay between three cars
+	; being visble and the next appearing.
+	xor a
+	ld (cars.time_since_added), a
+
+@check_roadside_objects:
+	; Additional TODO: consult list of fixed objects (trees, signs, etc), possibly adding one of those
+	; to the active list.
+
+	ret
+
+
+
+@randomise_car:
+	; Insert a new random car at HL.
+	ld a, (@-found_cars)
+	rra
+	jr nc, @+randomise_car1
+
+	rra
+	jr nc, @+randomise_car2
+
+	; Implicitly: randomise car 3.
+	ld bc, draw.car3
+	ld de, car3
+	jr @+fill_in_car
+
+@randomise_car1:
+	ld bc, draw.car1
+	ld de, car1
+	jr @+fill_in_car
+
+@randomise_car2:
+	ld bc, draw.car2
+	ld de, car2
+	; [[fallthrough]]
+
+@fill_in_car:
+	; Store draw object pointer.
+	ld (hl), c
+	inc l
+	ld (hl), b
+
+	; Pick a random x location.
+	; (for a very loose sense of random, here and below)
+	ld a, r
+	add a, a
+	ld (de), a
+	inc de
+
+	; Pick a random colour.
+	ld a, r
+	rra
+	jr nc, @+add_blue
+
+	ld a, colour.car.red
+	jr @+store_colour
+
+@add_blue:
+	ld a, colour.car.blue
+
+@store_colour:
+	ld (de), a
+	inc de
+
+	; Pick a random speed between 6 and 9.
+	ld a, r
+	and 3
+	add 6
+	ld (de), a
+
+	; TODO: do I ever need to worry about zeroing out the top byte of velocity?
+	; xor a
+	; ld (de), a
+	; inc de
+
+	ret
+
+
+call_hl:
+	jp (hl)
+
+;
+; Update functions.
+;
+;	Inputs:
+;		DE = pointer to low byte of update function within active objects list.
+;
+;	Outputs:
+;		HL = pointer to low byte of update function within active obejcts list.
+;
+
+update_car1:
+	ld a, (@-found_cars)
+	or 1
+	ld (@-found_cars), a
+
+	ld bc, (car1 + 2)
+	ex de, hl
+	jp @+add_player_velocity
+
+update_car2:
+	ld a, (@-found_cars)
+	or 2
+	ld (@-found_cars), a
+
+	ld bc, (car2 + 2)
+	ex de, hl
+	jp @+add_player_velocity
+
+update_car3:
+	ld a, (@-found_cars)
+	or 4
+	ld (@-found_cars), a
+
+	ld bc, (car3 + 2)
+	ex de, hl
+	jp @+add_player_velocity
+
+
+collide_car1:
+collide_car2:
+collide_car3:
+	ret
+
+
+@add_player_velocity:
+	push bc
+
+	ld a, (player.yvelocity + 1)
+	ld c, a
+	rla
+	sbc a
+	ld b, a							; BC = top 16 bits of velocity.
+
+	dec l							; HL points to high byte of object depth.
+	ld d, (hl)
+	dec l
+	ld e, (hl)
+	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
+
+	or a
+	sbc hl, bc						; Subtract the player's velocity.
+	jp p, @+no_front_clip			; Check for crossing of near-Z.
+
+	pop af							; Remove backed-up value of BC from stack.
+	call active_objects.erase
+
+	ex de, hl						; Restore HL and return.
+	inc l
+	inc l
+	ret
+
+@no_front_clip:
+	pop bc							; Add something for car velocity.
+	add hl, bc
+
+	; Has the car disappeared over the horizon?
+	ld a, l
+	sub max_object_depth \ 256
+	ld a, h
+	sbc max_object_depth / 256
+	jr c, @+no_back_clip
+
+	call active_objects.erase
+
+	ex de, hl						; Restore HL and return.
+	inc l
+	inc l
+	ret
+
+@no_back_clip:
+	ex de, hl
+	ld (hl), e
+	inc l
+	ld (hl), d
+	inc l
+
+	ret

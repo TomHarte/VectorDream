@@ -2,6 +2,9 @@
 ; Called exactly once, at program startup, by span_buffers/game_loop.z80s.
 ;
 setup:
+	xor a
+	ld r, a		; Clear top bit of R.
+
 ;	ld a, PAGE.VIDEO + 2
 ;	out (HMPR), a
 ;	call audio_setup

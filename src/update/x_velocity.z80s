@@ -67,20 +67,6 @@
 		ld (player.x), hl
 
 	;
-	; Dampen effect of steering.
-	;
-		ld hl, (player.xvelocity)
-		ld b, h
-		ld c, l
-		sra b
-		rr c
-		sra b
-		rr c
-		or a
-		sbc hl, bc
-		ld (player.xvelocity), hl
-
-	;
 	; Determine tyre wobbles.
 	;
 		ld hl, (player.x)

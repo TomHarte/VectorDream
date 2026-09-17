@@ -1,27 +1,37 @@
 car1:
-	db -128
-	db colour.car.blue
+	db -128					; Current x position.
+	db colour.car.blue		; Car colour.
+	dw 7					; Forward velocity.
 
 car2:
 	db -64
 	db colour.car.red
+	dw 6
 
 car3:
 	db -10
 	db colour.car.red
+	dw 9
 
+
+	jp collide_car1
+	jp update_car1
 draw.car1:
 	ld a, (car1+1)
 	ld iyl, a
 	ld a, (car1)
 	jp draw.car
 
+	jp collide_car2
+	jp update_car2
 draw.car2:
 	ld a, (car2+1)
 	ld iyl, a
 	ld a, (car2)
 	jp draw.car
 
+	jp collide_car3
+	jp update_car3
 draw.car3:
 	ld a, (car3+1)
 	ld iyl, a

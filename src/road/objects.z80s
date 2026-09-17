@@ -4,7 +4,7 @@
 
 object.depth: EQU 0			; Planar depth, i.e. along the ground, of this object.
 
-object.draw: EQU 2			; Routine to draw an object. When called:
+object.draw: EQU 2			; Draw block for object. When called:
 							;
 							;	HL = centre of the road in 2d at the depth of the object;
 							;	(@object_width) = width of a piece of road at the object's depth;
@@ -14,6 +14,20 @@ object.draw: EQU 2			; Routine to draw an object. When called:
 ; Hence, total size is:
 ;
 object.sizeof: EQU 4
+
+
+;
+; A draw block is primarily the code necessary to draw the object; it also has indirections
+; towards the code necessary to update and to test collisions with an object.
+;
+; Although drawing will occur **at most** as often as updating and collision testing,
+; neither of those is likely to be unique in the general case — e.g. all static objects will
+; have the same update function; all static objects of the same size will have the same
+; collision function.
+;
+drawblock.drawcode:		EQU 0	; Code for drawing is the thing pointed to by a draw block.
+drawblock.update_jp:	EQU -3	; Three bytes before the drawing code is a JP to the update code.
+drawblock.collide_jp:	EQU -6	; Six bytes before that is a JP to the update code.
 
 ;
 ; A list of active objects. Each is merely a two-byte distance from the viewer, and
@@ -27,20 +41,144 @@ object.sizeof: EQU 4
 	dw 0
 
 active_objects:
-	dw 1000
-	dw draw.car1
-
-	dw 900
-	dw draw.car2
-
+@object: EQU FOR 8
 	dw 0xffff			; Distance from player = -1 => list terminated.
 						; (though only the high byte is tested)
-
-	dw 50				; Current distance from player.
-	dw draw.car3		; Draw routine.
+	dw 0
+NEXT @object
 
 @end_of_objects:
+	; A dummy object straight after the list; if this address is found when searching
+	; for an empty slot, none are available.
+	dw 0xffff
+	dw 0
+
 ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
+
+;
+; active_objects.erase
+;
+; Removes the object at (DE) from the list.
+;
+; 	Input:
+;		DE = pointer to object to remove from the list.
+;
+; 	Output:
+;		None; the object will have been removed from the list.
+;
+;	Clobbers:
+;		A, BC, IY.
+;
+active_objects.erase:
+	ld iyh, d
+	ld iyl, e		; IY = pointer to object.
+
+	ld bc, 4
+
+@move_entry:
+	ld a, (iy + 5)
+	ld (iy + 1), a
+	ld a, (iy + 6)
+	ld (iy + 2), a
+	ld a, (iy + 7)
+	ld (iy + 3), a
+
+	ld a, (iy + 4)
+	ld (iy + 0), a
+	inc a
+	ret z
+
+	add iy, bc
+	jr @-move_entry
+
+
+;
+; active_objects.back_reserve
+;
+; Reserves an object slot at the back of the list, i.e. **closest** to the viewer,
+; if one is available.
+;
+; 	Input:
+;		None.
+;
+; 	Output:
+;		HL = address of reserved slot, if one was found;
+;		carry = clear if a slot was found, set otherwise.
+;
+;	Clobbers:
+;		A.
+;
+active_objects.back_reserve:
+	; Check whether the slot at end_of_objects - 4 is empty.
+	; If not then the list is full.
+	ld a, (@end_of_objects - 3)
+	inc a
+	jr z, @+do_insert
+
+	; List is full. Sorry!
+	scf
+	ret
+
+@do_insert:
+	; Find the first available slot.
+
+	ld hl, active_objects + 1
+@test_slot:
+	ld a, (hl)
+	inc a
+	jr z, @+found_slot
+
+	inc l
+	inc l
+	inc l
+	inc l
+	jr @-test_slot
+
+@found_slot:
+	dec l
+	or a
+	ret
+
+
+;
+; active_objects.front_reserve
+;
+; Reserves an object slot at the front of the list, i.e. **furthest** to the viewer,
+; if one is available.
+;
+; 	Input:
+;		None.
+;
+; 	Output:
+;		HL = address of reserved slot, if one was found;
+;		carry = clear if a slot was found, set otherwise.
+;
+;	Clobbers:
+;		A, BC, DE.
+;
+active_objects.front_reserve:
+	; Check whether the slot at end_of_objects - 4 is empty.
+	; If not then the list is full.
+	ld a, (@end_of_objects - 3)
+	inc a
+	jr z, @+do_insert
+
+	; List is full. Sorry!
+	scf
+	ret
+
+@do_insert:
+	; Open up the front slot with a lazy LDDR.
+	; TODO: can improve.
+	ld de, @end_of_objects - 4
+	ld hl, @end_of_objects - 8
+	ld bc, @end_of_objects - active_objects - 8		; -8 rather than -4 as neither the last nor first slots need be copied to.
+	lddr
+
+	; Return front slot.
+	ld hl, active_objects
+	or a
+	ret
 
 ;
 ; active_objects.sort
@@ -65,6 +203,13 @@ active_objects.sort:
 	;
 
 	ld iy, active_objects
+
+	;
+	; Exit immediately if list is empty.
+	;
+	ld a, (iy + object.depth + 1)
+	inc a
+	ret z
 
 @test_object:
 	;
@@ -142,6 +287,16 @@ object_width: db 0
 screen_line:
 	db 0
 
+;
+; objects.draw
+;
+; Walks the active object list, drawing each thing in it.
+;
+; Requires that the list currently be sorted.
+;
+;	Clobbers:
+;		A, BC, DE, HL, IX, IY.
+;
 objects.draw:
 
 	;
