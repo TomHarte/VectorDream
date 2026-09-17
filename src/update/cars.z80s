@@ -37,7 +37,7 @@ cars.update:
 	;
 	ld a, (@-found_cars)
 	cp 7
-	jr z, @+add_no_cars
+	jr z, @+too_many_cars
 
 	;
 	; Otherwise require that (cars.time_since_added / 16) is greater than
@@ -73,11 +73,11 @@ cars.update:
 	; Ensure player is going fast enough to make an over-the-horizon car sensible,
 	; or else slow enough for a from-behind car.
 	ld a, (player.yvelocity + 1)
-	cp 3
-	jr c, @+add_car_close			; Velocity < 3 => car from behind.
+	cp 5
+	jr c, @+add_car_close			; Velocity < 5 => car from behind.
 
-	cp 6
-	jr c, @+add_no_cars				; Velocity > 6 => car from front.
+	cp 9
+	jr c, @+add_no_cars				; Velocity > 9 => car from front.
 
 @add_car_far:
 
@@ -122,11 +122,18 @@ cars.update:
 	inc l
 
 	call @+randomise_car
-;	jr @+check_roadside_objects		[[fallthrough]]
+	jr @+check_roadside_objects
 
 @add_no_cars:
 	ld a, (cars.time_since_added)
 	inc_a_clamped
+	ld (cars.time_since_added), a
+	jr @+check_roadside_objects
+
+@too_many_cars:
+	; Zero out count; no cars were added but it's good to have a delay between three cars
+	; being visble and the next appearing.
+	xor a
 	ld (cars.time_since_added), a
 
 @check_roadside_objects:
@@ -134,6 +141,7 @@ cars.update:
 	; to the active list.
 
 	ret
+
 
 
 @randomise_car:
