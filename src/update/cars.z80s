@@ -50,10 +50,10 @@ cars.update:
 	rra
 	rra
 	and %00001111
-	ld b, a
+	ld d, a
 
-	ld a, r
-	cp b
+	call random.byte
+	cp d
 	jr nc, @+add_no_cars
 
 	; TODO:
@@ -176,13 +176,12 @@ cars.update:
 
 	; Pick a random x location.
 	; (for a very loose sense of random, here and below)
-	ld a, r
-	add a, a
+	call random.byte
 	ld (de), a
 	inc de
 
 	; Pick a random colour.
-	ld a, r
+	call random.nibble
 	rra
 	jr nc, @+add_blue
 
@@ -197,10 +196,14 @@ cars.update:
 	inc de
 
 	; Pick a random speed between 6 and 9.
-	ld a, r
-	and 3
-	add 6
-	ld (de), a
+	;
+	; Disabled for now as an MVP simplification; keeping them all at the same speed means
+	; never having to worry about them colliding with each other.
+	;
+;	ld a, r
+;	and 3
+;	add 6
+;	ld (de), a
 
 	; TODO: do I ever need to worry about zeroing out the top byte of velocity?
 	; xor a
