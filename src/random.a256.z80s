@@ -1,20 +1,21 @@
 ALIGN 256
 
 @random.nibbles:
-	db 0x07, 0x09, 0x01, 0x04, 0x0a, 0x05, 0x08, 0x02, 0x0d, 0x00, 0x0b, 0x06, 0x03, 0x0f, 0x0e, 0x0c
+	db 0x15, 0x41, 0x01, 0x10, 0x44, 0x11, 0x40, 0x04, 0x51, 0x00, 0x45, 0x14, 0x05, 0x55, 0x54, 0x50
 
 ;
-; random.nibble
+; random.nibble.spread
 ;
-; Generates a random nibble.
+; Generates a random 'spread' nibble, that is one where bits 0, 2, 4 and 6 are randomised,
+; but bits 1, 3, 5 and 7 are guaranteed clear.
 ;
 ;	Outputs:
-;		A = a random nibble in its lower half; the upper half will be 0.
+;		A = a random spread nibble as defined above.
 ;
 ;	Clobbers:
 ;		B.
 ;
-random.nibble:
+random.nibble.spread:
 	; Dumbest RNG ever:
 	;
 	;	*	keep an index into an array of randomly-sorted nibbles;
@@ -46,18 +47,15 @@ random.nibble:
 ; Generates a random byte.
 ;
 ;	Outputs:
-;		A = a random nibble.
+;		A = a random byte.
 ;
 ;	Clobbers:
 ;		BC.
 ;
 random.byte:
-	call random.nibble
-	add a, a
-	add a, a
-	add a, a
+	call random.nibble.spread
 	add a, a
 	ld c, a					; C = a random nibble in the top 4 bits.
-	call random.nibble
+	call random.nibble.spread
 	or c
 	ret
