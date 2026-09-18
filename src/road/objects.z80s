@@ -76,15 +76,15 @@ active_objects.erase:
 	ld bc, 4
 
 @move_entry:
-	ld a, (iy + 5)
-	ld (iy + 1), a
+	ld a, (iy + 4)
+	ld (iy + 0), a
 	ld a, (iy + 6)
 	ld (iy + 2), a
 	ld a, (iy + 7)
 	ld (iy + 3), a
 
-	ld a, (iy + 4)
-	ld (iy + 0), a
+	ld a, (iy + 5)
+	ld (iy + 1), a
 	inc a
 	ret z
 
