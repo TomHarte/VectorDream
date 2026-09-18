@@ -76,15 +76,15 @@ active_objects.erase:
 	ld bc, 4
 
 @move_entry:
-	ld a, (iy + 5)
-	ld (iy + 1), a
+	ld a, (iy + 4)
+	ld (iy + 0), a
 	ld a, (iy + 6)
 	ld (iy + 2), a
 	ld a, (iy + 7)
 	ld (iy + 3), a
 
-	ld a, (iy + 4)
-	ld (iy + 0), a
+	ld a, (iy + 5)
+	ld (iy + 1), a
 	inc a
 	ret z
 
@@ -170,9 +170,9 @@ active_objects.front_reserve:
 @do_insert:
 	; Open up the front slot with a lazy LDDR.
 	; TODO: can improve.
-	ld de, @end_of_objects - 4
-	ld hl, @end_of_objects - 8
-	ld bc, @end_of_objects - active_objects - 8		; -8 rather than -4 as neither the last nor first slots need be copied to.
+	ld de, @end_of_objects - 1
+	ld hl, @end_of_objects - 5
+	ld bc, @end_of_objects - active_objects - 4
 	lddr
 
 	; Return front slot.
