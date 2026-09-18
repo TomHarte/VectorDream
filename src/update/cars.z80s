@@ -181,7 +181,7 @@ cars.update:
 	inc de
 
 	; Pick a random colour.
-	call random.nibble
+	call random.nibble.spread
 	rra
 	jr nc, @+add_blue
 
