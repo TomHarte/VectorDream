@@ -6,30 +6,31 @@ NUM_CARS: EQU 3
 cars.update:
 	xor a
 	ld (@-found_cars), a
-	ld hl, active_objects + 1	; (HL) = high byte of first depth.
 
-@update_object:
-	ld a, (hl)				; Test for high byte of distance = 0xff as a list terminator.
+@update_object: EQU FOR active_objects.count
+@object_base: EQU active_objects + @update_object * object.sizeof
+
+@process_object:
+	ld a, (@object_base + object.depth + 1)				; Test for high byte of distance = 0xff as a list terminator.
 	inc a
-	jr z, @+objects_done
-	inc l
+	jp z, @+objects_done			; TODO: could be JR in later iterations?
 
-	ld e, (hl)
-	inc l
-	ld d, (hl)					; DE = draw function.
-	dec l
+	; Call update function
+	ld hl, (@object_base + object.draw)		; HL now points to draw block.
+	ld de, @object_base
+	call object_draw
 
-	ex de, hl					; HL = draw function.
-	dec hl
-	dec hl
-	dec hl						; (HL) = update function.
+	; Erase object if carry is set.
+	jr nc, @+next_object
 
-	call call_hl
+	ld de, @object_base
+	call active_objects.erase
+	jr @-process_object					; Erasing eliminated what was in this slot so now something else is here.
+										; Therefore repeat at the same spot.
 
-	inc l
-	inc l
-	inc l
-	jr @-update_object
+@next_object:
+	NEXT @update_object
+
 
 @objects_done:
 	;
@@ -213,6 +214,11 @@ cars.update:
 	ret
 
 
+object_draw:
+	dec hl
+	dec hl
+	dec hl
+
 call_hl:
 	jp (hl)
 
@@ -269,10 +275,9 @@ collide_car3:
 	sbc a
 	ld b, a							; BC = top 16 bits of velocity.
 
-	dec l							; HL points to high byte of object depth.
+	ld e, (hl)						; HL points to object depth.
+	inc l
 	ld d, (hl)
-	dec l
-	ld e, (hl)
 	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
 
 	or a
@@ -280,11 +285,7 @@ collide_car3:
 	jp p, @+no_front_clip			; Check for crossing of near-Z.
 
 	pop af							; Remove backed-up value of BC from stack.
-	call active_objects.erase
-
-	ex de, hl						; Restore HL and return.
-	inc l
-	inc l
+	scf
 	ret
 
 @no_front_clip:
@@ -298,18 +299,14 @@ collide_car3:
 	sbc max_object_depth / 256
 	jr c, @+no_back_clip
 
-	call active_objects.erase
-
-	ex de, hl						; Restore HL and return.
-	inc l
-	inc l
+	scf
 	ret
 
 @no_back_clip:
 	ex de, hl
-	ld (hl), e
-	inc l
 	ld (hl), d
-	inc l
+	dec l
+	ld (hl), e
 
+	or a
 	ret
