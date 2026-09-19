@@ -226,10 +226,7 @@ call_hl:
 ; Update functions.
 ;
 ;	Inputs:
-;		DE = pointer to low byte of update function within active objects list.
-;
-;	Outputs:
-;		HL = pointer to low byte of update function within active obejcts list.
+;		DE = pointer to start of object record.
 ;
 
 update_car1:
