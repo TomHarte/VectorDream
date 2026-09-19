@@ -90,7 +90,8 @@ DUMP PAGE.CODE, 0
 		include "span_buffers/edges.z80s"
 
 		include "road/road.z80s"
-		include "road/objects.z80s"
+		include "road/objects.list.z80s"
+		include "road/objects.draw.z80s"
 		include "road/bss.a2.z80s"
 
 		include "fuel_rpm.z80s"
