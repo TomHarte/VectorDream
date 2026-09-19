@@ -26,9 +26,6 @@ random.nibble.spread:
 	ld b, a
 	inc b
 	ld a, r
-	rra
-	rra
-	rra
 	xor b
 	and 15
 	ld (@load_result + 1), a		; Use dynamic reprogramming for two reasons:

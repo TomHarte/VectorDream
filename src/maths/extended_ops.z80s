@@ -43,12 +43,12 @@ sub_de: MACRO
 
 ; Increments A, saturating at 0xff.
 inc_a_clamped: MACRO
-	inc a
+	add 1
 	sbc 0
 	ENDM
 
 ; Decrements A, clamping at 0x00.
 dec_a_clamped: MACRO
-	dec a
+	sub 1
 	adc 0
 	ENDM
