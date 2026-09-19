@@ -70,28 +70,31 @@ ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
 ;		None; the object will have been removed from the list.
 ;
 ;	Clobbers:
-;		A, BC, IY.
+;		A, BC, DE, HL.
 ;
 active_objects.erase:
-	ld iyh, d
-	ld iyl, e		; IY = pointer to object.
+	ld h, d
+	ld l, e
 
-	ld bc, 4
+	ASSERT object.sizeof == 4
+	inc l
+	inc l
+	inc l
+	inc l
 
 @move_entry:
-	ld a, (iy + 4)
-	ld (iy + 0), a
-	ld a, (iy + 6)
-	ld (iy + 2), a
-	ld a, (iy + 7)
-	ld (iy + 3), a
+	; Copy distance from camera.
+	ldi
+	ld a, (hl)		; Grab a copy of the high byte of distance of the incoming object as it passes by.
+	ldi
 
-	ld a, (iy + 5)
-	ld (iy + 1), a
+	; Exit if the terminator has just been copied down.
 	inc a
 	ret z
 
-	add iy, bc
+	; Copy update function and repeat.
+	ldi
+	ldi
 	jr @-move_entry
 
 
