@@ -177,8 +177,8 @@ active_objects.front_reserve:
 	; Open up the front slot with a lazy LDDR.
 	; TODO: can improve.
 	ld de, @end_of_objects - 1
-	ld hl, @end_of_objects - 5
-	ld bc, @end_of_objects - active_objects - 4
+	ld hl, @end_of_objects - 1 - object.sizeof
+	ld bc, @end_of_objects - active_objects - object.sizeof
 	lddr
 
 	; Return front slot.
