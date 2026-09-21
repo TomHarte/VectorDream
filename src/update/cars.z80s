@@ -1,4 +1,4 @@
-NUM_CARS: EQU 3
+NUM_CARS: EQU 5
 
 @found_cars:
 	db 0
