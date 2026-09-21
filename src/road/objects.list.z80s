@@ -149,7 +149,7 @@ active_objects.erase:
 active_objects.back_reserve:
 	; Check whether the slot at end_of_objects - 4 is empty.
 	; If not then the list is full.
-	ld a, (@end_of_objects - sizeof.object + offset.object.depth + 1)
+	ld a, (@end_of_objects - sizeof.object + offset.object.depth + offset.word.byte.high)
 	inc a
 	jr z, @+do_insert
 
@@ -197,7 +197,7 @@ active_objects.back_reserve:
 active_objects.front_reserve:
 	; Check whether the slot at end_of_objects - 4 is empty.
 	; If not then the list is full.
-	ld a, (@end_of_objects - sizeof.object + offset.object.depth + 1)
+	ld a, (@end_of_objects - sizeof.object + offset.object.depth + offset.word.byte.high)
 	inc a
 	jr z, @+do_insert
 
@@ -217,6 +217,33 @@ active_objects.front_reserve:
 	ld hl, active_objects
 	or a
 	ret
+
+;
+; Compares the object at IY + sizeof.object to the object at IY.
+;
+; The first macro argument provides the current location of the high byte of the object at IY + sizeof.object.
+;
+; Performs a 16-bit subtract (one byte at a time, per fetching-from-IY limitations),
+; setting all flags SBC usually sets.
+;
+compare: MACRO
+	ld a, (iy + sizeof.object + offset.object.depth + offset.word.byte.low)
+	sub (iy + offset.object.depth + offset.word.byte.low)
+	ld a, \0
+	sbc (iy + offset.object.depth + offset.word.byte.high)
+	ENDM
+
+;
+; Swaps the single byte at IY + [macro argument] with the one at IY + [macro argument] + sizeof.object
+;
+; Clobbers DE.
+;
+swap_byte: MACRO
+	ld e, (iy + \0)
+	ld d, (iy + sizeof.object + \0)
+	ld (iy + \0), d
+	ld (iy + sizeof.object + \0), e
+	ENDM
 
 ;
 ; active_objects.sort
@@ -239,68 +266,72 @@ active_objects.sort:
 	; This is a game where the object list is probably either already sorted, or is close to being properly sorted.
 	; So insertion sort is appropriate.
 	;
-
 	ld iy, active_objects
 
 	;
 	; Exit immediately if list is empty.
 	;
-	ld a, (iy + offset.object.depth + 1)
+	ld a, (iy + offset.object.depth + offset.word.byte.high)
 	inc a
 	ret z
 
+	;
+	; Seed BC as an adder for moving through the list.
+	;
+	ld de, sizeof.object
+
 @test_object:
 	;
-	; Test for end of list.
+	; Test whether next thing is the end of the list.
 	;
-	ld a, (iy + sizeof.object + offset.object.depth + 1)
+	ld a, (iy + sizeof.object + offset.object.depth + offset.word.byte.high)
 	ld b, a		; Keep high byte of depth of next object to avoid a double fetch.
 	inc a
 	ret z
 
-	;
-	; Compare depth of object one ahead of this one and this one.
-	;
-	compare: MACRO
-		ld a, (iy + sizeof.object + offset.object.depth + 0)
-		sub (iy + offset.object.depth + 0)
-		ld a, \0
-		sbc (iy + offset.object.depth + 1)
-	ENDM
+	; If ordering is incorrect, branch to order adjustment.
 	compare b
-
-	; Ordering incorrect: search backwards to find out where the next object should be,
-	; and move list data appropriately.
 	jr nc, @+adjust_order
 
 	; Ordering correct: just advance.
 @advance:
-	ld bc, sizeof.object
-	add iy, bc
+	add iy, de
 	jr @-test_object
 
+;
+; If here then the object at IY + 1 should be before the object at IY.
+; Indeed it could need to be arbitrarily far back in the list.
+; So, insertion-sort-style, recede and swap objects at each step until
+; the object is in the correct place.
+;
 @adjust_order:
+
 	push iy
-
-	ld bc, -4
+	ld bc, -sizeof.object
 @test_next:
-	; Swap object and one before it, then recede and compare again.
-	swap: MACRO
-		ld e, (iy + \0)
-		ld d, (iy + sizeof.object + \0)
-		ld (iy + \0), d
-		ld (iy + sizeof.object + \0), e
-	ENDM
-
-	swap (offset.object.depth + 0)
-	swap (offset.object.depth + 1)
-	swap (offset.object.draw + 0)
-	swap (offset.object.draw + 1)
-
+	;
+	; Alas pyz80 seems to have issues doing anything neater with the below;
+	; symbols don't seem to be propagating correctly into macros right now
+	; so the EQU FOR I was clearly reaching for is out.
+	;
+	ASSERT sizeof.object == 4
+	swap_byte 0
+	swap_byte 1
+	swap_byte 2
+	swap_byte 3
 	add iy, bc
 
-	compare (iy + sizeof.object + offset.object.depth + 1)
+	compare (iy + sizeof.object + offset.object.depth + offset.word.byte.high)
 	jr nc, @-test_next
 
+	;
+	; Restore the ordinary order of things and return to the main loop.
+	;
+	; This routine took the object at IY + sizeof.object and shuffled it
+	; somewhere earlier in the list. What's now at IY + sizeof.object
+	; will be whatever was at IY. Advance to it.
+	;
 	pop iy
-	jr @-advance
+	ld de, sizeof.object
+	add iy, de
+	jr @-test_object
