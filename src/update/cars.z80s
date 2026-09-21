@@ -248,8 +248,8 @@ car{@car}.collide:
 	; If this is called then vertical placement has already been tested.
 	; Just test horizontal.
 	;
-	ld bc, (car{@car} + car.velocity)	; BC = velocity.
-	ld a, (car{@car} + car.x)			; A = x position.
+	ld bc, (car{@car} + car.velocity - 1)	; B = velocity.
+	ld a, (car{@car} + car.x)				; A = x position.
 	jp @+car.collide
 NEXT @car
 
@@ -323,8 +323,53 @@ NEXT @car
 ; If so then reduces the player's velocity and fuel to effect a collision.
 ;
 ;	Inputs:
-;		C = car velocity;
+;		B = car velocity;
 ;		A = car x position.
 ;
+;	Clobbers:
+;		A, BC, HL.
+;
 @car.collide:
+	; Car X position is a single byte in the range +127 (extreme right hand side of road) to -128 (extreme left).
+	; Player x position is a two-byte fixed-point value with half the local precision, i.e. it's in the range +63 to -64 and has 8 bits of fractional placement.
+	; Player x also runs in the opposite direction from car x.
+	; Easiest solution: convert car x to player range
+
+	sra a
+	neg
+	ld c, a					; B = car x, converted to player's range.
+
+	ld a, (player.x + 1)	; A = player x, in native range.
+
+	; Require: b + car.width > a > b - car.width.
+	; If hit, reduce player velocity to some smaller proportion of car velocity (in C).
+
+	sub c
+
+	jp p, @+no_neg
+	neg
+@no_neg:
+
+	cp 32		; Arbitrary. To tweak.
+	ret nc
+
+	; Actual collision!
+	;
+	; First attempt: reduce player velocity to 75% of the car it just hit.
+	;
+	ld c, 0
+
+	sra b
+	rr c
+
+	ld h, b
+	ld l, c
+
+	sra b
+	rr c
+
+	add hl, bc
+
+	ld (player.yvelocity), hl
+
 	ret
