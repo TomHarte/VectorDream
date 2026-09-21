@@ -1,15 +1,20 @@
 @cars: EQU FOR NUM_CARS
 car{@cars}:
 @cardef:
-	db -128					; Current x position.
+	db 0					; X position.
 	db colour.car.blue		; Car colour.
 	dw 5					; Forward velocity.
 
 	jp car{@cars}.collide
 	jp car{@cars}.update
 car{@cars}.draw:
-	ld a, (@-cardef+1)
+	ld a, (@-cardef + car.colour)
 	ld iyl, a
-	ld a, (@-cardef)
+	ld a, (@-cardef + car.x)
 	jp draw.car
 NEXT @cars
+
+car.x:			EQU 0
+car.colour:		EQU 1
+car.velocity:	EQU 2
+car.sizeof:		EQU 4

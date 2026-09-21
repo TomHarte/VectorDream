@@ -240,11 +240,17 @@ car{@car}.update:
 	or 1 << @car
 	ld (@-found_cars), a
 
-	ld bc, (car{@car} + 2)
+	ld bc, (car{@car} + car.velocity)
 	ex de, hl
 	jp @+add_player_velocity
 
 car{@car}.collide:
+	;
+	; If this is called then vertical placement has already been tested.
+	; Just test horizontal.
+	;
+	ld a, (car{@car} + car.x)
+
 	; TODO.
 	ret
 NEXT @car
