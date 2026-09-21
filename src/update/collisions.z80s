@@ -37,9 +37,8 @@
 	sbc hl, de				; HL = (object depth - player velocity) - collision depth.
 	jr nc, @+next_object
 
-	jr @+collide
-	@collide:			; Test.
-	nop
+	ld hl, (@object + offset.object.draw)
+	call object.collide		; Pass control to the object's collision handler.
 
 @next_object:
 NEXT @test_object
