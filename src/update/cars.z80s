@@ -4,21 +4,23 @@ NUM_CARS: EQU 4
 	db 0
 
 cars.update:
+	; Zero-out list of cars that are currently live.
+	; This will be repopulated as the update functions are run.
 	xor a
 	ld (@-found_cars), a
 
 @update_object: EQU FOR active_objects.count
-@object_base: EQU active_objects + @update_object * object.sizeof
+@object_base: EQU active_objects + @update_object * sizeof.object
 
 @process_object:
-	ld a, (@object_base + object.depth + 1)				; Test for high byte of distance = 0xff as a list terminator.
+	ld a, (@object_base + offset.object.depth + 1)				; Test for high byte of distance = 0xff as a list terminator.
 	inc a
 	jp z, @+objects_done			; TODO: could be JR in later iterations?
 
 	; Call update function
-	ld hl, (@object_base + object.draw)		; HL now points to draw block.
+	ld hl, (@object_base + offset.object.draw)		; HL now points to draw block.
 	ld de, @object_base
-	call object_draw
+	call object.update
 
 	; Erase object if carry is set.
 	jr nc, @+next_object
@@ -215,16 +217,6 @@ NEXT @test_slot
 	; inc de
 
 	ret
-
-
-object_draw:
-	dec hl
-	dec hl
-	dec hl
-
-call_hl:
-	jp (hl)
-
 
 @car: EQU FOR NUM_CARS
 ;
