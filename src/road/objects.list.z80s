@@ -51,8 +51,8 @@ active_objects:
 NEXT @object
 
 @end_of_objects:
-	; A dummy object straight after the list; if this address is found when searching
-	; for an empty slot, none are available.
+	; A dummy object straight after the list; if this address is the result of
+	; searching for an empty slot, none are available.
 	dw 0xffff
 	dw 0
 
