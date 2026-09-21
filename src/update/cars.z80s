@@ -37,7 +37,7 @@ cars.update:
 	; If there are already three active cars, add no more.
 	;
 	ld a, (@-found_cars)
-	cp 7
+	cp (1 << NUM_CARS) - 1
 	jr z, @+too_many_cars
 
 	;
@@ -147,25 +147,20 @@ cars.update:
 
 	; Pick a car slot to use.
 	ld a, (@-found_cars)
+@test_slot: EQU FOR NUM_CARS - 1
 	rra
-	jr nc, @+randomise_car0
+	jr c, @+test_next
 
-	rra
-	jr nc, @+randomise_car1
-
-	; Implicitly: randomise car 3.
-	ld bc, car2.draw
-	ld de, car2
+	ld bc, car{@test_slot}.draw
+	ld de, car{@test_slot}
 	jr @+fill_in_car
 
-@randomise_car1:
-	ld bc, car1.draw
-	ld de, car1
-	jr @+fill_in_car
+@test_next:
+NEXT @test_slot
 
-@randomise_car0:
-	ld bc, car0.draw
-	ld de, car0
+	; Implicitly: randomise final car.
+	ld bc, car{NUM_CARS - 1}.draw
+	ld de, car{NUM_CARS - 1}
 	; [[fallthrough]]
 
 @fill_in_car:
