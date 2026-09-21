@@ -148,24 +148,24 @@ cars.update:
 	; Pick a car slot to use.
 	ld a, (@-found_cars)
 	rra
-	jr nc, @+randomise_car1
+	jr nc, @+randomise_car0
 
 	rra
-	jr nc, @+randomise_car2
+	jr nc, @+randomise_car1
 
 	; Implicitly: randomise car 3.
-	ld bc, draw.car3
-	ld de, car3
+	ld bc, car2.draw
+	ld de, car2
 	jr @+fill_in_car
 
 @randomise_car1:
-	ld bc, draw.car1
+	ld bc, car1.draw
 	ld de, car1
 	jr @+fill_in_car
 
-@randomise_car2:
-	ld bc, draw.car2
-	ld de, car2
+@randomise_car0:
+	ld bc, car0.draw
+	ld de, car0
 	; [[fallthrough]]
 
 @fill_in_car:
@@ -230,45 +230,29 @@ object_draw:
 call_hl:
 	jp (hl)
 
+
+@car: EQU FOR NUM_CARS
 ;
-; Update functions.
+; carX.update
+;
+; Updates the positioning and other state of carX.
 ;
 ;	Inputs:
 ;		DE = pointer to start of object record.
 ;
-
-update_car1:
+car{@car}.update:
 	ld a, (@-found_cars)
-	or 1
+	or 1 << @car
 	ld (@-found_cars), a
 
-	ld bc, (car1 + 2)
+	ld bc, (car{@car} + 2)
 	ex de, hl
 	jp @+add_player_velocity
 
-update_car2:
-	ld a, (@-found_cars)
-	or 2
-	ld (@-found_cars), a
-
-	ld bc, (car2 + 2)
-	ex de, hl
-	jp @+add_player_velocity
-
-update_car3:
-	ld a, (@-found_cars)
-	or 4
-	ld (@-found_cars), a
-
-	ld bc, (car3 + 2)
-	ex de, hl
-	jp @+add_player_velocity
-
-
-collide_car1:
-collide_car2:
-collide_car3:
+car{@car}.collide:
+	; TODO.
 	ret
+NEXT @car
 
 
 @add_player_velocity:
