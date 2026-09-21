@@ -118,6 +118,22 @@ cars.update:
 
 
 
+;
+; @randomise_car
+;
+; Zeroes out cars.time_since_added and stores whatever is currently in BC as the new car's seed depth.
+; Finds an available car slot and randomises the car's x location and colour.
+;
+;	Inputs:
+;		HL = pointer to car insertion location within the objects list;
+;		BC = depth at which the car will first appear.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL.
+;
 @randomise_car:
 	; Zero out count since car added.
 	xor a
@@ -129,7 +145,7 @@ cars.update:
 	ld (hl), b
 	inc l
 
-	; Insert a new random car at HL.
+	; Pick a car slot to use.
 	ld a, (@-found_cars)
 	rra
 	jr nc, @+randomise_car1
@@ -153,6 +169,11 @@ cars.update:
 	; [[fallthrough]]
 
 @fill_in_car:
+	; Here:
+	;	BC = draw function for this car;
+	;	DE = object block for this car;
+	;	HL = pointer into object list, at position where draw function should be stored.
+
 	; Store draw object pointer.
 	ld (hl), c
 	inc l
