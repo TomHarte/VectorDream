@@ -1,4 +1,4 @@
-NUM_CARS: EQU 5
+NUM_CARS: EQU 4
 
 @found_cars:
 	db 0
@@ -236,27 +236,50 @@ call_hl:
 ;		DE = pointer to start of object record.
 ;
 car{@car}.update:
+	;
+	; Record that this car has been sighted during the update loop.
+	; This record will become relevant if the decision is made to add a new car.
+	;
 	ld a, (@-found_cars)
 	or 1 << @car
 	ld (@-found_cars), a
 
+	;
+	; Establish BC = car velocity, HL = pointer to car within object list.
+	;
 	ld bc, (car{@car} + car.velocity)
 	ex de, hl
-	jp @+add_player_velocity
+	jp @+car.update
 
 car{@car}.collide:
 	;
 	; If this is called then vertical placement has already been tested.
 	; Just test horizontal.
 	;
-	ld a, (car{@car} + car.x)
-
-	; TODO.
-	ret
+	ld bc, (car{@car} + car.velocity)	; BC = velocity.
+	ld a, (car{@car} + car.x)			; A = x position.
+	jp @+car.collide
 NEXT @car
 
 
-@add_player_velocity:
+;
+; @car.update
+;
+; Applies the sum of player and car velocity to the car, moving it in relative space.
+; Tests whether it has gone outside of the visible area.
+;
+;	Inputs:
+;		BC = car velocity;
+;		HL = pointer to car object within object list.
+;
+;	Outputs:
+;		Carry set => car is out of bounds and can be deleted;
+;		Carry clear => car is still within bounds.
+;
+;	Clobbers:
+;		A, DE, HL, BC.
+;
+@car.update:
 	push bc
 
 	ld a, (player.yvelocity + 1)
@@ -299,4 +322,17 @@ NEXT @car
 	ld (hl), e
 
 	or a
+	ret
+
+;
+; @car.collide
+;
+; Tests whether the player is within appropriate horizontal bounds of this car.
+; If so then reduces the player's velocity and fuel to effect a collision.
+;
+;	Inputs:
+;		C = car velocity;
+;		A = car x position.
+;
+@car.collide:
 	ret
