@@ -1,0 +1,46 @@
+
+	; Sign extend the integral part of player velocity
+	; into BC.
+	ld a, (player.yvelocity + 1)
+	ld c, a
+	rla
+	sbc a
+	ld b, a
+
+@test_object: EQU FOR active_objects.count
+@object: EQU active_objects + @test_object * sizeof.object
+	ld de, (@object + offset.object.depth)
+
+	; Test for terminator.
+	ld a, d
+	inc a
+	jp z, @+objects_done
+
+	; Test for (object depth - player velocity) < (collision depth) < (object depth).
+	;
+	; This doesn't factor in any velocity the object may have but I'm hoping will be
+	; sufficient for game purposes.
+
+	; Require collision_depth <= object depth.
+	ld hl, collision_depth
+	or a
+	sbc hl, de				; HL = collision_depth - object depth.
+	jr nc, @+next_object	; C clear => collision_depth < object depth
+
+	; Require collision_depth > object depth + player velocity.
+	ex de, hl
+	or a
+	sbc hl, bc
+
+	ld de, collision_depth
+	or a
+	sbc hl, de				; HL = (object depth - player velocity) - collision depth.
+	jr nc, @+next_object
+
+	ld hl, (@object + offset.object.draw)
+	call object.collide		; Pass control to the object's collision handler.
+
+@next_object:
+NEXT @test_object
+
+	@objects_done:
