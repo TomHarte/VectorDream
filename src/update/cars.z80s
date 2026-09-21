@@ -149,21 +149,24 @@ cars.update:
 
 	; Pick a car slot to use.
 	ld a, (@-found_cars)
-@test_slot: EQU FOR NUM_CARS - 1
+
+@test_slot: EQU FOR NUM_CARS
+IF @test_slot != NUM_CARS - 1			; No need to test the final slot; an external test validated that at least one is available,
+										; so if it's not any of the earlier slots then it must be the final one.
 	rra
 	jr c, @+test_next
+ENDIF
 
 	ld bc, car{@test_slot}.draw
 	ld de, car{@test_slot}
+
+IF @test_slot != NUM_CARS - 1
 	jr @+fill_in_car
 
 @test_next:
-NEXT @test_slot
+ENDIF
+	NEXT @test_slot
 
-	; Implicitly: randomise final car.
-	ld bc, car{NUM_CARS - 1}.draw
-	ld de, car{NUM_CARS - 1}
-	; [[fallthrough]]
 
 @fill_in_car:
 	; Here:
