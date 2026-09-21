@@ -144,7 +144,7 @@ active_objects.erase:
 ;		carry = clear if a slot was found, set otherwise.
 ;
 ;	Clobbers:
-;		A.
+;		A, BC.
 ;
 active_objects.back_reserve:
 	; Check whether the slot at end_of_objects - 4 is empty.
@@ -160,20 +160,20 @@ active_objects.back_reserve:
 @do_insert:
 	; Find the first available slot.
 
-	ld hl, active_objects + 1
+	ld hl, active_objects + offset.object.depth + offset.word.byte.high
+	ld bc, sizeof.object
 @test_slot:
 	ld a, (hl)
 	inc a
 	jr z, @+found_slot
 
-	inc l
-	inc l
-	inc l
-	inc l
+	add hl, bc
 	jr @-test_slot
 
 @found_slot:
+	ASSERT (offset.object.depth + offset.word.byte.high) == 1
 	dec l
+
 	or a
 	ret
 
@@ -303,6 +303,10 @@ active_objects.sort:
 ; Indeed it could need to be arbitrarily far back in the list.
 ; So, insertion-sort-style, recede and swap objects at each step until
 ; the object is in the correct place.
+;
+; TODO: do a real insertion sort; load the object at IY + 1 into registers
+; and then just shuffle things forward until the proper landing place is found.
+; No need to keep reading it and writing it at every swap.
 ;
 @adjust_order:
 

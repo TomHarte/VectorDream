@@ -26,7 +26,7 @@ colour.rpm.fast:	EQU 0x88
 ; Each colour is GRBXgrb where X = bright; G = high bit of green, g = low bit of green, etc.
 ; This list is OTIRd elsewhere, so is in reverse order.
 palette:
-	db 0, 0, 0
+	db 0, 0, 0		; As yet unused: D, E, F.
 	db 111			; C: a yellow/amber
 	db 34			; B: racing car red
 	db 16			; A: racing car blue
