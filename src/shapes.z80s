@@ -150,6 +150,8 @@ draw.car:
 	call multiply.u8.u8
 	ld a, h
 	pop hl
+	or a
+	jr z, @+finish_placement
 	sub_hl_a
 	jr @+finish_placement
 
@@ -331,7 +333,9 @@ rectangle:
 
 	; Move halfway left to retain 'centre' part of contract
 	srl a
+	jr z, @+zero_width
 	sub_hl_a
+	@zero_width:
 
 	ld a, c
 	ld (@+load_colour+1), a			; Store colour.
