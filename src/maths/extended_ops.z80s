@@ -8,9 +8,11 @@ add_hl_a: MACRO
 	ld h, a
 	ENDM
 
-; Subtracts the 8-bit unsigned value in A from HL. Clobbers A.
-sub_hl_a: MACRO
-	neg					; Assumed: A is non-zero.
+; Subtracts the 8-bit unsigned value in A from HL.
+; Works correctly only if A is non-zero.
+; Clobbers A.
+sub_hl_a_nonzero: MACRO
+	neg
 	add l
 	ld l, a
 

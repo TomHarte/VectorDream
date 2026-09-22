@@ -1,0 +1,75 @@
+locate_at_right: MACRO
+	; Add the 8-bit value (object_width) to HL.
+	ld a, (object_width)
+	sub_hl_a_nonzero
+	ENDM
+
+locate_at_left: MACRO
+	; Add the 8-bit value (object_width) to HL.
+	ld a, (object_width)
+	add_hl_a
+	ENDM
+
+;
+; rectangle
+;
+; Draws a solid rectangle; clamps left/right but not top/bottom.
+;
+; This is currently implemented going through the edge lists because
+;
+;	Input:
+;		HL = bottom centre of rectangle.
+;		E = on-screen line of base.
+;		A = height.
+;		B = width.
+;		C = colour.
+;
+;	Clobbers:
+;		A, IX, DE, HL, IY.
+;
+rectangle:
+	ld ixl, a						; IXl = lines to paint, throughout.
+
+	ld a, b
+	ld (@+load_width + 1), a		; Store width.
+
+	; Move halfway left to retain 'centre' part of contract
+	srl a
+	jr z, @+zero_width
+	sub_hl_a_nonzero
+	@zero_width:
+
+	ld a, c
+	ld (@+load_colour+1), a			; Store colour.
+
+	; Get pointer into left edge list.
+	ld d, edge.left / 256
+	ld a, ixl
+	sub e							; A = height - base
+	neg								; A = base - height
+	ld e, a							; DE = correct pointer.
+
+	ld (@+load_top + 1), a
+	ld (@+reload_top + 1), a		; Store top for restoration later.
+
+	call edge.fill.vertical.downward
+
+	; Write to right edge list.
+	inc d
+@load_top:
+	ld e, 0							; DE = correct pointer.
+
+@load_width:
+	ld a, 0
+	add_hl_a
+
+	call edge.fill.vertical.downward
+
+	; Fill.
+@load_colour:
+	ld d, 0							; D = colour
+@reload_top:
+	ld b, 0
+	ld c, ixl
+
+	jp edges.output

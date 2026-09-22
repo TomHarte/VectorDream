@@ -1,0 +1,205 @@
+;
+;          --------
+;             ||
+;   |----|   /  \   |----|
+;   |    |----------|    |
+;   |----|          |----|
+;
+
+@tyre_width: db 0
+@spoiler_base: db 0
+@spoiler_top: db 0
+
+draw_tyre: MACRO
+	ld a, (screen_line)
+	ld e, a							; E = base line.
+
+	ld a, (object_width)			; A = height of tyre.
+	ld b, a
+	srl b							; B = width of tyre
+
+	ld c, colour.tyre				; C = colour of tyre.
+	call rectangle
+	ENDM
+
+upper_slope: EQU 63
+lower_slope: EQU 400
+
+
+draw.car:
+	; HL = centre of base.
+
+	push hl
+
+	or a
+	jp p, @+move_right
+
+@move_left:
+	neg
+	add a, a
+	jr z, @+move_left_128		; Number was initially negative, so non-zero. Therefore add a, a should be non-zero.
+								; Hence if the result was zero then A = 128, which is the only value that won't fit
+								; in 8-bit arithmetic. So treat it as a special case.
+	ld d, a
+	ld a, (object_width)
+	ld e, a
+	call multiply.u8.u8
+	ld a, h
+	pop hl
+	or a
+	jr z, @+finish_placement
+	sub_hl_a_nonzero
+	jr @+finish_placement
+
+@move_left_128:
+	pop hl
+	ld a, (object_width)
+	sub_hl_a_nonzero
+	jr @+finish_placement
+
+@move_right:
+	add a, a
+	ld d, a
+	ld a, (object_width)
+	ld e, a
+	call multiply.u8.u8
+	ld a, h
+	pop hl
+	add_hl_a
+
+@finish_placement:
+
+	; Adopt total object width of one half of the size of the road.
+	; Which means scaling width down to a quarter because it'll be
+	; added and subtracted.
+	ld a, (object_width)
+	add 2
+	rra
+	rra
+	and %00111111
+	ret z
+
+	ld (object_width), a			; Update object width to being offset of a tyre.
+
+	inc a
+	srl a
+	ld (@-tyre_width), a			; Tyre width = half height (in pixels).
+
+	ld a, (object_width)
+	ld e, a
+	ld a, (screen_line)
+	sub e
+	ld (@-spoiler_base), a		; Base of spoiler = object base - one tyre height.
+								; This will also be the top of the neck.
+
+	ld a, (object_width)
+	add 2
+	srl a
+	srl a
+	ld e, a
+	ld a, (@-spoiler_base)
+	sub e
+	ld (@-spoiler_top), a
+
+	;
+	; Draw neck leading to spoiler.
+	;
+	push hl
+
+		; Left edge.
+		ld e, a
+		ld d, edge.left / 256	; DE = pointer to left list at bottom of spoiler.
+
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+
+		ld bc, -upper_slope
+
+		ld a, h
+		ld h, l
+		ld l, 0						; Rotate HL into A:HL.
+
+		call edge.fill.downward
+
+		ld bc, -lower_slope
+		push af
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+		pop af
+
+		call edge.fill.downward
+
+		; Right edge.
+		inc d
+		ld a, (@-spoiler_top)
+		ld e, a						; DE = pointer to right list at bottom of spoiler.
+
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+
+		ld bc, upper_slope
+
+		pop hl
+		push hl						; HL = start position.
+		ld a, h
+		ld h, l
+		ld l, 0						; Rotate HL into A:HL.
+
+		call edge.fill.downward
+
+		ld bc, lower_slope
+		push af
+		ld a, (@-tyre_width)
+		ld ixl, a					; Draw down by half a tyre.
+		pop af
+
+		call edge.fill.downward
+
+		; Fill.
+
+		ld d, iyl
+		ld a, (@-spoiler_top)
+		ld b, a
+		ld a, (@-tyre_width)
+		ld c, a
+		add a, c
+		ld c, a
+
+		call edges.output
+
+	pop hl
+
+	;
+	; Right-hand tyre.
+	;
+	ld a, (object_width)
+	push hl
+	add_hl_a
+	draw_tyre
+
+	;
+	; Left-hand tyre.
+	;
+	ld a, (object_width)
+	pop hl
+	push hl
+	sub_hl_a_nonzero
+	draw_tyre
+
+	;
+	; Spoiler.
+	;
+	pop hl							; HL = centre of object.
+
+	ld a, (@-spoiler_base)
+	ld e, a							; E = base line of spoiler.
+
+	ld a, (object_width)
+	ld b, a							; B = width.
+
+	ld a, (object_width)
+	srl a
+	srl a							; A = height = object_width / 4
+
+	ld c, iyl
+	jp rectangle
