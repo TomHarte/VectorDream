@@ -26,6 +26,7 @@ cars.update:
 	jr nc, @+next_object
 
 	ld de, @object_base
+	ld hl, @object_base + sizeof.object
 	call active_objects.erase
 	jr @-process_object					; Erasing eliminated what was in this slot so now something else is here.
 										; Therefore repeat at the same spot.

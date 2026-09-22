@@ -96,7 +96,8 @@ object.update:
 ; Removes the object at (DE) from the list.
 ;
 ; 	Input:
-;		DE = pointer to object to remove from the list.
+;		DE = pointer to object to remove from the list;
+;		HL = pointer to next object in list.
 ;
 ; 	Output:
 ;		None; the object will have been removed from the list.
@@ -105,17 +106,9 @@ object.update:
 ;		A, BC, DE, HL.
 ;
 active_objects.erase:
-	ld h, d
-	ld l, e
-
-	ASSERT sizeof.object == 4
-	inc l
-	inc l
-	inc l
-	inc l
-
 @move_entry:
 	; Copy distance from camera.
+	ASSERT offset.object.depth == 0
 	ldi
 	ld a, (hl)		; Grab a copy of the high byte of distance of the incoming object as it passes by.
 	ldi
@@ -207,9 +200,12 @@ active_objects.front_reserve:
 
 @do_insert:
 	; Open up the front slot with a lazy LDDR.
-	; TODO: can improve.
-	ld de, active_objects + active_objects.count * sizeof.object - 1
-	ld hl, active_objects + active_objects.count * sizeof.object - 1 - sizeof.object
+	;
+	; TODO: if the current depth of the list were known, a smaller LDDR could happen.
+	; But would it be faster than just copying a small number of extra bytes?
+	;
+	ld de, @end_of_objects - 1
+	ld hl, @end_of_objects - 1 - sizeof.object
 	ld bc, (active_objects.count - 1) * sizeof.object
 	lddr
 
