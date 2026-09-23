@@ -35,7 +35,11 @@ update:
 		include "update/y_velocity.z80s"
 
 		include "update/track.z80s"			; Updates the floor, applying corners.
-		call objects.update
+
+		call objects.update					; Updates visible objects according to their specific logic,
+											; and cycles in objects from the static list.
+
+		call traffic.update					; Adds randomised traffic.
 
 		include "update/drag.z80s"
 
@@ -47,6 +51,6 @@ update:
 
 	ret
 
-include "update/objects.z80s"		; Updates objects in both the narrow sense of applying proper
-									; logic to whatever is currently visible and in the broader
-									; sense of spawning new objects to create traffic, etc.
+include "update/objects.z80s"
+include "update/traffic.z80s"
+include "update/cars.z80s"
