@@ -8,4 +8,35 @@
 ;		DE = pointer to object within object list.
 ;
 furniture.update:
+	ex de, hl
+	ld e, (hl)
+	inc l
+	ld d, (hl)
+	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
+
+	; Subtract the player's velocity to get updated position, and write it out.
+	get_player_velocity_bc
+	or a
+	sbc hl, bc
+	ex de, hl
+	ld (hl), d
+	dec l
+	ld (hl), e
+	ex de, hl
+
+	; Check that object is still within bounds.
+	ld bc, min_object_depth
+	or a
+	sbc hl, bc
+	jr c, @+clip
+
+	ld bc, max_object_depth
+	sbc hl, bc
+	jr nc, @+clip
+
+	or a
+	ret
+
+@clip:
+	scf
 	ret
