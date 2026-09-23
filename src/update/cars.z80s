@@ -54,11 +54,7 @@ NEXT @car
 @car.update:
 	push bc
 
-	ld a, (player.yvelocity + 1)
-	ld c, a
-	rla
-	sbc a
-	ld b, a							; BC = top 16 bits of velocity.
+	get_player_velocity_bc
 
 	ld e, (hl)						; HL points to object depth.
 	inc l

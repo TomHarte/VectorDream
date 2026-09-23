@@ -1,11 +1,7 @@
 
 	; Sign extend the integral part of player velocity
 	; into BC.
-	ld a, (player.yvelocity + 1)
-	ld c, a
-	rla
-	sbc a
-	ld b, a
+	get_player_velocity_bc
 
 @test_object: EQU FOR active_objects.count
 @object: EQU active_objects + @test_object * sizeof.object
