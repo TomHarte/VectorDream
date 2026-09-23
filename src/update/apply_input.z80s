@@ -68,25 +68,3 @@
 		ld (player.xvelocity), bc
 
 	@no_left:
-
-
-	;
-	; TEMPORARY. Read ZX. Use it to adjust current road curvature.
-	;
-	; ld bc, 0xfefe
-	; in a, (c)
-	; rra
-	; rra
-	; jr c, @+no_curvature_decrement
-
-	; 	call @+decrement_curvature
-	; 	jr @+no_curvature_increment		; ... as it's easier than restoring A.
-
-	; @no_curvature_decrement:
-	; rra
-	; jr c, @+no_curvature_increment
-
-	; 	call @+increment_curvature
-
-	; @no_curvature_increment:
-
