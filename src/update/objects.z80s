@@ -2,8 +2,10 @@ NUM_CARS: EQU 4
 
 @found_cars:
 	db 0
-
-cars.update:
+;
+;
+;
+objects.update:
 	; Zero-out list of cars that are currently live.
 	; This will be repopulated as the update functions are run.
 	xor a

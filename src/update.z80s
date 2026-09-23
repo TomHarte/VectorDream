@@ -35,7 +35,7 @@ update:
 		include "update/y_velocity.z80s"
 
 		include "update/track.z80s"			; Updates the floor, applying corners.
-		call cars.update
+		call objects.update
 
 		include "update/drag.z80s"
 
@@ -47,4 +47,6 @@ update:
 
 	ret
 
-include "update/cars.z80s"			; Updates non-player vehicles.
+include "update/objects.z80s"		; Updates objects in both the narrow sense of applying proper
+									; logic to whatever is currently visible and in the broader
+									; sense of spawning new objects to create traffic, etc.
