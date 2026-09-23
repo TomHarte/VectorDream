@@ -19,7 +19,7 @@ update:
 
 	push bc
 
-		include "update/read_input.inc"
+		include "update/read_input.inc.z80s"
 
 	pop bc
 
@@ -29,25 +29,25 @@ update:
 @update_loop:
 	push bc
 
-		include "update/apply_input.inc"
-		include "update/collisions.inc"
-		include "update/x_velocity.inc"
-		include "update/y_velocity.inc"
+		include "update/apply_input.inc.z80s"
+		include "update/collisions.inc.z80s"
+		include "update/x_velocity.inc.z80s"
+		include "update/y_velocity.inc.z80s"
 
-		include "update/track.inc"			; Updates the floor, applying corners.
+		include "update/track.inc.z80s"		; Updates the floor, applying corners.
 
 		call objects.update					; Updates visible objects according to their specific logic,
 											; and cycles in objects from the static list.
 
 		call traffic.update					; Adds randomised traffic.
 
-		include "update/drag.inc"
+		include "update/drag.inc.z80s"
 
 	pop bc
 	dec b
 	jp nz, @-update_loop
 
-		include "update/gauges.inc"
+		include "update/gauges.inc.z80s"
 
 	ret
 
