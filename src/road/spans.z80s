@@ -24,7 +24,7 @@ complete_with_grass: MACRO
 ;		DE = centre of road.
 ;		B = half road width.
 ;		C = half line width.
-;		A = y offset.
+;		A = y offsetof.
 ;
 ;	Output:
 ;		H = pointer within colour portion of span buffer.

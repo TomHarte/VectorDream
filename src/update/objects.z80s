@@ -27,12 +27,12 @@ objects.update:
 @object_base: EQU active_objects + @update_object * sizeof.object
 
 @process_object:
-	ld a, (@object_base + offset.object.depth + 1)				; Test for high byte of distance = 0xff as a list terminator.
+	ld a, (@object_base + offsetof.object.depth + 1)				; Test for high byte of distance = 0xff as a list terminator.
 	inc a
 	ret z
 
 	; Call update function
-	ld hl, (@object_base + offset.object.draw)		; HL now points to draw block.
+	ld hl, (@object_base + offsetof.object.draw)		; HL now points to draw block.
 	ld de, @object_base
 	call object.update
 

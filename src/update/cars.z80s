@@ -19,7 +19,7 @@ car{@car}.update:
 	;
 	; Establish BC = car velocity, HL = pointer to car within object list.
 	;
-	ld bc, (car{@car} + car.velocity)
+	ld bc, (car{@car} + offsetof.car.velocity)
 	ex de, hl
 	jp @+car.update
 
@@ -28,8 +28,8 @@ car{@car}.collide:
 	; If this is called then vertical placement has already been tested.
 	; Just test horizontal.
 	;
-	ld bc, (car{@car} + car.velocity - 1)	; B = velocity.
-	ld a, (car{@car} + car.x)				; A = x position.
+	ld bc, (car{@car} + offsetof.car.velocity - 1)	; B = velocity.
+	ld a, (car{@car} + offsetof.car.x)				; A = x position.
 	jp @+car.collide
 NEXT @car
 

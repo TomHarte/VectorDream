@@ -41,12 +41,12 @@ PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffe
 ;
 ; Generic offsets.
 ;
-offset.word.byte.low:		EQU 0
-offset.word.byte.high:		EQU 1
+offsetof.word.byte.low:		EQU 0
+offsetof.word.byte.high:		EQU 1
 
-offset.triple.byte.low:		EQU 0
-offset.triple.byte.middle:	EQU 1
-offset.triple.byte.high:	EQU 2
+offsetof.triple.byte.low:		EQU 0
+offsetof.triple.byte.middle:	EQU 1
+offsetof.triple.byte.high:	EQU 2
 
 ;
 ; Code page: an entire 32kb area just for code, that will sit in the low 32kb of the memory map.
