@@ -1,3 +1,11 @@
+;
+; traffic.update
+;
+; Checks whether the criteria for adding a new moving vehicle to the traffic flow are met.
+; If so, appropriately randomises and adds one.
+;
+; TODO: per-level logic.
+;
 traffic.update:
 	;
 	; If there are already three active cars, add no more.
@@ -22,20 +30,6 @@ traffic.update:
 	call random.byte
 	cp d
 	jr nc, @+add_no_cars
-
-	; TODO:
-	;
-	;	(1)	are there any car slots free? If not, don't add any cars.
-	;	(2)	if so, something like: is the amount of time since a car was added
-	;		greater than the current refresh register value? If so, add a car now:
-	;
-	;		(a) pick an x position, between appropriate bounds;
-	;		(b)	pick a velocity, probably between 7 and 9. There's not a lot of precision here;
-	;		(c)	if player velocity is greater than or equal, add at the horizon. Otherwise add
-	;			at the near clip plane.
-	;
-	; Update total of time since car added, either way.
-	;
 
 	; Ensure player is going fast enough to make an over-the-horizon car sensible,
 	; or else slow enough for a from-behind car.
@@ -62,24 +56,19 @@ traffic.update:
 	; Add (and randomise) only if a list spot was available.
 	jr c, @+add_no_cars
 	call @+randomise_car
-	jr @+check_roadside_objects
+	ret
 
 @add_no_cars:
 	ld a, (cars.time_since_added)
 	inc_a_clamped
 	ld (cars.time_since_added), a
-	jr @+check_roadside_objects
+	ret
 
 @too_many_cars:
 	; Zero out count; no cars were added but it's good to have a delay between three cars
 	; being visble and the next appearing.
 	xor a
 	ld (cars.time_since_added), a
-
-@check_roadside_objects:
-	; Additional TODO: consult list of fixed objects (trees, signs, etc), possibly adding one of those
-	; to the active list.
-
 	ret
 
 

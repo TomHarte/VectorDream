@@ -2,8 +2,20 @@ NUM_CARS: EQU 4
 
 found_cars:
 	db 0
+
 ;
+; objects.update
 ;
+; Zeroes out `found_cars` and then calls the object-specific update logic on all active objects.
+;
+;	Inputs:
+;		None.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL, IX, IY.
 ;
 objects.update:
 	; Zero-out list of cars that are currently live.
