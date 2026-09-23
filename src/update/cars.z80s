@@ -52,45 +52,14 @@ NEXT @car
 ;		A, DE, HL, BC.
 ;
 @car.update:
-	push bc
-
-	get_player_velocity_bc
-
 	ld e, (hl)						; HL points to object depth.
 	inc l
 	ld d, (hl)
 	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
 
-	or a
-	sbc hl, bc						; Subtract the player's velocity.
-	jp p, @+no_front_clip			; Check for crossing of near-Z.
+	add hl, bc						; Add car velocity.
+	jp object.apply_player_velocity
 
-	pop af							; Remove backed-up value of BC from stack.
-	scf
-	ret
-
-@no_front_clip:
-	pop bc							; Add something for car velocity.
-	add hl, bc
-
-	; Has the car disappeared over the horizon?
-	ld a, l
-	sub max_object_depth \ 256
-	ld a, h
-	sbc max_object_depth / 256
-	jr c, @+no_back_clip
-
-	scf
-	ret
-
-@no_back_clip:
-	ex de, hl
-	ld (hl), d
-	dec l
-	ld (hl), e
-
-	or a
-	ret
 
 ;
 ; @car.collide

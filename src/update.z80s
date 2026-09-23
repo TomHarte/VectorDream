@@ -54,3 +54,4 @@ update:
 include "update/objects.z80s"
 include "update/traffic.z80s"
 include "update/cars.z80s"
+include "update/furniture.z80s"

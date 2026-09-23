@@ -13,17 +13,41 @@ furniture.update:
 	inc l
 	ld d, (hl)
 	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
+	; [[fallthrough]]
 
+;
+; object.apply_player_velocity:
+;
+; Subtracts current player velocity from HL, then performs a object.write_check_depth_bounds.
+;
+object.apply_player_velocity:
 	; Subtract the player's velocity to get updated position, and write it out.
 	get_player_velocity_bc
 	or a
 	sbc hl, bc
+	; [[fallthrough]]
+
+;
+; object.write_check_depth_bounds
+;
+; Writes the value in HL to DE, post-decrementing E.
+; Then applies the logic of object.check_depth_bounds.
+;
+object.write_check_depth_bounds:
 	ex de, hl
 	ld (hl), d
 	dec l
 	ld (hl), e
 	ex de, hl
+	; [[fallthrough]]
 
+;
+; object.check_depth_bounds
+;
+; Tests whether min_object_depth < HL < max_object_depth.
+; If so, returns with carry clear. Otherwise returns with carry set.
+;
+object.check_depth_bounds:
 	; Check that object is still within bounds.
 	ld bc, min_object_depth
 	or a
