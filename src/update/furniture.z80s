@@ -1,0 +1,11 @@
+;
+; furniture.update
+;
+; Applies player velocity to the an object, moving it in relative space.
+; Tests whether it has gone outside of the visible area.
+;
+;	Inputs:
+;		DE = pointer to object within object list.
+;
+furniture.update:
+	ret
