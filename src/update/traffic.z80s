@@ -16,8 +16,8 @@ traffic.update:
 
 	;
 	; Otherwise require that (cars.time_since_added / 16) is greater than
-	; the current refresh count, as a broad-sweeps randomisation strategy
-	; that's possibly to be revised.
+	; a random number, as a broad-sweeps randomisation strategy that's
+	; possibly to be revised.
 	;
 	ld a, (cars.time_since_added)
 	rra
