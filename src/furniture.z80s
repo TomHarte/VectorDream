@@ -15,5 +15,8 @@ furniture:
 	dw 500
 	dw draw.leftward_arrow
 
+	; Terminator.
+	dw 0
+
 next_furniture:
 	dw furniture

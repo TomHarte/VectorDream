@@ -25,6 +25,11 @@ furniture.list.update:
 	sbc hl, bc		; HL = object depth - threshold
 	ret p			; No work to do if object depth >= threshold.
 
+	; That relative depth was compared to max_object_depth; adjust
+	; back to player position.
+	ld bc, max_object_depth
+	add hl, bc
+
 	; Insert object, preserving:
 	;
 	;	HL = relative depth of object;
@@ -50,13 +55,13 @@ furniture.list.update:
 	ld (hl), b
 	inc l
 
+	inc de
 	ex de, hl
 	ldi
 	ldi
-	ex de, hl
 
 	ld (next_furniture), hl
-	jr @-furniture.list.update
+	jr furniture.list.update
 
 @skip_object:
 	pop af
@@ -65,7 +70,7 @@ furniture.list.update:
 	inc hl
 	inc hl
 	ld (next_furniture), hl
-	jr @-furniture.list.update
+	jr furniture.list.update
 
 	ret
 
