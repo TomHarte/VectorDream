@@ -41,6 +41,8 @@ update:
 
 		call traffic.update					; Adds randomised traffic.
 
+		call furniture.list.update			; Add roadside adornments.
+
 		include "update/drag.inc.z80s"
 
 	pop bc

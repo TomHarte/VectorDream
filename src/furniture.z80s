@@ -1,0 +1,19 @@
+;
+; Defines a single piece of roadside furniture, i.e. a non-moving object
+; that appears on cue.
+;
+; This is essentially the same as the 'object' definition, but these positions are
+; absolute rather than relative.
+;
+
+offsetof.furniture.position:	EQU 0		; = 0 => end of furniture.
+offsetof.furniture.drawblock:	EQU 2
+
+sizeof.furniture:				EQU 4
+
+furniture:
+	dw 500
+	dw draw.leftward_arrow
+
+next_furniture:
+	dw furniture

@@ -7,6 +7,8 @@
 ;    \-----\
 ;
 
+	jp arrow.left.collide
+	jp furniture.update
 draw.leftward_arrow:
 	; Locate object at right-hand side of road.
 	locate_at_right
@@ -84,4 +86,8 @@ draw.leftward_arrow:
 	ld d, colour.warning				; This is a warning sign.
 	call edges.output
 
+	ret
+
+
+arrow.left.collide:
 	ret
