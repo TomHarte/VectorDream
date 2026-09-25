@@ -12,8 +12,10 @@ offsetof.furniture.drawblock:	EQU 2
 sizeof.furniture:				EQU 4
 
 furniture:
-	dw 500
-	dw draw.leftward_arrow
+	@arrows: EQU FOR 18
+		dw (500 + @arrows * 1000) & 0xffff
+		dw draw.leftward_arrow
+	NEXT @arrows
 
 	; Terminator.
 	dw 0
