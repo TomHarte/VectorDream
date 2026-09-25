@@ -1,3 +1,21 @@
+;
+; furniture.list.update
+;
+; Checks whether the player has now passed the point at which any further furniture objects
+; should be added to the active list. Adds them if slots are available. Any object for which
+; no slot is available is silently dropped.
+;
+; Parses the furniture list in a forwards direction only.
+;
+;	Inputs:
+;		None.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL.
+;
 furniture.list.update:
 	ld hl, (player.y + 1)
 	ld bc, max_object_depth
