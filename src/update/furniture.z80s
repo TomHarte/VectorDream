@@ -23,7 +23,7 @@ furniture.list.update:
 	ex de, hl
 	or a
 	sbc hl, bc		; HL = object depth - threshold
-	ret p			; No work to do if object depth >= threshold.
+	ret nc			; No work to do if object depth >= threshold.
 
 	; That relative depth was compared to max_object_depth; adjust
 	; back to player position.
@@ -35,14 +35,14 @@ furniture.list.update:
 	;	HL = relative depth of object;
 	;	DE = partially-advanced pointer into furniture list.
 	;
-	push hl
 	push de
+	push hl
 
 	call active_objects.front_reserve
 	jr c, @+skip_object
 
-	pop de
 	pop bc
+	pop de
 	; Now:
 	;
 	;	HL = pointer into object list.
