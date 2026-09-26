@@ -1,7 +1,4 @@
-
-	; Sign extend the integral part of player velocity
-	; into BC.
-	get_player_velocity_bc
+	ld bc, (player.ystep)
 
 @test_object: EQU FOR active_objects.count
 @object: EQU active_objects + @test_object * sizeof.object
@@ -12,7 +9,7 @@
 	inc a
 	jp z, @+objects_done
 
-	; Test for (object depth - player velocity) < (collision depth) < (object depth).
+	; Test for (object depth - player ystep) < (collision depth) < (object depth).
 	;
 	; This doesn't factor in any velocity the object may have but I'm hoping will be
 	; sufficient for game purposes.

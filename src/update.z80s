@@ -29,12 +29,34 @@ update:
 @update_loop:
 	push bc
 
+		;
+		; Temporarily copy top of current y position to ystep.
+		;
+		ld bc, (player.y + 1)
+		ld (player.ystep), bc
+
 		include "update/apply_input.inc.z80s"
-		include "update/collisions.inc.z80s"
 		include "update/x_velocity.inc.z80s"
 		include "update/y_velocity.inc.z80s"
 
 		include "update/track.inc.z80s"		; Updates the floor, applying corners.
+
+		;
+		; Calculate the total number of integer units moved.
+		; TODO: total movement should be broken down according to potential collisions.
+		;
+
+		ld hl, (player.y + 1)
+		ld bc, (player.ystep)
+		or a
+		sbc hl, bc
+		ld (player.ystep), hl
+
+		;
+		; Call update functions that read ystep.
+		;
+
+		include "update/collisions.inc.z80s"
 
 		call objects.update					; Updates visible objects according to their specific logic,
 											; and cycles in objects from the static list.

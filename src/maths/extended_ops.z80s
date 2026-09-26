@@ -54,13 +54,3 @@ dec_a_clamped: MACRO
 	sub 1
 	adc 0
 	ENDM
-
-; Gets a sign-extended version of the integral part of player velocity into BC.
-; Clobbers A.
-get_player_velocity_bc: MACRO
-	ld a, (player.yvelocity + 1)
-	ld c, a
-	rla
-	sbc a
-	ld b, a							; BC = top 16 bits of velocity.
-	ENDM

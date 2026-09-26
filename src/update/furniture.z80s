@@ -112,11 +112,11 @@ furniture.update:
 ;
 ; object.apply_player_velocity:
 ;
-; Subtracts current player velocity from HL, then performs a object.write_check_depth_bounds.
+; Subtracts current player movement step from HL, then performs a object.write_check_depth_bounds.
 ;
 object.apply_player_velocity:
-	; Subtract the player's velocity to get updated position, and write it out.
-	get_player_velocity_bc
+	; Subtract the player's movement to get updated position, and write it out.
+	ld bc, (player.ystep)
 	or a
 	sbc hl, bc
 	; [[fallthrough]]
