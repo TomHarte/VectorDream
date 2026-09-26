@@ -25,7 +25,23 @@ draw_tyre: MACRO
 upper_slope: EQU 63
 lower_slope: EQU 400
 
-
+;
+; draw.car
+;
+; Not a top-level draw function; called by the per-car draw functions (i.e. car0.draw, car1.draw, etc)
+; after performing some brief setup.
+;
+;	Inputs:
+;		HL = centre of base.
+;		IYl = car colour.
+;		A = x position of car centre, in track-relative coordinates.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL.
+;
 draw.car:
 	; HL = centre of base.
 
