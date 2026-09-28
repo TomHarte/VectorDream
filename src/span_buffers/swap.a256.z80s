@@ -118,7 +118,8 @@ ENDIF
 		sub e
 
 		; Draw.
-		call @fill_span
+		ld iy, @no_paint
+		jp @fill_span
 
 		@no_paint:
 		dec h
@@ -159,7 +160,8 @@ ENDIF
 		sub e
 
 		; Draw.
-		call @fill_span
+		ld iy, @no_paint
+		jp @fill_span
 
 		@no_paint:
 		dec h
@@ -222,8 +224,8 @@ ENDIF
 		inc b
 		sub e
 
-		call @fill_span
-		jr @-same_ending_tail
+		ld iy, @-same_ending_tail
+		jp @fill_span
 
 	@next_line:
 		; Advance high part of span pointers.
@@ -267,11 +269,12 @@ ENDIF
 finish_painting: MACRO
 	rl e	; just to get the top bit into carry; low 7 don't really matter.
 	rl d
-	ret
+	jp (iy)
 	ENDM
 
 	;
 	; Paint from d = y, e = x for width = A pixels, in colour IXl.
+	; Upon compeletion, jump to address in IY.
 	;
 	; Preserves HL, BC and D. Requires A >= 1.
 	;
@@ -283,7 +286,7 @@ finish_painting: MACRO
 	jr nc, @+no_initial_right
 
 		; Store width away somewhere.
-		ld iyl, a
+		ld (@+reload_width + 1), a
 
 		; Store low pixel of new colour.
 		ld a, ixh
@@ -298,7 +301,8 @@ finish_painting: MACRO
 		inc e
 
 		; Decrement remaining pixel count, possibly exit.
-		ld a, iyl
+	@reload_width:
+		ld a, 0
 		dec a
 		jr z, @+finish_painting
 
