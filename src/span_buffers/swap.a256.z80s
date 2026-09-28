@@ -271,7 +271,7 @@ finish_painting: MACRO
 	ENDM
 
 	;
-	; Paint from d = y, e = x for with = A pixels, in colour IXl.
+	; Paint from d = y, e = x for width = A pixels, in colour IXl.
 	;
 	; Preserves HL, BC and D. Requires A >= 1.
 	;
@@ -304,7 +304,7 @@ finish_painting: MACRO
 
 	; To here: (HL) = aligned target address, A = number of pixels to paint; IXh = colour to paint.
 	@no_initial_right:
-		srl a							; TODO: a mystery reason prevents this being an RRA. Needs diagnosis.
+		srl a
 		jr c, @+with_final_left
 
 		call @fill_bytes
