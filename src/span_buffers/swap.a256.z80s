@@ -49,17 +49,16 @@ ALIGN 256
 
 current_spans_swap: db 0
 @sp_backup: dw 0
+@hpen: db 0
 
 spans.swap:
 	; Establish canonical value of SP.
 	ld (@sp_backup), sp
 
 	; Store current line for upcoming interrupt checks.
-	exx
 	ld bc, HPEN
 	in a, (c)
-	ld d, a
-	exx
+	ld (@hpen), a
 
 	;
 	; Overarching register assignment:
@@ -245,20 +244,28 @@ ENDIF
 		jr nz, @-compare_spans
 
 		; At end of each page of lines, check for a potential missed interrupt.
-		exx
-		ld e, d
+		ld a, (@-hpen)
+		ld l, a				; L = old HPEN.
+
+		ld bc, HPEN
 		in a, (c)
-		ld d, a
+		ld (@-hpen), a		; A = stored value = new HPEN.
 
 		cp 192
 		jr nz, @+not_new_192
 
-		cp e
 		ld sp, (@sp_backup)
+		cp l
 		call nz, count_time.dispatch
 
 	@not_new_192:
-		exx
+		; Restore BC and L.
+		xor a
+		ld c, a
+		ld l, a
+		ld a, h
+		xor 0x40
+		ld b, a
 
 	NEXT @page
 
