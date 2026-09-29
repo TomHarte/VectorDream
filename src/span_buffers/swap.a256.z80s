@@ -26,7 +26,7 @@ ALIGN 256
 	ld (de), a
 	inc e
 	NEXT @column
-	ret
+	jp (ix)
 
 ;
 ; spans.swap
@@ -259,17 +259,12 @@ ENDIF
 
 		ret
 
-finish_painting: MACRO
-	rl e	; just to get the top bit into carry; low 7 don't really matter.
-	rl d
-	jp (iy)
-	ENDM
-
 	;
 	; Paint from d = y, e = x for width = A pixels, in colour (BC).
 	; Upon compeletion, jump to address in IY.
 	;
 	; Preserves HL, BC and D. Requires A >= 1.
+	; Assumes H = B ^ 0x40.
 	;
 @fill_span:
 	; Compute frame buffer address.
@@ -284,12 +279,12 @@ finish_painting: MACRO
 		; Store low pixel of new colour.
 		ld a, (bc)
 		and 0x0f
-		ld ixl, a
+		ld h, a
 
 		; Mutate current target of (HL) to include new pixel colour.
 		ld a, (de)
 		and 0xf0
-		or ixl
+		or h
 		ld (de), a
 		inc e
 
@@ -304,38 +299,47 @@ finish_painting: MACRO
 		srl a
 		jr c, @+with_final_left
 
-		call @fill_bytes
-		finish_painting
+		ld ix, @finish_painting
+		jp @fill_bytes
 
 	@with_final_left:
 		jr z, @+no_fill_bytes
-		call @fill_bytes
+		ld ix, @no_fill_bytes
+		jp @fill_bytes
 
 	@no_fill_bytes:
 		ld a, (bc)
 		and 0xf0
-		ld ixl, a
+		ld h, a
 
 		ld a, (de)
 		and 0x0f
-		or ixl
+		or h
 
 		ld (de), a
 
 	@finish_painting:
-		finish_painting
+		rl e		; Just to get the top bit into carry; low 7 don't really matter.
+		rl d
+
+		ld a, b		; Restore correct value of H, which was possibly lost.
+		xor 0x40
+		ld h, a
+
+		jp (iy)
 
 ;
 ; fill_bytes
 ;
 ; Does the equivalent of a C memset, for buffers between 1 and 128 bytes in size.
 ; Increments only the low byte of the pointer after each byte, so requires buffer alignment.
-;
+; Upon completion, jumps to IX.
 ;
 ;	Input:
 ; 		DE = address of first byte to write.
 ;		A = number of bytes to write.
 ;		(BC) = value to write.
+;		IX = destination to return to after bytes have been filled.
 ;
 ;	Output:
 ;		DE = (address of final written byte) + 1.
