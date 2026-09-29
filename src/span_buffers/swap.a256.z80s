@@ -48,8 +48,12 @@ ALIGN 256
 ;
 
 current_spans_swap: db 0
+@sp_backup: dw 0
 
 spans.swap:
+	; Establish canonical value of SP.
+	ld (@sp_backup), sp
+
 	; Store current line for upcoming interrupt checks.
 	exx
 	ld bc, HPEN
@@ -250,6 +254,7 @@ ENDIF
 		jr nz, @+not_new_192
 
 		cp e
+		ld sp, (@sp_backup)
 		call nz, count_time.dispatch
 
 	@not_new_192:
@@ -257,6 +262,7 @@ ENDIF
 
 	NEXT @page
 
+		ld sp, (@sp_backup)
 		ret
 
 	;
