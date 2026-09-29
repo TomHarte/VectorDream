@@ -1,0 +1,175 @@
+;
+; traffic.update
+;
+; Checks whether the criteria for adding a new moving vehicle to the traffic flow are met.
+; If so, appropriately randomises and adds one.
+;
+; TODO: per-level logic.
+;
+traffic.update:
+	;
+	; If there are already three active cars, add no more.
+	;
+	ld a, (found_cars)
+	cp (1 << NUM_CARS) - 1
+	jr z, @+too_many_cars
+
+	;
+	; Otherwise require that (cars.time_since_added / 16) is greater than
+	; a random number, as a broad-sweeps randomisation strategy that's
+	; possibly to be revised.
+	;
+	ld a, (cars.time_since_added)
+	rra
+	rra
+	rra
+	rra
+	and %00001111
+	ld d, a
+
+	call random.byte
+	cp d
+	jr nc, @+add_no_cars
+
+	; Ensure player is going fast enough to make an over-the-horizon car sensible,
+	; or else slow enough for a from-behind car.
+	ld a, (player.yvelocity + 1)
+	cp 5
+	jr c, @+add_car_near			; Velocity < 5 => car from behind.
+
+	cp 9
+	jr c, @+add_no_cars				; Velocity > 9 => car from front.
+
+@add_car_far:
+	; Try to get a spot in the object table.
+	call active_objects.front_reserve
+	ld bc, max_object_depth
+	jr @+add_car
+
+@add_car_near:
+	; Try to get a spot in the object table.
+	call active_objects.back_reserve
+	ld bc, min_object_depth
+	; [[fallthrough]]
+
+@add_car:
+	; Add (and randomise) only if a list spot was available.
+	jr c, @+add_no_cars
+	call @+randomise_car
+	ret
+
+@add_no_cars:
+	ld a, (cars.time_since_added)
+	inc_a_clamped
+	ld (cars.time_since_added), a
+	ret
+
+@too_many_cars:
+	; Zero out count; no cars were added but it's good to have a delay between three cars
+	; being visble and the next appearing.
+	xor a
+	ld (cars.time_since_added), a
+	ret
+
+
+
+;
+; @randomise_car
+;
+; Zeroes out cars.time_since_added and stores whatever is currently in BC as the new car's seed depth.
+; Finds an available car slot and randomises the car's x location and colour.
+;
+;	Inputs:
+;		HL = pointer to car insertion location within the objects list;
+;		BC = depth at which the car will first appear.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL.
+;
+@randomise_car:
+	; Zero out count since car added.
+	xor a
+	ld (cars.time_since_added), a
+
+	; Store depth that was provided.
+	ld (hl), c
+	inc l
+	ld (hl), b
+	inc l
+
+	; Pick a car slot to use.
+	ld a, (found_cars)
+
+@test_slot: EQU FOR NUM_CARS
+IF @test_slot != NUM_CARS - 1			; No need to test the final slot; an external test validated that at least one is available,
+										; so if it's not any of the earlier slots then it must be the final one.
+	rra
+	jr c, @+test_next
+ENDIF
+
+	ld bc, car{@test_slot}.draw
+	ld de, car{@test_slot}
+
+IF @test_slot != NUM_CARS - 1
+	jr @+fill_in_car
+
+@test_next:
+ENDIF
+	NEXT @test_slot
+
+
+@fill_in_car:
+	; Here:
+	;	BC = draw function for this car;
+	;	DE = object block for this car;
+	;	HL = pointer into object list, at position where draw function should be stored.
+
+	; Store draw object pointer.
+	ld (hl), c
+	inc l
+	ld (hl), b
+
+	; Pick a random x location.
+	; (for a very loose sense of random, here and below)
+	call random.byte
+	sra a
+	ld b, a
+	sra a
+	add b
+	ld (de), a
+	inc de
+
+	; Pick a random colour.
+	call random.nibble.spread
+	rra
+	jr nc, @+add_blue
+
+	ld a, colour.car.red
+	jr @+store_colour
+
+@add_blue:
+	ld a, colour.car.blue
+
+@store_colour:
+	ld (de), a
+;	inc de
+
+	; Pick a random speed between 6 and 9.
+	;
+	; Disabled for now as an MVP simplification; keeping them all at the same speed means
+	; never having to worry about them colliding with each other.
+	;
+;	ld a, r
+;	and 3
+;	add 6
+;	ld (de), a
+
+	; TODO: do I ever need to worry about zeroing out the top byte of velocity?
+	; xor a
+	; ld (de), a
+	; inc de
+
+	ret

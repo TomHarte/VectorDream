@@ -221,7 +221,7 @@ NEXT @fill_sky
 		ld h, a
 	ENDIF
 
-	; Establish B = half road width, C = half line width, A = offset.
+	; Establish B = half road width, C = half line width, A = offsetof.
 	ld bc, (road_width_{@road.fill} << 8) | line_width_{@road.fill}
 	ld a, (player.y + 1)
 	add depth_{@road.fill} & 0xff

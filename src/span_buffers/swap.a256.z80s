@@ -271,7 +271,7 @@ finish_painting: MACRO
 	ENDM
 
 	;
-	; Paint from d = y, e = x for with = A pixels, in colour IXl.
+	; Paint from d = y, e = x for width = A pixels, in colour IXl.
 	;
 	; Preserves HL, BC and D. Requires A >= 1.
 	;
@@ -304,7 +304,7 @@ finish_painting: MACRO
 
 	; To here: (HL) = aligned target address, A = number of pixels to paint; IXh = colour to paint.
 	@no_initial_right:
-		srl a							; TODO: a mystery reason prevents this being an RRA. Needs diagnosis.
+		srl a
 		jr c, @+with_final_left
 
 		call @fill_bytes
@@ -347,11 +347,100 @@ finish_painting: MACRO
 ;		A.
 ;
 @fill_bytes:
-	add a
-	neg
-	ld (@destination + 1), a
+	add a							; 4 / 8
+	neg								; 8 / 16
+	ld (@destination + 1), a		; 16 / 32
 
-	ld a, ixh
+	ld a, ixh						; 8 / 16
 
 @destination:
-	jp @-span_fill
+	jp @-span_fill					; 12 / 24
+
+									; = 48 / 96
+
+;
+; Note to future self:
+;
+; It'd be fantastic to be able to dispatch to stack-blasting routines
+; if/when the number of bytes to write crosses the threshold that will
+; pay for manual BC manipulation and SP setup.
+;
+; Code below plays around with costs/benefits of that as an idea.
+;
+
+;
+; Table-based dispatch:
+;
+;	exx		(bringing in fixed h)	4
+;	ld l, a							4
+;	ld e, (hl)						8
+;	inc h							4
+;	ld d, (hl)						8
+;	dec h							4
+;	ex de, hl						4
+;	jp (hl)							4
+;
+;	...
+;	ex de, hl						4
+;	exx								4	= 48 (!?!)
+;	...
+;
+; So table-based dispatch is a wash?
+;
+
+;
+; Regular filling:
+;
+;	ld (bc), a
+;	inc c
+;
+;	=> bytes * 12 / 24
+;
+
+
+;
+; Stack-blasted filling (if I can carry BC over the exx line?):
+;
+;	ld hl, [length]			; 12 / 24
+;	add hl, bc				; 12 / 16	= 24 / 40
+;	ld sp, hl				; 4 / 8
+;	ld c, a					; 4 / 8
+;	ld b, a					; 4 / 8
+;
+;	[bytes / 2] * 12 / 24
+;
+; So this gets ahead as soon as setup < bytes * 12/24 ?
+; i.e. ~ 36 < bytes * 12 => bytes >= 3
+;
+;	... that's **really** low. Probably misleading as I'm ignoring the
+;	costs of dealing with odd byte counts and of somehow carrying BC
+;	over the divide and updating it back on the other side?
+;
+;	Odd lengths are probably an extra exx / ld (bc), a / inc c / exx ?
+;	So 20 / 40?
+;
+;	Not sure about how to carry BC across the EXX divide in both
+;	directions cheaply. It's 16/32 to move BC to IX or IY and then
+;	back again. Cheaper than loading into memory somewhere.
+;
+;	So potential ignored costs on dispatch are:
+;
+;		20 + 16 = 36-ish. Plus existing 36 = 72;
+;
+;		Then bytes >= 6? 4 doesn't quite make the cut even at only 56 overhead,
+;		5 incurs an odd penalty. 6 seems to break even.
+;
+;
+; Addendum: 8-bit arithmetic will do, won't it?
+;
+;	ld h, b					; 4
+;	ld a, [length]			; 8
+;	add a, c				; 4
+;	ld l, c					; 4 = 20 / 40
+;
+;
+
+;
+; Conclusion: definitely worth trying.
+; Will need to stop using the alternate registers for HPEN tracking though.
+;

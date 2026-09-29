@@ -8,13 +8,13 @@ car{@cars}:
 	jp car{@cars}.collide
 	jp car{@cars}.update
 car{@cars}.draw:
-	ld a, (@-cardef + car.colour)
+	ld a, (@-cardef + offsetof.car.colour)
 	ld iyl, a
-	ld a, (@-cardef + car.x)
+	ld a, (@-cardef + offsetof.car.x)
 	jp draw.car
 NEXT @cars
 
-car.x:			EQU 0
-car.colour:		EQU 1
-car.velocity:	EQU 2
-car.sizeof:		EQU 4
+offsetof.car.x:			EQU 0
+offsetof.car.colour:	EQU 1
+offsetof.car.velocity:	EQU 2
+sizeof.car:				EQU 4

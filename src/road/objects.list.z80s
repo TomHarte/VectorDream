@@ -2,9 +2,9 @@
 ; Object fields (EQUd to their offsets):
 ;
 
-offset.object.depth: EQU 0			; Planar depth, i.e. along the ground, of this object.
-
-offset.object.draw: EQU 2			; Draw block for object. When called:
+offsetof.object.depth: EQU 0		; Planar depth, i.e. along the ground, of this object.
+offsetof.object.draw: EQU 2
+							; Draw block for object. When called:
 							;
 							;	HL = centre of the road in 2d at the depth of the object;
 							;	(@object_width) = width of a piece of road at the object's depth;
@@ -25,9 +25,9 @@ sizeof.object: EQU 4
 ; have the same update function; all static objects of the same size will have the same
 ; collision function.
 ;
-offset.drawblock.draw:		EQU 0	; Code for drawing is the thing pointed to by a draw block.
-offset.drawblock.update:	EQU -3	; Three bytes before the drawing code is a JP to the update code.
-offset.drawblock.collide:	EQU -6	; Six bytes before that is a JP to the update code.
+offsetof.drawblock.draw:	EQU 0	; Code for drawing is the thing pointed to by a draw block.
+offsetof.drawblock.update:	EQU -3	; Three bytes before the drawing code is a JP to the update code.
+offsetof.drawblock.collide:	EQU -6	; Six bytes before that is a JP to the update code.
 
 ;
 ; A list of active objects. Each is merely a two-byte distance from the viewer, and
@@ -108,7 +108,7 @@ object.update:
 active_objects.erase:
 @move_entry:
 	; Copy distance from camera.
-	ASSERT offset.object.depth == 0
+	ASSERT offsetof.object.depth == 0
 	ldi
 	ld a, (hl)		; Grab a copy of the high byte of distance of the incoming object as it passes by.
 	ldi
@@ -142,7 +142,7 @@ active_objects.erase:
 active_objects.back_reserve:
 	; Check whether the slot at end_of_objects - 4 is empty.
 	; If not then the list is full.
-	ld a, (@end_of_objects - sizeof.object + offset.object.depth + offset.word.byte.high)
+	ld a, (@end_of_objects - sizeof.object + offsetof.object.depth + offsetof.word.byte.high)
 	inc a
 	jr z, @+do_insert
 
@@ -153,7 +153,7 @@ active_objects.back_reserve:
 @do_insert:
 	; Find the first available slot.
 
-	ld hl, active_objects + offset.object.depth + offset.word.byte.high
+	ld hl, active_objects + offsetof.object.depth + offsetof.word.byte.high
 	ld bc, sizeof.object
 @test_slot:
 	ld a, (hl)
@@ -164,7 +164,7 @@ active_objects.back_reserve:
 	jr @-test_slot
 
 @found_slot:
-	ASSERT (offset.object.depth + offset.word.byte.high) == 1
+	ASSERT (offsetof.object.depth + offsetof.word.byte.high) == 1
 	dec l
 
 	or a
@@ -174,7 +174,7 @@ active_objects.back_reserve:
 ;
 ; active_objects.front_reserve
 ;
-; Reserves an object slot at the front of the list, i.e. **furthest** to the viewer,
+; Reserves an object slot at the front of the list, i.e. **furthest** from the viewer,
 ; if one is available.
 ;
 ; 	Input:
@@ -190,7 +190,7 @@ active_objects.back_reserve:
 active_objects.front_reserve:
 	; Check whether the slot at end_of_objects - 4 is empty.
 	; If not then the list is full.
-	ld a, (@end_of_objects - sizeof.object + offset.object.depth + offset.word.byte.high)
+	ld a, (@end_of_objects - sizeof.object + offsetof.object.depth + offsetof.word.byte.high)
 	inc a
 	jr z, @+do_insert
 
@@ -223,10 +223,10 @@ active_objects.front_reserve:
 ; setting all flags SBC usually sets.
 ;
 compare: MACRO
-	ld a, (iy + sizeof.object + offset.object.depth + offset.word.byte.low)
-	sub (iy + offset.object.depth + offset.word.byte.low)
+	ld a, (iy + sizeof.object + offsetof.object.depth + offsetof.word.byte.low)
+	sub (iy + offsetof.object.depth + offsetof.word.byte.low)
 	ld a, \0
-	sbc (iy + offset.object.depth + offset.word.byte.high)
+	sbc (iy + offsetof.object.depth + offsetof.word.byte.high)
 	ENDM
 
 ;
@@ -267,7 +267,7 @@ active_objects.sort:
 	;
 	; Exit immediately if list is empty.
 	;
-	ld a, (iy + offset.object.depth + offset.word.byte.high)
+	ld a, (iy + offsetof.object.depth + offsetof.word.byte.high)
 	inc a
 	ret z
 
@@ -280,7 +280,7 @@ active_objects.sort:
 	;
 	; Test whether next thing is the end of the list.
 	;
-	ld a, (iy + sizeof.object + offset.object.depth + offset.word.byte.high)
+	ld a, (iy + sizeof.object + offsetof.object.depth + offsetof.word.byte.high)
 	ld b, a		; Keep high byte of depth of next object to avoid a double fetch.
 	inc a
 	ret z
@@ -321,7 +321,7 @@ active_objects.sort:
 	swap_byte 3
 	add iy, bc
 
-	compare (iy + sizeof.object + offset.object.depth + offset.word.byte.high)
+	compare (iy + sizeof.object + offsetof.object.depth + offsetof.word.byte.high)
 	jr nc, @-test_next
 
 	;

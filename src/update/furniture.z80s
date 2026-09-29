@@ -1,0 +1,160 @@
+;
+; furniture.list.update
+;
+; Checks whether the player has now passed the point at which any further furniture objects
+; should be added to the active list. Adds them if slots are available. Any object for which
+; no slot is available is silently dropped.
+;
+; Parses the furniture list in a forwards direction only.
+;
+;	Inputs:
+;		None.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL.
+;
+furniture.list.update:
+	ld hl, (player.y + 1)
+	ld bc, max_object_depth
+	add hl, bc
+
+	ld c, l
+	ld b, h
+	ld hl, (next_furniture)
+		; BC = threshold for adding objects.
+		; HL = pointer to next candidate object.
+
+	; Load object insertion depth.
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+
+	; Test for end-of-list.
+	ld a, e
+	or d
+	ret z
+
+	; Calculate relative depth.
+	ex de, hl
+	or a
+	sbc hl, bc		; HL = object depth - threshold
+	ret nc			; No work to do if object depth >= threshold.
+
+	; That relative depth was compared to max_object_depth; adjust
+	; back to player position.
+	ld bc, max_object_depth
+	add hl, bc
+
+	; Insert object, preserving:
+	;
+	;	HL = relative depth of object;
+	;	DE = partially-advanced pointer into furniture list.
+	;
+	push de
+	push hl
+
+	call active_objects.front_reserve
+	jr c, @+skip_object
+
+	pop bc
+	pop de
+	; Now:
+	;
+	;	HL = pointer into object list.
+	;	DE = partially-advanced pointer into furniture list.
+	;	BC = relative depth of object.
+	;
+
+	ld (hl), c
+	inc l
+	ld (hl), b
+	inc l
+
+	inc de
+	ex de, hl
+	ldi
+	ldi
+
+	ld (next_furniture), hl
+	jr furniture.list.update
+
+@skip_object:
+	pop af
+	pop hl
+	inc hl
+	inc hl
+	inc hl
+	ld (next_furniture), hl
+	jr furniture.list.update
+
+	ret
+
+;
+; furniture.update
+;
+; Applies player velocity to the an object, moving it in relative space.
+; Tests whether it has gone outside of the visible area.
+;
+;	Inputs:
+;		DE = pointer to object within object list.
+;
+furniture.update:
+	ex de, hl
+	ld e, (hl)
+	inc l
+	ld d, (hl)
+	ex de, hl						; HL = object depth, DE = pointer to high byte of depth.
+	; [[fallthrough]]
+
+;
+; object.apply_player_velocity:
+;
+; Subtracts current player movement step from HL, then performs a object.write_check_depth_bounds.
+;
+object.apply_player_velocity:
+	; Subtract the player's movement to get updated position, and write it out.
+	ld bc, (player.ystep)
+	or a
+	sbc hl, bc
+	; [[fallthrough]]
+
+;
+; object.write_check_depth_bounds
+;
+; Writes the value in HL to DE, post-decrementing E.
+; Then applies the logic of object.check_depth_bounds.
+;
+object.write_check_depth_bounds:
+	ex de, hl
+	ld (hl), d
+	dec l
+	ld (hl), e
+	ex de, hl
+	; [[fallthrough]]
+
+;
+; object.check_depth_bounds
+;
+; Tests whether min_object_depth < HL < max_object_depth.
+; If so, returns with carry clear. Otherwise returns with carry set.
+;
+object.check_depth_bounds:
+	; Check that object is still within bounds.
+	ld bc, min_object_depth
+	or a
+	sbc hl, bc
+	jr c, @+clip
+
+	ld bc, max_object_depth
+	sbc hl, bc
+	jr nc, @+clip
+
+	or a
+	ret
+
+@clip:
+	scf
+	ret

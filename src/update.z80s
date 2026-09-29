@@ -19,7 +19,7 @@ update:
 
 	push bc
 
-		include "update/read_input.z80s"
+		include "update/read_input.inc.z80s"
 
 	pop bc
 
@@ -29,22 +29,53 @@ update:
 @update_loop:
 	push bc
 
-		include "update/apply_input.z80s"
-		include "update/collisions.z80s"
-		include "update/x_velocity.z80s"
-		include "update/y_velocity.z80s"
+		;
+		; Temporarily copy top of current y position to ystep.
+		;
+		ld bc, (player.y + 1)
+		ld (player.ystep), bc
 
-		include "update/track.z80s"			; Updates the floor, applying corners.
-		call cars.update
+		include "update/apply_input.inc.z80s"
+		include "update/x_velocity.inc.z80s"
+		include "update/y_velocity.inc.z80s"
 
-		include "update/drag.z80s"
+		include "update/track.inc.z80s"		; Updates the floor, applying corners.
+
+		;
+		; Calculate the total number of integer units moved.
+		; TODO: total movement should be broken down according to potential collisions.
+		;
+
+		ld hl, (player.y + 1)
+		ld bc, (player.ystep)
+		or a
+		sbc hl, bc
+		ld (player.ystep), hl
+
+		;
+		; Call update functions that read ystep.
+		;
+
+		include "update/collisions.inc.z80s"
+
+		call objects.update					; Updates visible objects according to their specific logic,
+											; and cycles in objects from the static list.
+
+		call traffic.update					; Adds randomised traffic.
+
+		call furniture.list.update			; Add roadside adornments.
+
+		include "update/drag.inc.z80s"
 
 	pop bc
 	dec b
 	jp nz, @-update_loop
 
-		include "update/gauges.z80s"
+		include "update/gauges.inc.z80s"
 
 	ret
 
-include "update/cars.z80s"			; Updates non-player vehicles.
+include "update/objects.z80s"
+include "update/traffic.z80s"
+include "update/cars.z80s"
+include "update/furniture.z80s"

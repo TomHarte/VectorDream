@@ -8,4 +8,5 @@ setup:
 ;	ld a, PAGE.VIDEO + 2
 ;	out (HMPR), a
 ;	call audio_setup
+	call furniture.list.update
 	jp road.setup

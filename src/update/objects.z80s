@@ -1,0 +1,50 @@
+NUM_CARS: EQU 4
+
+found_cars:
+	db 0
+
+;
+; objects.update
+;
+; Zeroes out `found_cars` and then calls the object-specific update logic on all active objects.
+;
+;	Inputs:
+;		None.
+;
+;	Outputs:
+;		None.
+;
+;	Clobbers:
+;		A, BC, DE, HL, IX, IY.
+;
+objects.update:
+	; Zero-out list of cars that are currently live.
+	; This will be repopulated as the update functions are run.
+	xor a
+	ld (found_cars), a
+
+@update_object: EQU FOR active_objects.count
+@object_base: EQU active_objects + @update_object * sizeof.object
+
+@process_object:
+	ld a, (@object_base + offsetof.object.depth + 1)				; Test for high byte of distance = 0xff as a list terminator.
+	inc a
+	ret z
+
+	; Call update function
+	ld hl, (@object_base + offsetof.object.draw)		; HL now points to draw block.
+	ld de, @object_base
+	call object.update
+
+	; Erase object if carry is set.
+	jr nc, @+next_object
+
+	ld de, @object_base
+	ld hl, @object_base + sizeof.object
+	call active_objects.erase
+	jr @-process_object					; Erasing eliminated what was in this slot so now something else is here.
+										; Therefore repeat at the same spot.
+
+@next_object:
+	NEXT @update_object
+	ret

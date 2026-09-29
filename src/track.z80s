@@ -11,12 +11,12 @@
 ; In that case it's acceptable not to tick backwards, provided there are no spurious forwards ticks.
 ;
 
-segment.position:			EQU 0		; = 0 => end of segments.
-segment.tick_distance:		EQU 2
-segment.tick_direction:		EQU 4		; 0 => tick -1. Non-zero => tick +1.
-segment.tick_target:		EQU 5
+offsetof.segment.position:			EQU 0		; = 0 => end of segments.
+offsetof.segment.tick_distance:		EQU 2
+offsetof.segment.tick_direction:	EQU 4		; 0 => tick -1. Non-zero => tick +1.
+offsetof.segment.tick_target:		EQU 5
 
-segment.size:				EQU 7
+sizeof.segment:						EQU 7
 
 @TICK_POSITIVE: EQU 0xff
 @TICK_NEGATIVE: EQU 0x00

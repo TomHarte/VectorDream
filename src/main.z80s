@@ -41,12 +41,12 @@ PAGE.FIRSTSPAN:		EQU 16 - spans.num_pages * 2	; The page on which the span buffe
 ;
 ; Generic offsets.
 ;
-offset.word.byte.low:		EQU 0
-offset.word.byte.high:		EQU 1
+offsetof.word.byte.low:			EQU 0
+offsetof.word.byte.high:		EQU 1
 
-offset.triple.byte.low:		EQU 0
-offset.triple.byte.middle:	EQU 1
-offset.triple.byte.high:	EQU 2
+offsetof.triple.byte.low:		EQU 0
+offsetof.triple.byte.middle:	EQU 1
+offsetof.triple.byte.high:		EQU 2
 
 ;
 ; Code page: an entire 32kb area just for code, that will sit in the low 32kb of the memory map.
@@ -67,7 +67,6 @@ DUMP PAGE.CODE, 0
 
 		include "road/curve_tables.s128.z80s"
 		include "maths/multiply.z80s"
-		include "setup.z80s"
 		@first_256: ASSERT @first_256 <= 0x100
 
 	;
@@ -97,6 +96,7 @@ DUMP PAGE.CODE, 0
 	; From here: things without alignment concerns, so no need to pack manually.
 	;
 
+		include "setup.z80s"
 		include "span_buffers/edges.z80s"
 
 		include "road/road.z80s"
@@ -107,8 +107,11 @@ DUMP PAGE.CODE, 0
 		include "fuel_rpm.z80s"
 		include "update.z80s"
 		include "track.z80s"
+		include "furniture.z80s"
 		include "tyres.z80s"
-		include "shapes.z80s"
+		include "shapes/helpers.z80s"
+		include "shapes/car.z80s"
+		include "shapes/leftward_arrow.z80s"
 		include "state.z80s"
 		include "cars.z80s"
 		include "audio.z80s"
