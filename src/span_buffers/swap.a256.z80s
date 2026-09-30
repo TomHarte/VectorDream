@@ -390,21 +390,28 @@ ENDIF
 			inc e					; 12 * bytes
 		NEXT @write_bc
 
+			;
+			; Cost up to here: 16 + 12 * bytes.
+			;
+
 		jp (ix)
 
 	ELSE
 
 		; If an odd number of bytes, put one out directly via DE.
 		IF @num_bytes & 1
-			exx
-			ld a, (bc)
 
-			ld (de), a
-			inc e
-			jr stack_work_{@num_bytes - 1}		; There isn't quite enough room in the 8kb just to fall through to the below at present;
-												; possibly something to reevaluate in the future.
+			exx						; 4
+			ld a, (bc)				; 8
+
+			ld (de), a				; 8
+			inc e					; 4
+
+			jr stack_work_{@num_bytes - 1}	; 12	; There isn't quite enough room in the 8kb just to fall through to the below at present;
+													; possibly something to reevaluate in the future.
 		ELSE
-			exx
+
+			exx						; 4
 			ld a, (bc)				; 8
 
 		stack_work_{@num_bytes}:
@@ -430,15 +437,32 @@ ENDIF
 			ld h, a					; 4			; Copy high byte of DE into shadow H.
 
 			ld sp, hl				; 4
-			ex de, hl							; Install shadow HL into SP and swap D into H for next time around. This is needed to
+			ex de, hl				; 4			; Install shadow HL into SP and swap D into H for next time around. This is needed to
 												; ensure the table-based dispatch in @fill_bytes works properly.
-
 
 			@push_bc: EQU FOR @num_bytes / 2
 				push bc				; 6 * bytes
 			NEXT @push_bc
 
-			exx
+			exx						; 4
+
+			;
+			; Cost up to here:
+			;	Even: 80 + 6 * bytes.
+			;	Odd: 104 + 6 * (bytes - 1)	= 98 + 6 * bytes
+			;
+
+			;
+			; So the correct tipping point is:
+			;
+			; 		80 + 6b < 16 + 12b			[even spans]
+			; =>	64 < 6b
+			; =>	12 <= b
+			;
+			;		98 + 6b < 16 + 12b			[odd spans]
+			; =>	82 < 6b
+			; =>	14 <= b
+
 			jp (ix)								; Restore main registers and exit.
 
 		ENDIF
