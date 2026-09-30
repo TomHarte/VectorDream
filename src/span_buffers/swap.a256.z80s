@@ -17,6 +17,13 @@
 ;		A, BC, DE, HL, IX, IYl.
 ;
 
+ALIGN 256
+@write_target:
+	dw 0
+	@target: EQU FOR 128
+	dw @write_{@target + 1}_bytes
+	NEXT @target
+
 current_spans_swap: db 0
 @sp_backup: dw 0
 @hpen: db 0
@@ -337,7 +344,7 @@ ENDIF
 @fill_bytes:
 	exx				; Brings in H = pointer to low byte dispatch table.
 
-	add a, a
+	add a, a		; A is strictly less than 128, so this definitely fits.
 	ld l, a
 	ld e, (hl)
 	inc l
@@ -399,7 +406,7 @@ ENDIF
 			ld l, a					; 4
 			exx						; 4
 
-			ld a, d					; 4
+			ld a, d					; 4		; Maybe the top part of the pointer could be loaded at start of line?
 			exx						; 4
 			ld h, a					; 4
 
@@ -423,13 +430,6 @@ ENDIF
 
 	jp (ix)
 	NEXT @write_span
-
-ALIGN 256
-@write_target:
-	dw 0
-	@target: EQU FOR 128
-	dw @write_{@target + 1}_bytes
-	NEXT @target
 
 ;
 ; Ensure that actually fitted onto the video page.
