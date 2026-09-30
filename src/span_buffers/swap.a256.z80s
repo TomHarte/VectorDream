@@ -1,26 +1,4 @@
 ;
-; Manages a double-buffered 'span buffer', i.e. a buffer that stores continuous solid horiontal spans of colour.
-;
-; It can do differential drawing — comparing a new buffer to an old one and outputting only the differences.
-;
-; It therefore seeks to ameliorate for the SAM's speed vs framebuffer deficit for scenes that:
-;	(i) can be described well as horizontal strips of colour; and
-;	(ii) that do not change 'too much' from one frame to the next.
-;
-; It uses memory pages 0–5 inclusive for these span buffers and assumes itself to have been assembled onto the same
-; page as a video buffer that it can use for pixel plotting, and paged into the top half of the memory map. It will
-; freely adjust what is paged in the low half of the memory map.
-;
-; Exported symbols:
-;
-;	* `spans.setup` should be called once at program startup;
-;	* `spans.clear` can be used to populate the current back buffer with a black screen;
-;	* `spans.swap` swaps the front and back span buffers, updating the pixel display; and
-;	* `spans.getaddress` which pages the proper buffer and returns a pointer to the start of a named line.
-;
-
-
-;
 ; spans.swap
 ;
 ; Swaps the front and back buffers, updating current pixel output.
@@ -367,36 +345,6 @@ ENDIF
 
 	jp (hl)
 
-;
-; Note to future self:
-;
-; It'd be fantastic to be able to dispatch to stack-blasting routines
-; if/when the number of bytes to write crosses the threshold that will
-; pay for manual BC manipulation and SP setup.
-;
-; Code below plays around with costs/benefits of that as an idea.
-;
-
-;
-; Table-based dispatch:
-;
-;	exx		(bringing in fixed d)	4
-;	ex de, hl						4
-;	ld l, a							4
-;	ld e, (hl)						8
-;	inc h							4
-;	ld d, (hl)						8
-;	dec h							4
-;	ex de, hl						4
-;	jp (hl)							4
-;
-;	...
-;	exx								4	= 48 (!?!)
-;	ld a, (bc)						8
-;	...
-;
-; So table-based dispatch is merely +8?
-;
 
 
 @write_span: EQU FOR 128
