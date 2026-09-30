@@ -385,7 +385,8 @@ ENDIF
 ;
 ; Table-based dispatch:
 ;
-;	exx		(bringing in fixed h)	4
+;	exx		(bringing in fixed d)	4
+;	ex de, hl						4
 ;	ld l, a							4
 ;	ld e, (hl)						8
 ;	inc h							4
@@ -395,11 +396,11 @@ ENDIF
 ;	jp (hl)							4
 ;
 ;	...
-;	ex de, hl						4
 ;	exx								4	= 48 (!?!)
+;	ld a, (bc)						8
 ;	...
 ;
-; So table-based dispatch is a wash?
+; So table-based dispatch is merely +8?
 ;
 
 ;
@@ -413,16 +414,35 @@ ENDIF
 
 
 ;
-; Stack-blasted filling (if I can carry BC over the exx line?):
+; Stack-blasted filling:
 ;
-;	ld hl, [length]			; 12 / 24
-;	add hl, bc				; 12 / 16	= 24 / 40
-;	ld sp, hl				; 4 / 8
-;	ld c, a					; 4 / 8
-;	ld b, a					; 4 / 8
+;	ld a, c					; 4
+;	exx						; 4
+;	ld h, 0					; 8
+;	add n					; 4
+;	ld l, a					; 4
+;	ld sp, hl				; 4
+;	exx						; 4
+;	ld a, (bc)				; 8
+;
+;	[if odd length: write one byte via DE here, before the switchover]
+;
+;	exx						; 4
+;	ld c, a					; 4
+;	ld b, a					; 4
 ;
 ;	[bytes / 2] * 12 / 24
 ;
+; 	exx						; 4
+
+;	= 14*4 + [bytes / 2] * 12		= 64 + bytes * 6
+;	Compares with:					12 + bytes * 12
+;
+;	64 + 6b = 12 + 12b
+;	=> 52 = 6b
+;	=> b = 52/6 = 26/3 = 8 2/3. From runs of nine onwards, stack blasting is faster.
+
+
 ; So this gets ahead as soon as setup < bytes * 12/24 ?
 ; i.e. ~ 36 < bytes * 12 => bytes >= 3
 ;
