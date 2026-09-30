@@ -405,11 +405,17 @@ ENDIF
 												; possibly something to reevaluate in the future.
 		ELSE
 			exx
+			ld a, (bc)				; 8
 
 		stack_work_{@num_bytes}:
 			;
 			; Longer spans: jump through the setup costs for stack blasting.
 			;
+
+			exx						; 4
+			ld b, a					; 4
+			ld c, a					; 4
+			exx						; 4		; Set shadow BC = two copies of the colour byte.
 
 			ld a, @num_bytes		; 8
 			add e					; 4
@@ -427,11 +433,6 @@ ENDIF
 			ex de, hl							; Install shadow HL into SP and swap D into H for next time around. This is needed to
 												; ensure the table-based dispatch in @fill_bytes works properly.
 
-			exx						; 4
-			ld a, (bc)				; 8
-			exx						; 4
-			ld b, a					; 4
-			ld c, a					; 4			; Set shadow BC = two copies of the colour byte.
 
 			@push_bc: EQU FOR @num_bytes / 2
 				push bc				; 6 * bytes
