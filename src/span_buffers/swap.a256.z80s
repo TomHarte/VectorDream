@@ -374,7 +374,7 @@ ENDIF
 	@write_{@num_bytes}_bytes:
 
 
-	IF @num_bytes < 12		; NB: dividing length must be a multiple of two because of the way
+	IF @num_bytes < 10		; NB: dividing length must be a multiple of two because of the way
 							; that odd-length stack-based writes use the even ones.
 
 		ex de, hl
@@ -433,17 +433,15 @@ ENDIF
 		add e					; 4
 		ld e, a					; 4			; Advance DE to its correct ending point. Which is also where SP should start from.
 
-		exx						; 4
-		ld l, a					; 4
-		exx						; 4			; Copy low byte of DE into shadow L.
-
-		ld a, d					; 4
-		exx						; 4
-		ld h, a					; 4			; Copy high byte of DE into shadow H.
-
+		ex de, hl				; 4
 		ld sp, hl				; 4
-		ex de, hl				; 4			; Install shadow HL into SP and swap D into H for next time around. This is needed to
+		ex de, hl				; 4			; Load DE into SP.
+
+		exx						; 4
+		ex de, hl				; 4			; Swap shadow D into H for next time around. This is needed to
 											; ensure the table-based dispatch in @fill_bytes works properly.
+											;
+											; Also re-expose the loaded BC.
 
 		@push_bc: EQU FOR @num_bytes / 2
 			push bc				; 6 * bytes
@@ -460,13 +458,13 @@ ENDIF
 		;
 		; So the correct tipping point is:
 		;
-		; 		80 + 6b < 16 + 12b			[even spans]
-		; =>	64 < 6b
-		; =>	12 <= b
+		; 		68 + 6b < 16 + 12b			[even spans]
+		; =>	52 < 6b
+		; =>	int 9 <= b
 		;
-		;		98 + 6b < 16 + 12b			[odd spans]
-		; =>	82 < 6b
-		; =>	14 <= b
+		;		76 + 6b < 16 + 12b			[odd spans]
+		; =>	60 < 6b
+		; =>	10 <= b
 
 		jp (ix)								; Restore main registers and exit.
 
