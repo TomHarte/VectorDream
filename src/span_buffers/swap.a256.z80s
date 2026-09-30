@@ -342,7 +342,7 @@ ENDIF
 ;		A.
 ;
 @fill_bytes:
-	exx				; Brings in H = pointer to low byte dispatch table.
+	exx				; Brings in H = pointer to dispatch table.
 
 	add a, a		; A is strictly less than 128, so this definitely fits.
 	ld l, a
@@ -354,8 +354,18 @@ ENDIF
 
 	jp (hl)
 
-
-
+;
+; Routines to write n bytes; all @fill_bytes actually does is a dispatch.
+;
+; Heavily coupled to @fill_bytes though, so:
+;
+;	* at entry, the shadow registers will be visible and the value assumed ordinarily to be in H will be in D;
+;	* BC in the non-shadow registers points to the colour to output;
+;	* at exit non-shadow DE needs to have been advanced by the number of bytes being output, and the non-shadow registers need to be visible; and
+;	* the appropriate continuation address is in IX.
+;
+; A and SP are free for use, as are the shadow BC, E and HL. As above, the shadow D needs to end up in the shadow H.
+;
 @write_span: EQU FOR 128
 	@num_bytes: EQU @write_span + 1
 
@@ -403,32 +413,32 @@ ENDIF
 
 			ld a, @num_bytes		; 8
 			add e					; 4
-			ld e, a					; 4
+			ld e, a					; 4			; Advance DE to its correct ending point. Which is also where SP should start from.
 
 			exx						; 4
 			ld l, a					; 4
-			exx						; 4
+			exx						; 4			; Copy low byte of DE into shadow L.
 
-			ld a, d					; 4		; Maybe the top part of the pointer could be loaded at start of line?
+			ld a, d					; 4
 			exx						; 4
-			ld h, a					; 4
+			ld h, a					; 4			; Copy high byte of DE into shadow H.
 
 			ld sp, hl				; 4
-			ex de, hl
+			ex de, hl							; Install shadow HL into SP and swap D into H for next time around. This is needed to
+												; ensure the table-based dispatch in @fill_bytes works properly.
 
 			exx						; 4
 			ld a, (bc)				; 8
 			exx						; 4
 			ld b, a					; 4
-			ld c, a					; 4		= 17 * 4 = 68 [border] cycles of setup. So faster at 12 pixels? Not great.
+			ld c, a					; 4			; Set shadow BC = two copies of the colour byte.
 
 			@push_bc: EQU FOR @num_bytes / 2
 				push bc				; 6 * bytes
 			NEXT @push_bc
 
 			exx
-
-			jp (ix)
+			jp (ix)								; Restore main registers and exit.
 
 		ENDIF
 	ENDIF
