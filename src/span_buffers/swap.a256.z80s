@@ -348,10 +348,10 @@ ENDIF
 
 	add a, a		; A is strictly less than 128, so this definitely fits.
 	ld l, a
+
 	ld e, (hl)
 	inc l
 	ld d, (hl)
-
 	ex de, hl
 
 	jp (hl)
@@ -398,76 +398,78 @@ ENDIF
 
 		jp (ix)
 
+	ELSE IF @num_bytes & 1
+
+		; If an odd number of bytes, put one out directly via DE, then jump into
+		; the appropriate even-number-of-byte routine.
+
+		exx						; 4
+		ld a, (bc)				; 8
+
+		ld (de), a				; 8
+		inc e					; 4
+
+		jr stack_work_{@num_bytes - 1}	; 12	; There isn't quite enough room in the 8kb just to fall through to the below at present;
+												; possibly something to reevaluate in the future.
 	ELSE
 
-		; If an odd number of bytes, put one out directly via DE.
-		IF @num_bytes & 1
+		exx						; 4
+		ld a, (bc)				; 8
 
-			exx						; 4
-			ld a, (bc)				; 8
+	stack_work_{@num_bytes}:
+		;
+		; Longer spans: jump through the setup costs for stack blasting.
+		;
+		; Constraints here: the main BC, DE and HL are all fully occupied.
+		; The stack is unavailable.
+		;
 
-			ld (de), a				; 8
-			inc e					; 4
+		exx						; 4
+		ld b, a					; 4
+		ld c, a					; 4
+		exx						; 4			; Set shadow BC = two copies of the colour byte.
 
-			jr stack_work_{@num_bytes - 1}	; 12	; There isn't quite enough room in the 8kb just to fall through to the below at present;
-													; possibly something to reevaluate in the future.
-		ELSE
+		ld a, @num_bytes		; 8
+		add e					; 4
+		ld e, a					; 4			; Advance DE to its correct ending point. Which is also where SP should start from.
 
-			exx						; 4
-			ld a, (bc)				; 8
+		exx						; 4
+		ld l, a					; 4
+		exx						; 4			; Copy low byte of DE into shadow L.
 
-		stack_work_{@num_bytes}:
-			;
-			; Longer spans: jump through the setup costs for stack blasting.
-			;
+		ld a, d					; 4
+		exx						; 4
+		ld h, a					; 4			; Copy high byte of DE into shadow H.
 
-			exx						; 4
-			ld b, a					; 4
-			ld c, a					; 4
-			exx						; 4			; Set shadow BC = two copies of the colour byte.
+		ld sp, hl				; 4
+		ex de, hl				; 4			; Install shadow HL into SP and swap D into H for next time around. This is needed to
+											; ensure the table-based dispatch in @fill_bytes works properly.
 
-			ld a, @num_bytes		; 8
-			add e					; 4
-			ld e, a					; 4			; Advance DE to its correct ending point. Which is also where SP should start from.
+		@push_bc: EQU FOR @num_bytes / 2
+			push bc				; 6 * bytes
+		NEXT @push_bc
 
-			exx						; 4
-			ld l, a					; 4
-			exx						; 4			; Copy low byte of DE into shadow L.
+		exx						; 4
 
-			ld a, d					; 4
-			exx						; 4
-			ld h, a					; 4			; Copy high byte of DE into shadow H.
+		;
+		; Cost up to here:
+		;	Even: 80 + 6 * bytes.
+		;	Odd: 104 + 6 * (bytes - 1)	= 98 + 6 * bytes
+		;
 
-			ld sp, hl				; 4
-			ex de, hl				; 4			; Install shadow HL into SP and swap D into H for next time around. This is needed to
-												; ensure the table-based dispatch in @fill_bytes works properly.
+		;
+		; So the correct tipping point is:
+		;
+		; 		80 + 6b < 16 + 12b			[even spans]
+		; =>	64 < 6b
+		; =>	12 <= b
+		;
+		;		98 + 6b < 16 + 12b			[odd spans]
+		; =>	82 < 6b
+		; =>	14 <= b
 
-			@push_bc: EQU FOR @num_bytes / 2
-				push bc				; 6 * bytes
-			NEXT @push_bc
+		jp (ix)								; Restore main registers and exit.
 
-			exx						; 4
-
-			;
-			; Cost up to here:
-			;	Even: 80 + 6 * bytes.
-			;	Odd: 104 + 6 * (bytes - 1)	= 98 + 6 * bytes
-			;
-
-			;
-			; So the correct tipping point is:
-			;
-			; 		80 + 6b < 16 + 12b			[even spans]
-			; =>	64 < 6b
-			; =>	12 <= b
-			;
-			;		98 + 6b < 16 + 12b			[odd spans]
-			; =>	82 < 6b
-			; =>	14 <= b
-
-			jp (ix)								; Restore main registers and exit.
-
-		ENDIF
 	ENDIF
 
 	NEXT @write_span
