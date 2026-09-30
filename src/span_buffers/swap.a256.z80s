@@ -60,6 +60,10 @@ spans.swap:
 	in a, (c)
 	ld (@hpen), a
 
+	exx
+	ld hl, @low_write_target
+	exx
+
 	;
 	; Overarching register assignment:
 	;
@@ -402,6 +406,87 @@ ENDIF
 ;
 ; So table-based dispatch is merely +8?
 ;
+
+
+@write_span: EQU FOR 128
+	@num_bytes: EQU @write_span + 1
+
+	@write_{@num_bytes}_bytes:
+
+		ex de, hl
+		exx					; Restore shadow registers to an appropriate state for the next
+							; dispatch and return to the main registers.
+
+	IF @num_bytes < 12		; NB: dividing length must be a multiple of two because of the way
+							; that odd-length stack-based writes use the even ones.
+
+		;
+		; Short spans: write the requested number of bytes via DE,
+		; incrementing along.
+		;
+		@write_bc: EQU FOR @num_bytes
+			ld (de), a
+			inc e					; 12 * bytes
+		NEXT @write_bc
+
+	ELSE
+		; If an odd number of bytes, put one out directly via DE.
+		IF @num_bytes & 1
+			ld (de), a
+			inc e
+			jr stack_work_{@num_bytes - 1}		; There isn't quite enough room in the 8kb just to fall through to the below at present;
+												; possibly something to reevaluate in the future.
+		ELSE
+		stack_work_{@num_bytes}:
+			;
+			; Longer spans: jump through the setup costs for stack blasting.
+			;
+
+			ld a, @num_bytes		; 8
+			add e					; 4
+			ld e, a					; 4
+
+			exx						; 4
+			ld l, a					; 4
+			exx						; 4
+
+			ld a, d					; 4
+			exx						; 4
+			ld h, a					; 4
+
+			ld sp, hl				; 4
+
+			exx						; 4
+			ld a, (bc)				; 8
+			exx						; 4
+			ld b, a					; 4
+			ld c, a					; 4		= 17 * 4 = 68 [border] cycles of setup. So faster at 12 pixels? Not great.
+
+			@push_bc: EQU FOR @num_bytes / 2
+				push bc				; 6 * bytes
+			NEXT @push_bc
+
+			exx
+		ENDIF
+
+	ENDIF
+
+	jp (ix)
+	NEXT @write_span
+
+ALIGN 256
+@low_write_target:
+	db 0
+	@target: EQU FOR 128
+	db @write_{@target + 1}_bytes \ 256
+	NEXT @target
+
+ALIGN 256
+@high_write_target:
+	db 0
+	@target: EQU FOR 128
+	db @write_{@target + 1}_bytes / 256
+	NEXT @target
 
 ;
 ; Regular filling:
