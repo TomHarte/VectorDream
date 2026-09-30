@@ -108,9 +108,6 @@ ENDIF
 		cp (hl)
 		jr z, @+no_paint
 
-		; IXh = colour.
-		ld ixh, a
-
 		; A = length.
 		dec h
 		ld a, (hl)
@@ -148,9 +145,6 @@ ENDIF
 		ld a, (bc)
 		cp (hl)
 		jr z, @+no_paint
-
-		; IXh = colour.
-		ld ixh, a
 
 		; A = length.
 		dec b
@@ -215,8 +209,7 @@ ENDIF
 		jr @-bc_greater
 
 	@paint:
-		; Set IXh = colour; A = width.
-		ld ixh, a
+		; Set A = width.
 		dec b
 		ld a, (bc)
 		inc b
@@ -286,7 +279,7 @@ finish_painting: MACRO
 		ld iyl, a
 
 		; Store low pixel of new colour.
-		ld a, ixh
+		ld a, (bc)
 		and 0x0f
 		ld ixl, a
 
@@ -302,7 +295,7 @@ finish_painting: MACRO
 		dec a
 		jr z, @+finish_painting
 
-	; To here: (HL) = aligned target address, A = number of pixels to paint; IXh = colour to paint.
+	; To here: (HL) = aligned target address, A = number of pixels to paint, (BC) = colour to paint.
 	@no_initial_right:
 		srl a
 		jr c, @+with_final_left
@@ -315,7 +308,7 @@ finish_painting: MACRO
 		call @fill_bytes
 
 	@no_fill_bytes:
-		ld a, ixh
+		ld a, (bc)
 		and 0xf0
 		ld ixl, a
 
@@ -338,7 +331,7 @@ finish_painting: MACRO
 ;	Input:
 ; 		DE = address of first byte to write.
 ;		A = number of bytes to write.
-;		IXh = value to write.
+;		(BC) = value to write.
 ;
 ;	Output:
 ;		DE = (address of final written byte) + 1.
@@ -351,7 +344,7 @@ finish_painting: MACRO
 	neg								; 8 / 16
 	ld (@destination + 1), a		; 16 / 32
 
-	ld a, ixh						; 8 / 16
+	ld a, (bc)						; 8 / 16
 
 @destination:
 	jp @-span_fill					; 12 / 24
