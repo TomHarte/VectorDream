@@ -380,7 +380,10 @@ ENDIF
 			inc e					; 12 * bytes
 		NEXT @write_bc
 
+		jp (ix)
+
 	ELSE
+
 		; If an odd number of bytes, put one out directly via DE.
 		IF @num_bytes & 1
 			exx
@@ -424,11 +427,12 @@ ENDIF
 			NEXT @push_bc
 
 			exx
-		ENDIF
 
+			jp (ix)
+
+		ENDIF
 	ENDIF
 
-	jp (ix)
 	NEXT @write_span
 
 ;
