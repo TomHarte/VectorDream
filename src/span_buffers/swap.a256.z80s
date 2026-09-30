@@ -31,7 +31,7 @@ spans.swap:
 	ld (@hpen), a
 
 	exx
-	ld hl, @low_write_target
+	ld h, @write_target / 256
 	exx
 
 	;
@@ -336,11 +336,13 @@ ENDIF
 ;
 @fill_bytes:
 	exx				; Brings in H = pointer to low byte dispatch table.
+
+	add a, a
 	ld l, a
 	ld e, (hl)
-	inc h
+	inc l
 	ld d, (hl)
-	dec h
+
 	ex de, hl
 
 	jp (hl)
@@ -423,15 +425,8 @@ ENDIF
 	NEXT @write_span
 
 ALIGN 256
-@low_write_target:
-	db 0
+@write_target:
+	dw 0
 	@target: EQU FOR 128
-	db @write_{@target + 1}_bytes \ 256
-	NEXT @target
-
-ALIGN 256
-@high_write_target:
-	db 0
-	@target: EQU FOR 128
-	db @write_{@target + 1}_bytes / 256
+	dw @write_{@target + 1}_bytes
 	NEXT @target
