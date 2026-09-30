@@ -430,3 +430,10 @@ ALIGN 256
 	@target: EQU FOR 128
 	dw @write_{@target + 1}_bytes
 	NEXT @target
+
+;
+; Ensure that actually fitted onto the video page.
+;
+@end_marker:
+;	jr @-end_marker
+	ASSERT @end_marker < 0x8000
