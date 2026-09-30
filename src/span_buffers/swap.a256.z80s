@@ -37,6 +37,8 @@ spans.swap:
 	in a, (c)
 	ld (@hpen), a
 
+	; Establish top byte of span-filler jump table in the shadow H;
+	; it'll be assumed to present later during dispatch.
 	exx
 	ld h, @write_target / 256
 	exx
@@ -422,7 +424,7 @@ ENDIF
 			exx						; 4
 			ld b, a					; 4
 			ld c, a					; 4
-			exx						; 4		; Set shadow BC = two copies of the colour byte.
+			exx						; 4			; Set shadow BC = two copies of the colour byte.
 
 			ld a, @num_bytes		; 8
 			add e					; 4
