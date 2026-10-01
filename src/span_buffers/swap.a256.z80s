@@ -346,17 +346,26 @@ ENDIF
 ;		A.
 ;
 @fill_bytes:
-	exx				; Brings in H = pointer to dispatch table.
+	exx				; 4		; Brings in H = pointer to dispatch table.
 
-	add a, a		; A is strictly less than 128, so this definitely fits.
-	ld l, a
+	add a, a		; 4		; A is strictly less than 128, so this definitely fits.
+	ld l, a			; 4
 
-	ld e, (hl)
-	inc l
-	ld d, (hl)
-	ex de, hl
+	ld e, (hl)		; 8
+	inc l			; 4
+	ld d, (hl)		; 8
+	ex de, hl		; 4
 
-	jp (hl)
+	jp (hl)			; 4
+
+		; [plus an implied 8 at the receiver] = 48 cycles dispatch
+
+		; In an older approach, non-stack-blasting drawing was assumed with a dispatch that looked like:
+		;
+		;	add a, a						; 4
+		;	neg								; 4
+		;	ld (jump + 1), a				; 16
+		;	@jump: jp dest					; 12		= 36
 
 ;
 ; Routines to write n bytes; all @fill_bytes actually does is a dispatch.
