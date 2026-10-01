@@ -55,17 +55,8 @@ edge.fill.upward:
 	; Clamp and write HL to (DE), decrementing the pointer.
 	ex de, hl
 	or a
-	jr z, @+write_d		; top byte = 0; write integral part.
-	jp p, @+write_255	; top byte > 0; clamp to +255.
+	jr nz, @+write_clamped	; top byte != 0; write something clamped.
 
-	ld (hl), 0x00		; top byte < 0; clamp to 0.
-	jr @+decrement
-
-@write_255:
-	ld (hl), 0xff
-	jr @+decrement
-
-@write_d:
 	ld (hl), d
 
 @decrement:
@@ -89,6 +80,15 @@ edge.fill.upward:
 
 	ret
 
+@write_clamped:
+	jp p, @+write_255	; top byte > 0; clamp to +255.
+
+	ld (hl), 0x00		; top byte < 0; clamp to 0.
+	jr @-decrement
+
+@write_255:
+	ld (hl), 0xff
+	jr @-decrement
 
 ;
 ; TODO: this is less important to optimise than below, because it's kind of specific to the 2d cases
