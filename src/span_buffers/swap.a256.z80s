@@ -402,31 +402,20 @@ ENDIF
 
 		IF @num_bytes & 1
 
-			; If an odd number of bytes, put one out directly via DE, then jump into
-			; the appropriate even-number-of-byte routine.
+			; If an odd number of bytes, put one out directly via DE.
 
 			ld a, (bc)				; 8
 			ld (de), a				; 8			; Get colour into A and write the first byte.
 
-			ld a, @num_bytes		; 8
-			add e					; 4
-			ld e, a					; 4			; Advance DE to its correct ending point.
-
-			ex de, hl				; 4
-			ld sp, hl				; 4
-			ex de, hl				; 4			; Load DE into SP.
-
-		ELSE
-
-			ld a, @num_bytes		; 8
-			add e					; 4
-			ld e, a					; 4			; Advance DE to its correct ending point.
-
-			ex de, hl				; 4
-			ld sp, hl				; 4
-			ex de, hl				; 4			; Load DE into SP.
-
 		ENDIF
+
+		ld a, @num_bytes		; 8
+		add e					; 4
+		ld e, a					; 4			; Advance DE to its correct ending point.
+
+		ex de, hl				; 4
+		ld sp, hl				; 4
+		ex de, hl				; 4			; Load DE into SP.
 
 		ld a, (bc)				; 8			; Obtain the colour.
 
