@@ -286,25 +286,26 @@ ENDIF
 		; Store width away somewhere.
 		ld (@+reload_width + 1), a
 
-		; Store low pixel of new colour.
+		; Get a single nibble of the new output colour.
 		ld a, (bc)
 		and 0x0f
 		ld h, a
 
-		; Mutate current target of (HL) to include new pixel colour.
+		; Mutate current target of (DE) to include new pixel colour.
 		ld a, (de)
 		and 0xf0
 		or h
+
 		ld (de), a
 		inc e
 
 		; Decrement remaining pixel count, possibly exit.
 	@reload_width:
-		ld a, 0
+		ld a, 0	; <-- dynamically reprogrammed to the actual width.
 		dec a
 		jr z, @+finish_painting
 
-	; To here: (HL) = aligned target address, A = number of pixels to paint, (BC) = colour to paint.
+	; To here: (DE) = aligned target address, A = number of pixels to paint, (BC) = colour to paint.
 	@no_initial_right:
 		srl a
 		jr c, @+with_final_left
@@ -314,6 +315,7 @@ ENDIF
 
 	@with_final_left:
 		jr z, @+no_fill_bytes
+
 		ld ix, @no_fill_bytes
 		jp @fill_bytes
 
@@ -329,7 +331,7 @@ ENDIF
 		ld (de), a
 
 	@finish_painting:
-		rl e		; Just to get the top bit into carry; low 7 don't really matter.
+		sla e		; Just to get the top bit into carry; low 7 don't really matter.
 		rl d
 
 		ld a, b		; Restore correct value of H, which was possibly lost.
