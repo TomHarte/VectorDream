@@ -28,7 +28,7 @@ current_spans_swap: db 0
 ;		none.
 ;
 ;	Clobbers:
-;		A, BC, DE, HL, HL', IX, IY.
+;		A, BC, DE, HL, BC', DE', HL', IX, IY.
 ;
 spans.swap:
 	; Establish canonical value of SP.
@@ -379,7 +379,23 @@ ENDIF
 	exx					; Restore shadow registers to an appropriate state for the next
 						; dispatch and return to the main registers.
 
-
+	;
+	; Costs:
+	;
+	;	Non-stack: 8 + 12 * bytes.
+	;	Even: 52 + 6 * bytes.
+	;	Odd: 68 + 6 * (bytes - 1)	= 62 + 6 * bytes
+	;
+	; So the correct thresholds are:
+	;
+	; 		52 + 6b < 8 + 12b			[even spans]
+	; =>	44 < 6b
+	; =>	7.333 <= b		(so 8 is the first even length faster to plot)
+	;
+	;		62 + 6b < 8 + 12b			[odd spans]
+	; =>	56 < 6b
+	; =>	9.333 <= b		(so 11 is the first odd length faster to plot)
+	;
 	@threshold: EQU 8 + (@num_bytes & 1) * 3
 	IF @num_bytes < @threshold
 		;
@@ -393,10 +409,6 @@ ENDIF
 			ld (de), a
 			inc e					; 12 * bytes
 		NEXT @write_bc
-
-		;
-		; Cost: 8 + 12 * bytes.
-		;
 
 	ELSE
 
@@ -421,7 +433,7 @@ ENDIF
 
 		exx						; 4
 		ld b, a					; 4
-		ld c, a					; 4			; Duplicate the colour into BC'
+		ld c, a					; 4			; Duplicate the colour into BC'.
 
 		;
 		; Write the proper quantity of bytes.
@@ -431,25 +443,7 @@ ENDIF
 			push bc				; 6 * bytes
 		NEXT @push_bc
 
-		exx						; 4				; Switch back to the main register set and return.
-
-		;
-		; Costs:
-		;
-		;	Even: 52 + 6 * bytes.
-		;	Odd: 68 + 6 * (bytes - 1)	= 62 + 6 * bytes
-		;
-
-		;
-		; So the correct tipping point is:
-		;
-		; 		52 + 6b < 8 + 12b			[even spans]
-		; =>	44 < 6b
-		; =>	7.333 <= b		(so 8 is the first even length faster to plot)
-		;
-		;		62 + 6b < 8 + 12b			[odd spans]
-		; =>	56 < 6b
-		; =>	9.333 <= b		(so 11 is the first odd length faster to plot)
+		exx						; 4			; Switch back to the main register set.
 
 	ENDIF
 
