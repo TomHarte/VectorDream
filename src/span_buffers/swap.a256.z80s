@@ -292,7 +292,7 @@ ENDIF
 		dec a
 		jr z, @+finish_painting
 
-	; To here: (HL) = aligned target address, A = number of pixels to paint; (BC) = colour to paint.
+	; To here: (HL) = aligned target address, A = number of pixels to paint, (BC) = colour to paint.
 	@no_initial_right:
 		srl a
 		jr c, @+with_final_left
