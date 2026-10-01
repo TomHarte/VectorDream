@@ -13,6 +13,20 @@ current_spans_swap: db 0
 @hpen: db 0
 
 ;
+; Overarching register considerations for this file:
+;
+;	(1) it navigates three blocks of memory simultaneously: the old spans buffer, the new spans buffer, and the frame buffer.
+;	(2)	the two span buffers are compared, so it makes sense for one of those to be behind HL since cp (hl) exists but cp (rr) doesn't otherwise;
+;	(3)	the frame buffer is potentially written to, possibly via SP, so it makes sense for it to be behind DE because there's a faster route from
+;		DE to SP than from BC;
+;	(4)	for table-based span output dispatch, it's proven helpful to have the high byte of the dispatch table already in H';
+;	(5) dispatch for all drawn spans and filling when SP-based make use of DE';
+;	(6) BC' holds the value HPEN throughout to allow for polled pseudo-interrupts. It's not a big win, but it saves having to reestablish B after
+;		each check of HPEN (though noting that it's always true that B = H ^ 0x40, this wouldn't be too arduous); and
+;	(6) SP isn't used as a stack pointer so IX and IY are used to hold return addresses for the two subroutine calls.
+;
+
+;
 ; spans.swap
 ;
 ; Swaps the front and back buffers, updating current pixel output.
@@ -35,13 +49,13 @@ spans.swap:
 	ld (@sp_backup), sp
 
 	; Store current line for upcoming interrupt checks.
+	exx
 	ld bc, HPEN
 	in a, (c)
 	ld (@hpen), a
 
 	; Establish top byte of span-filler jump table in the shadow H;
 	; it'll be assumed to present later during dispatch.
-	exx
 	ld h, @write_target / 256
 	exx
 
@@ -232,9 +246,10 @@ ENDIF
 		ld a, (@-hpen)
 		ld l, a				; L = old HPEN.
 
-		ld bc, HPEN
+		exx
 		in a, (c)
 		ld (@-hpen), a		; A = stored value = new HPEN.
+		exx
 
 		cp 192
 		jr nz, @+not_new_192
@@ -244,13 +259,10 @@ ENDIF
 		call nz, count_time.dispatch
 
 	@not_new_192:
-		; Restore BC and L.
+		; Zero out C and L.
 		xor a
 		ld c, a
 		ld l, a
-		ld a, h
-		xor 0x40
-		ld b, a
 
 	NEXT @page
 
@@ -366,6 +378,16 @@ ENDIF
 		;	neg								; 4
 		;	ld (jump + 1), a				; 16
 		;	@jump: jp dest					; 12		= 36
+		;
+		; So using a jump table has incurred a cost of 12 cycles.
+		; But that's less than e.g. a cp # / jr, so there it is.
+		; A further 8 cycles per painted span has also been accrued to free up SP for potential stack blasting.
+		;
+		; So I'm spending 20 additional cycles per span, which is the equivalent of painting 8/5ths of a byte under the old scheme,
+		; in order to spend less drawing when spans are longer than ~10 bytes (i.e. 20 pixels) in total.
+		;
+		; I'm going to have to think on that.
+		;
 
 ;
 ; Routines to write n bytes; all @fill_bytes actually does is a dispatch.
@@ -441,16 +463,16 @@ ENDIF
 		ld a, (bc)				; 8			; Obtain the colour.
 
 		exx						; 4
-		ld b, a					; 4
-		ld c, a					; 4			; Duplicate the colour into BC'.
+		ld d, a					; 4
+		ld e, a					; 4			; Duplicate the colour into BC'.
 
 		;
 		; Write the proper quantity of bytes.
 		;
 
-		@push_bc: EQU FOR @num_bytes / 2
-			push bc				; 6 * bytes
-		NEXT @push_bc
+		@push: EQU FOR @num_bytes / 2
+			push de				; 6 * bytes
+		NEXT @push
 
 		exx						; 4			; Switch back to the main register set.
 
