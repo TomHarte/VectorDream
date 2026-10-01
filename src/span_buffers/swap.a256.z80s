@@ -1,32 +1,30 @@
-;
-; Manages a double-buffered 'span buffer', i.e. a buffer that stores continuous solid horiontal spans of colour.
-;
-; It can do differential drawing — comparing a new buffer to an old one and outputting only the differences.
-;
-; It therefore seeks to ameliorate for the SAM's speed vs framebuffer deficit for scenes that:
-;	(i) can be described well as horizontal strips of colour; and
-;	(ii) that do not change 'too much' from one frame to the next.
-;
-; It uses memory pages 0–5 inclusive for these span buffers and assumes itself to have been assembled onto the same
-; page as a video buffer that it can use for pixel plotting, and paged into the top half of the memory map. It will
-; freely adjust what is paged in the low half of the memory map.
-;
-; Exported symbols:
-;
-;	* `spans.setup` should be called once at program startup;
-;	* `spans.clear` can be used to populate the current back buffer with a black screen;
-;	* `spans.swap` swaps the front and back span buffers, updating the pixel display; and
-;	* `spans.getaddress` which pages the proper buffer and returns a pointer to the start of a named line.
-;
-
+MAX_FILL_LENGTH: EQU 127		; Maximum number of bytes that will be purely written, not read-modify-written.
+								; This is only 127 since the display is only 255 pixels wide.
 
 ALIGN 256
-@span_fill:
-	@column: EQU FOR 128
-	ld (de), a
-	inc e
-	NEXT @column
-	ret
+@write_target:
+	dw 0
+	@target: EQU FOR MAX_FILL_LENGTH
+	dw @write_{@target + 1}_bytes
+	NEXT @target
+
+current_spans_swap: db 0
+@sp_backup: dw 0
+@hpen: db 0
+
+;
+; Overarching register considerations for this file:
+;
+;	(1) it navigates three blocks of memory simultaneously: the old spans buffer, the new spans buffer, and the frame buffer.
+;	(2)	the two span buffers are compared, so it makes sense for one of those to be behind HL since cp (hl) exists but cp (rr) doesn't otherwise;
+;	(3)	the frame buffer is potentially written to, possibly via SP, so it makes sense for it to be behind DE because there's a faster route from
+;		DE to SP than from BC;
+;	(4)	for table-based span output dispatch, it's proven helpful to have the high byte of the dispatch table already in H';
+;	(5) dispatch for all drawn spans and filling when SP-based make use of DE';
+;	(6) BC' holds the value HPEN throughout to allow for polled pseudo-interrupts. It's not a big win, but it saves having to reestablish B after
+;		each check of HPEN (though noting that it's always true that B = H ^ 0x40, this wouldn't be too arduous); and
+;	(6) SP isn't used as a stack pointer so IX and IY are used to hold return addresses for the two subroutine calls.
+;
 
 ;
 ; spans.swap
@@ -44,17 +42,21 @@ ALIGN 256
 ;		none.
 ;
 ;	Clobbers:
-;		A, BC, DE, HL, IX, IYl.
+;		A, BC, DE, HL, BC', DE', HL', IX, IY.
 ;
-
-current_spans_swap: db 0
-
 spans.swap:
+	; Establish canonical value of SP.
+	ld (@sp_backup), sp
+
 	; Store current line for upcoming interrupt checks.
 	exx
 	ld bc, HPEN
 	in a, (c)
-	ld d, a
+	ld (@hpen), a
+
+	; Establish top byte of span-filler jump table in the shadow H;
+	; it'll be assumed to present later during dispatch.
+	ld h, @write_target / 256
 	exx
 
 	;
@@ -115,7 +117,8 @@ ENDIF
 		sub e
 
 		; Draw.
-		call @fill_span
+		ld iy, @no_paint
+		jp @fill_span
 
 		@no_paint:
 		dec h
@@ -153,7 +156,8 @@ ENDIF
 		sub e
 
 		; Draw.
-		call @fill_span
+		ld iy, @no_paint
+		jp @fill_span
 
 		@no_paint:
 		dec h
@@ -209,14 +213,14 @@ ENDIF
 		jr @-bc_greater
 
 	@paint:
-		; Set A = width.
+		; Set A = width; ensure (BC) still points to the output colour.
 		dec b
 		ld a, (bc)
 		inc b
 		sub e
 
-		call @fill_span
-		jr @-same_ending_tail
+		ld iy, @-same_ending_tail
+		jp @fill_span
 
 	@next_line:
 		; Advance high part of span pointers.
@@ -239,34 +243,38 @@ ENDIF
 		jr nz, @-compare_spans
 
 		; At end of each page of lines, check for a potential missed interrupt.
+		ld a, (@-hpen)
+		ld l, a				; L = old HPEN.
+
 		exx
-		ld e, d
 		in a, (c)
-		ld d, a
+		ld (@-hpen), a		; A = stored value = new HPEN.
+		exx
 
 		cp 192
 		jr nz, @+not_new_192
 
-		cp e
+		ld sp, (@sp_backup)
+		cp l
 		call nz, count_time.dispatch
 
 	@not_new_192:
-		exx
+		; Zero out C and L.
+		xor a
+		ld c, a
+		ld l, a
 
 	NEXT @page
 
+		ld sp, (@sp_backup)
 		ret
 
-finish_painting: MACRO
-	rl e	; just to get the top bit into carry; low 7 don't really matter.
-	rl d
-	ret
-	ENDM
-
 	;
-	; Paint from d = y, e = x for width = A pixels, in colour IXl.
+	; Paint from d = y, e = x for width = A pixels, in colour (BC).
+	; Upon compeletion, jump to address in IY.
 	;
 	; Preserves HL, BC and D. Requires A >= 1.
+	; Assumes H = B ^ 0x40.
 	;
 @fill_span:
 	; Compute frame buffer address.
@@ -276,62 +284,74 @@ finish_painting: MACRO
 	jr nc, @+no_initial_right
 
 		; Store width away somewhere.
-		ld iyl, a
+		ld (@+reload_width + 1), a
 
-		; Store low pixel of new colour.
+		; Get a single nibble of the new output colour.
 		ld a, (bc)
 		and 0x0f
-		ld ixl, a
+		ld h, a
 
-		; Mutate current target of (HL) to include new pixel colour.
+		; Mutate current target of (DE) to include new pixel colour.
 		ld a, (de)
 		and 0xf0
-		or ixl
+		or h
+
 		ld (de), a
 		inc e
 
 		; Decrement remaining pixel count, possibly exit.
-		ld a, iyl
+	@reload_width:
+		ld a, 0	; <-- dynamically reprogrammed to the actual width.
 		dec a
 		jr z, @+finish_painting
 
-	; To here: (HL) = aligned target address, A = number of pixels to paint, (BC) = colour to paint.
+	; To here: (DE) = aligned target address, A = number of pixels to paint, (BC) = colour to paint.
 	@no_initial_right:
 		srl a
 		jr c, @+with_final_left
 
-		call @fill_bytes
-		finish_painting
+		ld ix, @finish_painting
+		jp @fill_bytes
 
 	@with_final_left:
 		jr z, @+no_fill_bytes
-		call @fill_bytes
+
+		ld ix, @no_fill_bytes
+		jp @fill_bytes
 
 	@no_fill_bytes:
 		ld a, (bc)
 		and 0xf0
-		ld ixl, a
+		ld h, a
 
 		ld a, (de)
 		and 0x0f
-		or ixl
+		or h
 
 		ld (de), a
 
 	@finish_painting:
-		finish_painting
+		sla e		; Just to get the top bit into carry; low 7 don't really matter.
+		rl d
+
+		ld a, b		; Restore correct value of H, which was possibly lost.
+		xor 0x40
+		ld h, a
+
+		jp (iy)
 
 ;
 ; fill_bytes
 ;
 ; Does the equivalent of a C memset, for buffers between 1 and 128 bytes in size.
 ; Increments only the low byte of the pointer after each byte, so requires buffer alignment.
-;
+; Upon completion, jumps to IX.
 ;
 ;	Input:
 ; 		DE = address of first byte to write.
 ;		A = number of bytes to write.
 ;		(BC) = value to write.
+;		IX = destination to return to after bytes have been filled.
 ;
 ;	Output:
 ;		DE = (address of final written byte) + 1.
@@ -340,100 +360,133 @@ finish_painting: MACRO
 ;		A.
 ;
 @fill_bytes:
-	add a							; 4 / 8
-	neg								; 8 / 16
-	ld (@destination + 1), a		; 16 / 32
+	exx				; 4		; Brings in H = pointer to dispatch table.
 
-	ld a, (bc)						; 8 / 16
+	add a, a		; 4		; A is strictly less than 128, so this definitely fits.
+	ld l, a			; 4
 
-@destination:
-	jp @-span_fill					; 12 / 24
+	ld e, (hl)		; 8
+	inc l			; 4
+	ld d, (hl)		; 8
+	ex de, hl		; 4
 
-									; = 48 / 96
+	jp (hl)			; 4
 
-;
-; Note to future self:
-;
-; It'd be fantastic to be able to dispatch to stack-blasting routines
-; if/when the number of bytes to write crosses the threshold that will
-; pay for manual BC manipulation and SP setup.
-;
-; Code below plays around with costs/benefits of that as an idea.
-;
+		; [plus an implied 8 at the receiver] = 48 cycles dispatch
 
-;
-; Table-based dispatch:
-;
-;	exx		(bringing in fixed h)	4
-;	ld l, a							4
-;	ld e, (hl)						8
-;	inc h							4
-;	ld d, (hl)						8
-;	dec h							4
-;	ex de, hl						4
-;	jp (hl)							4
-;
-;	...
-;	ex de, hl						4
-;	exx								4	= 48 (!?!)
-;	...
-;
-; So table-based dispatch is a wash?
-;
+		; In an older approach, non-stack-blasting drawing was assumed with a dispatch that looked like:
+		;
+		;	add a, a						; 4
+		;	neg								; 4
+		;	ld (jump + 1), a				; 16
+		;	@jump: jp dest					; 12		= 36
+		;
+		; So using a jump table has incurred a cost of 12 cycles.
+		; But that's less than e.g. a cp # / jr, so there it is.
+		; A further 8 cycles per painted span has also been accrued to free up SP for potential stack blasting.
+		;
+		; So I'm spending 20 additional cycles per span, which is the equivalent of painting 8/5ths of a byte under the old scheme,
+		; in order to spend less drawing when spans are longer than ~10 bytes (i.e. 20 pixels) in total.
+		;
+		; I'm going to have to think on that.
+		;
 
 ;
-; Regular filling:
+; Routines to write n bytes; all @fill_bytes actually does is a dispatch.
 ;
-;	ld (bc), a
-;	inc c
+; Heavily coupled to @fill_bytes though, so:
 ;
-;	=> bytes * 12 / 24
+;	* at entry, the shadow registers will be visible and the value assumed ordinarily to be in H will be in D;
+;	* BC in the non-shadow registers points to the colour to output;
+;	* at exit non-shadow DE needs to have been advanced by the number of bytes being output, and the non-shadow registers need to be visible; and
+;	* the appropriate continuation address is in IX.
 ;
+; A and SP are free for use, as are the shadow BC, E and HL. As above, the shadow D needs to end up in the shadow H.
+;
+@write_span: EQU FOR MAX_FILL_LENGTH
+	@num_bytes: EQU @write_span + 1
 
+	@write_{@num_bytes}_bytes:
+
+	ex de, hl
+	exx					; Restore shadow registers to an appropriate state for the next
+						; dispatch and return to the main registers.
+
+	;
+	; Costs:
+	;
+	;	Non-stack: 8 + 12 * bytes.
+	;	Even: 52 + 6 * bytes.
+	;	Odd: 68 + 6 * (bytes - 1)	= 62 + 6 * bytes
+	;
+	; So the correct thresholds are:
+	;
+	; 		52 + 6b < 8 + 12b			[even spans]
+	; =>	44 < 6b
+	; =>	7.333 <= b		(so 8 is the first even length faster to plot)
+	;
+	;		62 + 6b < 8 + 12b			[odd spans]
+	; =>	56 < 6b
+	; =>	9.333 <= b		(so 11 is the first odd length faster to plot)
+	;
+	@threshold: EQU 8 + (@num_bytes & 1) * 3
+	IF @num_bytes < @threshold
+		;
+		; Short spans: write the requested number of bytes via DE,
+		; incrementing along.
+		;
+
+		ld a, (bc)			; Load colour to fill with.
+
+		@write_bc: EQU FOR @num_bytes
+			ld (de), a
+			inc e					; 12 * bytes
+		NEXT @write_bc
+
+	ELSE
+
+		IF @num_bytes & 1
+
+			; If an odd number of bytes, put one out directly via DE.
+
+			ld a, (bc)				; 8
+			ld (de), a				; 8			; Get colour into A and write the first byte.
+
+		ENDIF
+
+		ld a, @num_bytes		; 8
+		add e					; 4
+		ld e, a					; 4			; Advance DE to its correct ending point.
+
+		ex de, hl				; 4
+		ld sp, hl				; 4
+		ex de, hl				; 4			; Load DE into SP.
+
+		ld a, (bc)				; 8			; Obtain the colour.
+
+		exx						; 4
+		ld d, a					; 4
+		ld e, a					; 4			; Duplicate the colour into BC'.
+
+		;
+		; Write the proper quantity of bytes.
+		;
+
+		@push: EQU FOR @num_bytes / 2
+			push de				; 6 * bytes
+		NEXT @push
+
+		exx						; 4			; Switch back to the main register set.
+
+	ENDIF
+
+	jp (ix)
+
+	NEXT @write_span
 
 ;
-; Stack-blasted filling (if I can carry BC over the exx line?):
+; Ensure that actually fitted onto the video page.
 ;
-;	ld hl, [length]			; 12 / 24
-;	add hl, bc				; 12 / 16	= 24 / 40
-;	ld sp, hl				; 4 / 8
-;	ld c, a					; 4 / 8
-;	ld b, a					; 4 / 8
-;
-;	[bytes / 2] * 12 / 24
-;
-; So this gets ahead as soon as setup < bytes * 12/24 ?
-; i.e. ~ 36 < bytes * 12 => bytes >= 3
-;
-;	... that's **really** low. Probably misleading as I'm ignoring the
-;	costs of dealing with odd byte counts and of somehow carrying BC
-;	over the divide and updating it back on the other side?
-;
-;	Odd lengths are probably an extra exx / ld (bc), a / inc c / exx ?
-;	So 20 / 40?
-;
-;	Not sure about how to carry BC across the EXX divide in both
-;	directions cheaply. It's 16/32 to move BC to IX or IY and then
-;	back again. Cheaper than loading into memory somewhere.
-;
-;	So potential ignored costs on dispatch are:
-;
-;		20 + 16 = 36-ish. Plus existing 36 = 72;
-;
-;		Then bytes >= 6? 4 doesn't quite make the cut even at only 56 overhead,
-;		5 incurs an odd penalty. 6 seems to break even.
-;
-;
-; Addendum: 8-bit arithmetic will do, won't it?
-;
-;	ld h, b					; 4
-;	ld a, [length]			; 8
-;	add a, c				; 4
-;	ld l, c					; 4 = 20 / 40
-;
-;
-
-;
-; Conclusion: definitely worth trying.
-; Will need to stop using the alternate registers for HPEN tracking though.
-;
+@end_marker:
+;	jr @-end_marker
+	ASSERT @end_marker < 0x8000
