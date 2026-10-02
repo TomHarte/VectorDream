@@ -18,7 +18,7 @@ This scheme is similar enough to the Amstrad CPC to make that a good point of co
 * about 75% as fast as a CPC ~41% of the time; and
 * about 150% as fast as a CPC for the other ~59%.
 
-i.e. as a rule of thumb, it is about 20% faster than a CPC. But its frame buffer is aboput 50% larger than the one used by the CPC firmware (i.e. 80 bytes per line, 200 lines) and 100% larger than the one used by many CPC games (i.e. 64 bytes per line, 192 lines, so that logic is directly shared with the ZX Spectrum).
+i.e. as a rule of thumb, it is about 20% faster than a CPC. But its frame buffer is about 50% larger than the one used by the CPC firmware (i.e. 80 bytes per line, 200 lines) and 100% larger than the one used by many CPC games (i.e. 64 bytes per line, 192 lines, so that logic is directly shared with the ZX Spectrum).
 
 Unlike the CPC, the SAM Coupé uses a fixed size and fixed addressing for its frame buffer. No hardware support is available for any kind of scrolling, whether coarse or fine, and no relevant hardware tricks have been discovered.
 
@@ -31,4 +31,3 @@ On the other side, the SAM has a very large pool of memory for a Z80-based machi
 This repository attempts to use the comparatively-vast memory pool to ameliorate for the slow CPU. Graphics are composed in a span buffer; differences between the current and the previous span buffer dictate pixels plotted.
 
 Although it can dip slightly below 10fps, it generally hangs out in the 20s.
-
