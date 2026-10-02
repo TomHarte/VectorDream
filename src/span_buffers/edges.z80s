@@ -190,6 +190,31 @@ edges.output:
 
  	ret
 
+@test1:
+	jr @-test1
+
+@page: EQU FOR spans.num_pages
+
+;
+; Assumption: outer wrapping will dynamically insert an exit
+; into the code below.
+;
+@line: EQU FOR 32
+	ld a, (edge.left + @page * 32 + @line)
+	ld c, a
+	ld a, (edge.right + @page * 32 + @line)
+	ld b, a
+
+	call spans.overprint.checkextent
+
+@skip_line:
+	NEXT @line
+
+	NEXT @page
+
+@test2:
+	jr @-test2
+
 ;
 ; TODO: there's probably an unrolled solution to the above, and it'd be worth doing as this routine
 ; would also carry over into filled polygon 3d.
