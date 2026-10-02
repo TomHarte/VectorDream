@@ -29,7 +29,7 @@ DEC.L: EQU 0x2d
 edge.fill.downward:
 	push af
 
-	ld a, INC.L				; Opcode for DEC L.
+	ld a, INC.L				; Opcode for INC L.
 	ld (@+decrement), a
 	jr @+edge.fill
 
