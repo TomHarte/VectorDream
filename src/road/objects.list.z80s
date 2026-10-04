@@ -34,14 +34,20 @@ offsetof.drawblock.collide:	EQU -6	; Six bytes before that is a JP to the update
 ; a routine to draw the thing.
 ;
 
+active_objects.count: EQU 8
+;ds 32
+
+; @here_and_now:
+; 	IF ((@here_and_now + active_objects.count * 4) >> 8) != (@true_end >> 8)
+; 		@padding: EQU 256 - (@active_dummy & 255)
+; 		ds @padding
+; 	ENDIF
+
 @active_dummy:
 	; A dummy object immediately before the list; this means that a backwards search
 	; when sorting wlll always stop at the start of the list.
 	dw 0xffff
 	dw 0
-
-
-active_objects.count: EQU 8
 
 active_objects:
 @object: EQU FOR active_objects.count
@@ -56,7 +62,9 @@ NEXT @object
 	dw 0xffff
 	dw 0
 
-ASSERT (@end_of_objects >> 8) == (@active_dummy >> 8)
+@true_end:
+
+ASSERT (@true_end >> 8) == (@active_dummy >> 8)
 
 
 ;

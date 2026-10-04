@@ -190,27 +190,64 @@ edges.output:
 
  	ret
 
+;
+;
+; Experiments in unrolling are below. Whether that's appropriate is an open question.
+; The main advantage of unrolling is reduced register pressure.
+;
+;
+
+	jr @+test1
 @test1:
-	jr @-test1
 
 @page: EQU FOR spans.num_pages
+	; TODO: dispatch code here.
+	NEXT @page
+
 
 ;
 ; Assumption: outer wrapping will dynamically insert an exit
 ; into the code below.
 ;
+@line_group: EQU FOR 2
+IF @line_group == 0
+	@line_base: EQU 0x8000
+ELSE
+	@line_base: EQU 0x8000 ^ 0x4000
+ENDIF
+
+@lines_{@line_base}:
 @line: EQU FOR 32
-	ld a, (edge.left + @page * 32 + @line)
-	ld c, a
-	ld a, (edge.right + @page * 32 + @line)
-	ld b, a
+	; ld c, (iy + @line)		; 3 bytes
+	; inc iyh					; 2
+	; ld b, (iy + @line)		; 3
+	; dec iyh					; 2 = 10	/ 12 accesses
 
-	call spans.overprint.checkextent
+	pop hl										; 1 byte
+	ld c, (hl)									; 1
+	inc h										; 1
+	ld b, (hl)									; 1
+	dec h										; 1
+	inc l										; 1
+	push hl										; 1	= 7 / 11 accesses
 
+	;
+	; The following seems faster and smaller than any means I've yet thought up
+	; of loading hl directly as a function of @line but applying current_spans.
+	;
+	; That is, other than having two versions of this code, one for each possible
+	; value of current_spans. That'd be no shorter per iteration but would save
+	; 4 memory windows per line. Not huge.
+	;
+	ld hl, (@line * 512) + @line_base			; 3
+	call spans.overprint.checkextent			; 3
+
+												; = 13
 @skip_line:
 	NEXT @line
 
-	NEXT @page
+	ret
+	NEXT @line_group
 
 @test2:
 	jr @-test2

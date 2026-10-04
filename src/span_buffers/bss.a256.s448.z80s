@@ -5,7 +5,7 @@
 
 ALIGN 256
 edge.left:			ds spans.height
-current_spans:		ds 0
+current_spans:		ds 1
 
 ALIGN 256
 edge.right:			ds spans.height
