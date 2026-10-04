@@ -87,10 +87,18 @@ DUMP PAGE.CODE, 0
 	;
 	; 1kb things, one of which needs to be 1kb-aligned.
 	;
+
 		include "maths/multiply_tables.a256.s1024.z80s"					; Ends aligned at 256.
 		include "road/segment_tables.a1024.s544.z80s"					; 1024-alignment is guaranteed here.
 
 		include "random.a256.z80s"
+
+	;
+	; This has an ASSERTed-only alignment concern, requiring its full object list
+	; to share the same top address byte.
+	;
+
+		include "road/objects.list.z80s"
 
 	;
 	; From here: things without alignment concerns, so no need to pack manually.
@@ -100,7 +108,6 @@ DUMP PAGE.CODE, 0
 		include "span_buffers/edges.z80s"
 
 		include "road/road.z80s"
-		include "road/objects.list.z80s"
 		include "road/objects.draw.z80s"
 		include "road/bss.a2.z80s"
 
