@@ -35,7 +35,7 @@ offsetof.drawblock.collide:	EQU -6	; Six bytes before that is a JP to the update
 ;
 
 active_objects.count: EQU 8
-;ds 32
+ds 64
 
 ; @here_and_now:
 ; 	IF ((@here_and_now + active_objects.count * 4) >> 8) != (@true_end >> 8)
