@@ -163,7 +163,6 @@ edges.output:
 	ex de, hl
 	push de
 
-	ld d, ixh
 	call spans.overprint.checkextent
 
 	; Restore trashed values.

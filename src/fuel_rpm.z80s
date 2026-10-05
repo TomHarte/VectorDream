@@ -92,7 +92,7 @@ protect_fuel_rpm:
 	ld c, @fuel_x + @fuel_width * 2
 
 @fill: EQU for @image_height
-	ld d, 0
+	ld ixh, 0
 	call spans.overprint
 
 	IF @fill != @image_height - 1
@@ -114,7 +114,7 @@ protect_fuel_rpm:
 	ld c, @rpm_x + @rpm_width * 2 + @spacer + @bar_width
 
 @fill: EQU for @image_height
-	ld d, 0
+	ld ixh, 0
 	call spans.overprint
 
 	IF @fill != @image_height - 1
@@ -148,7 +148,6 @@ protect_fuel_rpm:
 
 @fill_rpm_bar:
 @fill: EQU for @image_height
-	ld d, ixh
 	call spans.overprint
 
 	IF @fill != @image_height - 1
