@@ -9,7 +9,7 @@
 ;	Input:
 ; 		B = start x.
 ;		C = end x.
-;		D = colour.
+;		IXh = colour.
 ;		HL = pointer within span list, to any span that starts at or before the new one.
 ;
 ;	Requires:
@@ -19,7 +19,7 @@
 ;		H = (original H) + 1.
 ;
 ;	Clobbers:
-;		A, DE, L, IXl.
+;		A, DE, L.
 ;
 @early_exit:
 	inc h
@@ -31,9 +31,6 @@ spans.overprint.checkextent:
 	jr nc, @-early_exit
 
 spans.overprint:
-
-	; Squirrel away colour, due to register pressure.
-	ld ixl, d
 
 	; Find first span that includes the start point.
 	ld a, b
@@ -84,7 +81,7 @@ spans.overprint:
 
 	;
 	; Split start span if necessary.
-	; 
+	;
 	ld l, e
 
 	ld a, e
@@ -96,7 +93,7 @@ spans.overprint:
 	ld l, b
 	ld (hl), c
 	inc h
-	ld a, ixl
+	ld a, ixh
 	ld (hl), a
 
 	ret
@@ -105,7 +102,7 @@ spans.overprint:
 	; So just hijack it.
 @rewrite_start:
 	ld (hl), c
-	ld a, ixl
+	ld a, ixh
 	inc h
 	ld (hl), a
 
