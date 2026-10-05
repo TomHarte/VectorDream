@@ -240,7 +240,7 @@ object_pointer:
 ; Per-object transient storage shared with the draw routines.
 ;
 object_width: db 0
-@base_line: 
+@base_line:
 	db 0	; Actual value.
 	db 0	; "Top byte" of value. Always 0. But allows 16-bit loads.
 screen_line:

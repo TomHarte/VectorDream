@@ -17,7 +17,7 @@ squares:
 	@high_first256: EQU FOR 256
 		@index: EQU @high_first256
 		db ((@index * @index) / 4) / 256
-	NEXT @high_first256	
+	NEXT @high_first256
 
 	@low_second256: EQU FOR 256
 		@index: EQU @low_second256 + 256

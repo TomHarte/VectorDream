@@ -24,7 +24,7 @@
 
 	@no_brake:
 	ld a, (@-right)
-	rra 
+	rra
 	jr nc, @+no_right
 
 		ld bc, (player.yvelocity)
